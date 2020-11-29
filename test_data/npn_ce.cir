@@ -1,0 +1,16 @@
+Q1 VC VB VE 0 2N3904
+RC VCC VC 10k
+RE VE 0 100k
+R1 VCC VB 100k
+R2 VB 0 100k
+C1 VB Vin 1µ
+C2 N001 VE 1µ
+C3 VC Vout 1µ
+R5 N001 0 5k
+V1 VCC 0 9
+V2 Vin 0 SINE(0 10m 1k)
+.model NPN NPN
+.model PNP PNP
+.lib C:\Users\shuof\Documents\LTspiceXVII\lib\cmp\standard.bjt
+.op
+.backanno
