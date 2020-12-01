@@ -206,7 +206,7 @@ class HybridPiModel:
             -> Dict[str, 'HybridPiModel']:
         """
         Parses an operating point analysis log file produced by LTspice and
-        extracts the hybrid-pi small-signal model for each transistor.
+        extracts the hybrid-pi small-signal parameters for each transistor.
 
         :param op_log_file: an operating point analysis log file
         :param encoding: the file encoding, defaults to "utf-8"
@@ -286,17 +286,17 @@ class Circuit:
                 comp = ComponentFactory.from_netlist_entry(line.rstrip('\n'))
 
                 if isinstance(comp, TwoTerminal):
-                    # Two terminal components are added relabel_to the graph as-is.
+                    # Two terminal components are added to the graph as-is.
                     multigraph.add_edge(comp.pos_node, comp.neg_node,
                                         key=comp.name, component=comp)
 
-                    # Mark DC sources relabel_to be turned off later.
+                    # Mark DC sources to be turned off later.
                     if (isinstance(comp, VoltageSource) or
                             isinstance(comp, CurrentSource)) and comp.is_dc():
                         dc_sources.append(comp)
 
                 elif isinstance(comp, BipolarTransistor):
-                    # Transistors are first converted relabel_to small signal
+                    # Transistors are first converted to small signal
                     # equivalents components.
                     model = models[comp.name.lower()]
                     small_signal_comps = comp.small_signal_components(model)
@@ -349,6 +349,57 @@ if __name__ == '__main__':
     netlist_file = path.join(test_data_dir, 'npn_ce.cir')
     log_file = path.join(test_data_dir, 'npn_ce.log')
 
+    # Instantiate a circuit by passing in the netlist file and log file.
+    # The circuit will be converted to small-signal.
     circuit = Circuit.from_ltspice(netlist_file, log_file)
-    circuit.print_components()
 
+    print('\nIterating through nodes:')
+    for node in circuit.multigraph.nodes:
+        print(node)
+
+    print('\nIterating through edges:')
+    for edge in circuit.multigraph.edges:
+        src_node, dst_node, component_name = edge
+        print(f'{component_name}: {src_node} -> {dst_node}')
+
+    print('\nIterating through edges, this time with component names and objects:')
+    for edge in circuit.multigraph.edges(keys=True, data='component'):
+        src_node, dst_node, component_name, component_obj = edge
+        print(f'{component_name}: {src_node} <-> {dst_node}')
+        print(f'\t{component_obj}')
+
+        # Node that because the multigraph is undirected, we need some way to
+        # keep track of the polarity of components. This is done by inspecting
+        # component objects, which are instances of Component classes. They
+        # specify which node is positive and which node is negative.
+
+        # Example:
+        # V2: 0 -> Vin
+        #
+        # V2 is the name of a voltage source.
+        # V2 exists between node 0 and node Vin.
+        # V2.pos_node is Vin, meaning Vin is the positive node.
+        # V2.neg_node is 0, meaning 0 is the negative node.
+
+    print('\nIterating through all nodes and their neighbours:')
+    for n, nbrsdict in circuit.multigraph.adjacency():
+        print(f'Current node is {n}')
+        print(f'\tNeighbours = {[nbr for nbr in nbrsdict]}')
+
+        for nbr, edgedict in nbrsdict.items():
+            print(f'\tNeighbour {nbr}')
+            print(f'\tEdges between {n} and {nbr}: {[key for key in edgedict]}')
+
+            for key, edge_attrib_dict in edgedict.items():
+                print(f'\t\tComponent {key}: {n} <-> {nbr}')
+                component_obj = edge_attrib_dict['component']
+                print(f'\t\t{component_obj}')
+
+
+    print(f'\nAccess the neighbours of a specific node "VE":')
+    for nbr, edgedict in circuit.multigraph['VE'].items():
+        print(f'\tNeighbour: {nbr}')
+        for key, edge_attrib_dict in edgedict.items():
+            print(f'\t\tComponent {key}: {n} <-> {nbr}')
+            component_obj = edge_attrib_dict['component']
+            print(f'\t\t{component_obj}')
