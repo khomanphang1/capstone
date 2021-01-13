@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from dataclasses import dataclass
-import re
 import networkx as nx
+import re
 
 
 class ComponentFactory:
@@ -93,6 +93,9 @@ class VoltageSource(Component, TwoTerminal):
         args = entry.split(' ', 3)
         return cls(*args)
 
+    def to_netlist_entry(self) -> str:
+        return ' '.join([self.name, self.pos_node, self.neg_node, self.voltage])
+
 
 class CurrentSource(Component, TwoTerminal):
 
@@ -115,6 +118,8 @@ class CurrentSource(Component, TwoTerminal):
         args = entry.split(' ', 3)
         return cls(*args)
 
+    def to_netlist_entry(self) -> str:
+        return ' '.join([self.name, self.pos_node, self.neg_node, self.current])
 
 class VoltageDependentCurrentSource(Component, TwoTerminal):
 
@@ -133,6 +138,10 @@ class VoltageDependentCurrentSource(Component, TwoTerminal):
         args = entry.split(' ', 5)
         return cls(*args)
 
+    def to_netlist_entry(self) -> str:
+        return ' '.join([self.name, self.pos_node, self.neg_node, self.pos_input_node,
+                         self.neg_input_node, self.gain])
+
 
 class Resistor(Component, TwoTerminal):
 
@@ -147,6 +156,9 @@ class Resistor(Component, TwoTerminal):
     def from_netlist_entry(cls, entry: str) -> 'Resistor':
         args = entry.split(' ', 3)
         return cls(*args)
+
+    def to_netlist_entry(self) -> str:
+        return ' '.join([self.name, self.pos_node, self.neg_node, self.value])
 
 
 class Capacitor(Component, TwoTerminal):
@@ -163,6 +175,9 @@ class Capacitor(Component, TwoTerminal):
     def from_netlist_entry(cls, entry: str) -> 'Capacitor':
         args = entry.split(' ', 3)
         return cls(*args)
+
+    def to_netlist_entry(self) -> str:
+        return ' '.join([self.name, self.pos_node, self.neg_node, self.capacitance])
 
 
 class BipolarTransistor(Component):
@@ -184,11 +199,11 @@ class BipolarTransistor(Component):
         return cls(*args)
 
     def small_signal_components(self, model: 'HybridPiModel') -> List[Component]:
-        rpi = Resistor('rpi_' + self.name, self.base, self.emitter, model.rpi)
-        g = VoltageDependentCurrentSource('g_' + self.name, self.collector,
+        rpi = Resistor('RPI_' + self.name, self.base, self.emitter, model.rpi)
+        g = VoltageDependentCurrentSource('G_' + self.name, self.collector,
                                           self.emitter, self.base,
                                           self.emitter, model.gm)
-        ro = Resistor('ro_' + self.name, self.collector, self.emitter, model.ro)
+        ro = Resistor('RO_' + self.name, self.collector, self.emitter, model.ro)
         return [rpi, g, ro]
 
 
@@ -267,9 +282,14 @@ class Circuit:
         self.multigraph = multigraph
 
     def print_components(self):
-        for e in self.multigraph.edges(data=True):
-            src_node, dest_node, edge_attrbs = e
-            print(src_node, dest_node, edge_attrbs['component'])
+        for e in self.multigraph.edges(data='component'):
+            src_node, dest_node, component = e
+            print(src_node, dest_node, component)
+
+    def iter_components(self) -> Tuple[str, str, Component]:
+        for e in self.multigraph.edges(data='component'):
+            src_node, dest_node, component = e
+            yield src_node, dest_node, component
 
     @classmethod
     def from_ltspice(cls, netlist_file: str, op_log_file: str) -> 'Circuit':
@@ -353,53 +373,54 @@ if __name__ == '__main__':
     # The circuit will be converted to small-signal.
     circuit = Circuit.from_ltspice(netlist_file, log_file)
 
-    print('\nIterating through nodes:')
-    for node in circuit.multigraph.nodes:
-        print(node)
+    # print('\nIterating through nodes:')
+    # for node in circuit.multigraph.nodes:
+    #     print(node)
+    #
+    # print('\nIterating through edges:')
+    # for edge in circuit.multigraph.edges:
+    #     src_node, dst_node, component_name = edge
+    #     print(f'{component_name}: {src_node} <-> {dst_node}')
 
-    print('\nIterating through edges:')
-    for edge in circuit.multigraph.edges:
-        src_node, dst_node, component_name = edge
-        print(f'{component_name}: {src_node} -> {dst_node}')
+    # print('\nIterating through edges, this time with component names and objects:')
+    # for edge in circuit.multigraph.edges(keys=True, data='component'):
+    #     src_node, dst_node, component_name, component_obj = edge
+    #     print(f'{component_name}: {src_node} <-> {dst_node}')
+    #     print(f'\t{component_obj}')
+    #
+    #     # Node that because the multigraph is undirected, we need some way to
+    #     # keep track of the polarity of components. This is done by inspecting
+    #     # component objects, which are instances of Component classes. They
+    #     # specify which node is positive and which node is negative.
+    #
+    #     # Example:
+    #     # V2: 0 <-> Vin
+    #     #
+    #     # V2 is the name of a voltage source.
+    #     # V2 exists between node 0 and node Vin.
+    #     # V2.pos_node is Vin, meaning Vin is the positive node.
+    #     # V2.neg_node is 0, meaning 0 is the negative node.
 
-    print('\nIterating through edges, this time with component names and objects:')
-    for edge in circuit.multigraph.edges(keys=True, data='component'):
-        src_node, dst_node, component_name, component_obj = edge
-        print(f'{component_name}: {src_node} <-> {dst_node}')
-        print(f'\t{component_obj}')
-
-        # Node that because the multigraph is undirected, we need some way to
-        # keep track of the polarity of components. This is done by inspecting
-        # component objects, which are instances of Component classes. They
-        # specify which node is positive and which node is negative.
-
-        # Example:
-        # V2: 0 -> Vin
-        #
-        # V2 is the name of a voltage source.
-        # V2 exists between node 0 and node Vin.
-        # V2.pos_node is Vin, meaning Vin is the positive node.
-        # V2.neg_node is 0, meaning 0 is the negative node.
-
-    print('\nIterating through all nodes and their neighbours:')
+    print('\nIterating through all nodes and their neighbours:\n')
     for n, nbrsdict in circuit.multigraph.adjacency():
-        print(f'Current node is {n}')
-        print(f'\tNeighbours = {[nbr for nbr in nbrsdict]}')
+        print('*' * 100)
+        print(f'Current node = {n}')
+        # print(f'\tNeighbours = {[nbr for nbr in nbrsdict]}')
 
         for nbr, edgedict in nbrsdict.items():
-            print(f'\tNeighbour {nbr}')
-            print(f'\tEdges between {n} and {nbr}: {[key for key in edgedict]}')
+            print(f'\tNeighbour = {nbr}')
+            # print(f'\tEdges between {n} and {nbr}: {[key for key in edgedict]}')
 
             for key, edge_attrib_dict in edgedict.items():
                 print(f'\t\tComponent {key}: {n} <-> {nbr}')
                 component_obj = edge_attrib_dict['component']
-                print(f'\t\t{component_obj}')
+                print(f'\t\t\t{component_obj}')
 
 
-    print(f'\nAccess the neighbours of a specific node "VE":')
-    for nbr, edgedict in circuit.multigraph['VE'].items():
-        print(f'\tNeighbour: {nbr}')
-        for key, edge_attrib_dict in edgedict.items():
-            print(f'\t\tComponent {key}: {n} <-> {nbr}')
-            component_obj = edge_attrib_dict['component']
-            print(f'\t\t{component_obj}')
+    # print(f'\nAccess the neighbours of a specific node "VE":')
+    # for nbr, edgedict in circuit.multigraph['VE'].items():
+    #     print(f'\tNeighbour: {nbr}')
+    #     for key, edge_attrib_dict in edgedict.items():
+    #         print(f'\t\tComponent {key}: {n} <-> {nbr}')
+    #         component_obj = edge_attrib_dict['component']
+    #         print(f'\t\t{component_obj}')
