@@ -1,4 +1,4 @@
-Circuit: * C:\Users\shuof\PycharmProjects\capstone\test_data\npn_cb.asc
+Circuit: * C:\Users\shuof\PycharmProjects\capstone\test_data\2N3904_common_emitter.asc
 
 WARNING: Node VOUT is floating.
 
@@ -27,8 +27,8 @@ Ft:       1.67e+07
 
 
 
-Date: Tue Nov 10 16:37:31 2020
-Total elapsed time: 0.078 seconds.
+Date: Tue Jan 12 20:48:11 2021
+Total elapsed time: 0.016 seconds.
 
 tnom = 27
 temp = 27
