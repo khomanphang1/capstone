@@ -121,6 +121,7 @@ class CurrentSource(Component, TwoTerminal):
     def to_netlist_entry(self) -> str:
         return ' '.join([self.name, self.pos_node, self.neg_node, self.current])
 
+
 class VoltageDependentCurrentSource(Component, TwoTerminal):
 
     prefix = 'g'
@@ -217,8 +218,7 @@ class HybridPiModel:
     ro: str
 
     @classmethod
-    def from_ltspice_op_log(cls, op_log_file: str, encoding: str = 'utf-8') \
-            -> Dict[str, 'HybridPiModel']:
+    def from_ltspice_op_log(cls, log: str) -> Dict[str, 'HybridPiModel']:
         """
         Parses an operating point analysis log file produced by LTspice and
         extracts the hybrid-pi small-signal parameters for each transistor.
@@ -227,46 +227,45 @@ class HybridPiModel:
         :param encoding: the file encoding, defaults to "utf-8"
         :return: a dictionary of models with transistor names as keys
         """
-        with open(op_log_file, 'r', encoding=encoding) as log:
-            transistor_section = False
-            valid_keys = {'gm', 'rpi', 'ro'}
-            transistor_names = None
-            models = None
+        transistor_section = False
+        valid_keys = {'gm', 'rpi', 'ro'}
+        transistor_names = None
+        models = None
 
-            for line in log:
-                if transistor_section:
-                    # Currently inside a transistor section.
+        for line in log.splitlines():
+            if transistor_section:
+                # Currently inside a transistor section.
 
-                    # Data in transistor section is whitespace-delimited.
-                    row = re.findall(r'\S+', line)
+                # Data in transistor section is whitespace-delimited.
+                row = re.findall(r'\S+', line)
 
-                    if not row:
-                        # The end of a transistor section is marked by an empty
-                        # line.
-                        transistor_section = False
-                        continue
+                if not row:
+                    # The end of a transistor section is marked by an empty
+                    # line.
+                    transistor_section = False
+                    continue
 
-                    # Strip trailing ":" character from row header.
-                    key = row[0][:-1].lower()
+                # Strip trailing ":" character from row header.
+                key = row[0][:-1].lower()
 
-                    if key == 'name':
-                        # Initialize models with transistor names as keys, and
-                        # {} as values. As we iterate over subsequent rows, {}
-                        # is populated.
-                        transistor_names = row[1:]
-                        models = dict.fromkeys(transistor_names, {})
+                if key == 'name':
+                    # Initialize models with transistor names as keys, and
+                    # {} as values. As we iterate over subsequent rows, {}
+                    # is populated.
+                    transistor_names = row[1:]
+                    models = dict.fromkeys(transistor_names, {})
 
-                    elif key in valid_keys:
-                        # Add parameter name-value pair for each transistor.
-                        for name, value in zip(transistor_names, row[1:]):
-                            models[name][key] = value
+                elif key in valid_keys:
+                    # Add parameter name-value pair for each transistor.
+                    for name, value in zip(transistor_names, row[1:]):
+                        models[name][key] = value
 
-                else:
-                    # Check that the line is a transistor section header. Set
-                    # the transistor_section flag accordingly.
-                    match = transistor_section_pattern.match(line)
-                    # For now, handle only BJTs.
-                    transistor_section = match and match.group(1) == 'Bipolar'
+            else:
+                # Check that the line is a transistor section header. Set
+                # the transistor_section flag accordingly.
+                match = transistor_section_pattern.match(line)
+                # For now, handle only BJTs.
+                transistor_section = match and match.group(1) == 'Bipolar'
 
         for name in models:
             # Construct HybridPiModel instances from using dictionary as kwargs.
@@ -291,38 +290,41 @@ class Circuit:
             src_node, dest_node, component = e
             yield src_node, dest_node, component
 
+    def netlist(self) -> str:
+        return '\n'.join(c.to_netlist_entry() for _, _, c in self.iter_components())
+
     @classmethod
-    def from_ltspice(cls, netlist_file: str, op_log_file: str) -> 'Circuit':
-        models = HybridPiModel.from_ltspice_op_log(op_log_file)
+    def from_ltspice(cls, netlist: str, op_log: str) -> 'Circuit':
+        models = HybridPiModel.from_ltspice_op_log(op_log)
         multigraph = nx.MultiGraph()
         dc_sources = []
-        with open(netlist_file, 'r', encoding='utf-8') as netlist:
-            for line in netlist:
-                if line.startswith('.') or line.startswith('*'):
-                    # LTspice comments are ignored.
-                    continue
 
-                # Instantiate component.
-                comp = ComponentFactory.from_netlist_entry(line.rstrip('\n'))
+        for line in netlist.splitlines():
+            if line.startswith('.') or line.startswith('*'):
+                # LTspice comments are ignored.
+                continue
 
-                if isinstance(comp, TwoTerminal):
-                    # Two terminal components are added to the graph as-is.
+            # Instantiate component.
+            comp = ComponentFactory.from_netlist_entry(line)
+
+            if isinstance(comp, TwoTerminal):
+                # Two terminal components are added to the graph as-is.
+                multigraph.add_edge(comp.pos_node, comp.neg_node,
+                                    key=comp.name, component=comp)
+
+                # Mark DC sources to be turned off later.
+                if (isinstance(comp, VoltageSource) or
+                        isinstance(comp, CurrentSource)) and comp.is_dc():
+                    dc_sources.append(comp)
+
+            elif isinstance(comp, BipolarTransistor):
+                # Transistors are first converted to small signal
+                # equivalents components.
+                model = models[comp.name.lower()]
+                small_signal_comps = comp.small_signal_components(model)
+                for comp in small_signal_comps:
                     multigraph.add_edge(comp.pos_node, comp.neg_node,
                                         key=comp.name, component=comp)
-
-                    # Mark DC sources to be turned off later.
-                    if (isinstance(comp, VoltageSource) or
-                            isinstance(comp, CurrentSource)) and comp.is_dc():
-                        dc_sources.append(comp)
-
-                elif isinstance(comp, BipolarTransistor):
-                    # Transistors are first converted to small signal
-                    # equivalents components.
-                    model = models[comp.name.lower()]
-                    small_signal_comps = comp.small_signal_components(model)
-                    for comp in small_signal_comps:
-                        multigraph.add_edge(comp.pos_node, comp.neg_node,
-                                            key=comp.name, component=comp)
 
         for source in dc_sources:
             if isinstance(source, VoltageSource):
@@ -366,12 +368,18 @@ if __name__ == '__main__':
     from os import path
     test_data_dir = path.join(path.dirname(__file__), 'test_data')
 
-    netlist_file = path.join(test_data_dir, 'npn_ce.cir')
-    log_file = path.join(test_data_dir, 'npn_ce.log')
+    netlist_file = path.join(test_data_dir, '2N3904_common_emitter.net')
+    log_file = path.join(test_data_dir, '2N3904_common_emitter.log')
+
+    with open(netlist_file) as f:
+        netlist = f.read()
+
+    with open(log_file) as f:
+        log = f.read()
 
     # Instantiate a circuit by passing in the netlist file and log file.
     # The circuit will be converted to small-signal.
-    circuit = Circuit.from_ltspice(netlist_file, log_file)
+    circuit = Circuit.from_ltspice(netlist, log)
 
     # print('\nIterating through nodes:')
     # for node in circuit.multigraph.nodes:
