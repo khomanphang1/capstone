@@ -19,3 +19,13 @@ def small_signal_circuit():
     return {'netlist': circuit.netlist()}
 
 app.run()
+
+
+'''
+How to use:
+
+ - Run server.py (in debug mode if desired)
+ - Run client.py (in debug mode if desired)
+ - Check client.py for additional info
+
+'''
