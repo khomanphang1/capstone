@@ -33,3 +33,9 @@ def run_op_analysis(path: str) -> str:
     name, _ = os.path.splitext(name)
     log_path = os.path.join(dir, name + '.log')
     return log_path
+
+
+if __name__ == '__main__':
+    TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'test_data')
+    asc_to_netlist(os.path.join(TEST_DATA_DIR, '2N3904_cascode.asc'))
+    asc_to_netlist(os.path.join(TEST_DATA_DIR, '2N3904_common_emitter.asc'))

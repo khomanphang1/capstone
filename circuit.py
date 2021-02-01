@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 from dataclasses import dataclass
 import networkx as nx
 import re
+import sympy as sp
 
 
 class ComponentFactory:
@@ -36,6 +37,11 @@ class TwoTerminal:
     def __init__(self, pos_node: str, neg_node: str):
         self.pos_node = pos_node
         self.neg_node = neg_node
+
+    @property
+    @abstractmethod
+    def impedance(self):
+        ...
 
 
 class Component(ABC):
@@ -161,6 +167,9 @@ class Resistor(Component, TwoTerminal):
     def to_netlist_entry(self) -> str:
         return ' '.join([self.name, self.pos_node, self.neg_node, self.value])
 
+    @property
+    def impedance(self):
+        return sp.symbols(self.name)
 
 class Capacitor(Component, TwoTerminal):
 
@@ -179,6 +188,10 @@ class Capacitor(Component, TwoTerminal):
 
     def to_netlist_entry(self) -> str:
         return ' '.join([self.name, self.pos_node, self.neg_node, self.capacitance])
+
+    @property
+    def impedance(self):
+        return 1 / (sp.symbols('s') * sp.symbols(self.name))
 
 
 class BipolarTransistor(Component):
@@ -284,6 +297,14 @@ class Circuit:
         for e in self.multigraph.edges(data='component'):
             src_node, dest_node, component = e
             print(src_node, dest_node, component)
+
+    def iter_nodes(self):
+        yield from self.multigraph
+
+    def iter_neighbours(self, node):
+        for nbr, edgedict in self.multigraph.adj[node].items():
+            for edge_key, edge_attribs in edgedict.items():
+                yield nbr, edge_attribs['component']
 
     def iter_components(self) -> Tuple[str, str, Component]:
         for e in self.multigraph.edges(data='component'):
@@ -409,20 +430,23 @@ if __name__ == '__main__':
     #     # V2.pos_node is Vin, meaning Vin is the positive node.
     #     # V2.neg_node is 0, meaning 0 is the negative node.
 
-    print('\nIterating through all nodes and their neighbours:\n')
-    for n, nbrsdict in circuit.multigraph.adjacency():
-        print('*' * 100)
-        print(f'Current node = {n}')
-        # print(f'\tNeighbours = {[nbr for nbr in nbrsdict]}')
+    for node in circuit.iter_nodes():
+        for nbr, component in circuit.iter_neighbours(node):
+            print(f'{node} <-> {nbr}: {component}')
 
-        for nbr, edgedict in nbrsdict.items():
-            print(f'\tNeighbour = {nbr}')
-            # print(f'\tEdges between {n} and {nbr}: {[key for key in edgedict]}')
-
-            for key, edge_attrib_dict in edgedict.items():
-                print(f'\t\tComponent {key}: {n} <-> {nbr}')
-                component_obj = edge_attrib_dict['component']
-                print(f'\t\t\t{component_obj}')
+    # for n, nbrsdict in circuit.multigraph.adjacency():
+    #     print('*' * 100)
+    #     print(f'Current node = {n}')
+    #     # print(f'\tNeighbours = {[nbr for nbr in nbrsdict]}')
+    #
+    #     for nbr, edgedict in nbrsdict.items():
+    #         print(f'\tNeighbour = {nbr}')
+    #         # print(f'\tEdges between {n} and {nbr}: {[key for key in edgedict]}')
+    #
+    #         for key, edge_attrib_dict in edgedict.items():
+    #             print(f'\t\tComponent {key}: {n} <-> {nbr}')
+    #             component_obj = edge_attrib_dict['component']
+    #             print(f'\t\t\t{component_obj}')
 
 
     # print(f'\nAccess the neighbours of a specific node "VE":')
