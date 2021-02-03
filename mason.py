@@ -1,16 +1,14 @@
-import networkx.algorithms as algo
+from itertools import chain, tee, zip_longest
+from typing import List, Set, Tuple, Generator, Any, Callable, Iterator
 
-from itertools import chain, tee
-
-import itertools
+import sympy as sp
 import networkx as nx
 from networkx.algorithms import all_simple_paths, simple_cycles
-from typing import List, Iterable, Set, Tuple
 
 
 def pairwise(iterable):
     """Returns a pairwise iterator."""
-    a, b = itertools.tee(iterable)
+    a, b = tee(iterable)
     next(b, None)
     return zip(a, b)
 
@@ -19,7 +17,43 @@ def pairwise_circular(iterable):
     """Returns a pairwise circular iterator."""
     a, b = tee(iterable)
     first = next(b, None)
-    return itertools.zip_longest(a, b, fillvalue=first)
+    return zip_longest(a, b, fillvalue=first)
+
+
+def disjoint_set_combination_indices(sets: List[Set]) -> Generator[Iterator[int], None, None]:
+
+    # Uses a DFS backtracking algorithm to generate all disjoint combinations
+    # of sets. Yields the set indices for each combination.
+    def backtrack(i: int, comb: List[int], set: Set) -> List[int]:
+        if i == len(sets):
+            return
+
+        yield from backtrack(i + 1, comb, set)
+
+        if set.isdisjoint(sets[i]):
+            set |= sets[i]
+            comb.append(i)
+            yield iter(comb)
+            yield from backtrack(i + 1, comb, set)
+            comb.pop()
+            set -= sets[i]
+
+    # Convert the set indices to getter functions.
+    yield from backtrack(0, [], set())
+
+
+def determinant(cycles_gains, cycles_nodes, path_nodes=None) -> str:
+    """Computes the determinant of cycles not touching the given path.
+
+    Args:
+        cycles_gains:
+        cycles_nodes:
+        path_nodes:
+
+    Returns:
+        A string that represents the determinant.
+    """
+    return ''
 
 
 def transfer_function(graph: nx.DiGraph, input_node: str, output_node: str) -> str:
@@ -38,84 +72,43 @@ def transfer_function(graph: nx.DiGraph, input_node: str, output_node: str) -> s
         KeyError: The input or output node is not in the signal-flow graph.
     """
 
-    paths = []
+    # Find all simple paths from the input node to the output node. For each
+    # path, store the edge gains and the set of (unique) nodes on the path.
 
-    # Finds all simple paths from the input to output node.
+    paths = all_simple_paths(graph, input_node, output_node)
+
+    paths_gains = []
+    paths_nodes = []
+
     for path in all_simple_paths(graph, input_node, output_node):
-        weights = [graph.edges[u, v]['weight'] for u, v in pairwise(path)]
-        nodes = set(path)
-        paths.append((weights, nodes))
+        gains = [graph.edges[u, v]['weight'] for u, v in pairwise(path)]
+        paths_gains.append(gains)
+        paths_nodes.append(set(path))
 
-    cycles = []
+    # Find all simple cycles in the graph. For each cycle, store the edge gains
+    # and the set of (unique) nodes in the cycle.
 
-    # Finds all simple cycles in the graph.
+    cycles_gains = []
+    cycles_nodes = []
+
     for cycle in simple_cycles(graph):
-        weights = [graph.edges[u, v]['weight'] for u, v in pairwise_circular(cycle)]
-        nodes = set(cycle)
-        cycles.append((weights, nodes))
+        gains = [graph.edges[u, v]['weight'] for u, v in pairwise_circular(cycle)]
+        cycles_gains.append(gains)
+        cycles_nodes.append(set(cycle))
 
-    combinations = []
+    # To find non-touching combinations of cycles, examine the set of nodes for
+    # each cycle. If a collection of node sets are disjoint, then the
+    # corresponding cycles are non-touching.
+    combinations = [[cycles_gains[i] for i in indices] for indices
+                    in disjoint_set_combination_indices(cycles_nodes)]
 
-    def non_touching_combinations(i, comb: List, nodes: Set):
-        if i == len(cycles):
-            return
-
-        non_touching_combinations(i + 1, comb, nodes)
-
-        curr_weights, curr_nodes = cycles[i]
-
-        if nodes.isdisjoint(curr_nodes):
-            nodes |= curr_nodes
-            comb.append((curr_weights, curr_nodes))
-            combinations.append(comb[:])
-            non_touching_combinations(i + 1, comb, nodes)
-            comb.pop()
-            nodes -= curr_nodes
-
-    # Find all combination of non-touching cycles.
-    non_touching_combinations(0, [], set())
-    # Sort cycle combinations by combination size.
+    # Sort the combinations of cycles by size. This makes it easier to
+    # compute the determinant summation, where the sign of each term is
+    # dependent on the size.
     combinations.sort(key=len)
 
-    determinant = '1'
 
-    for size, group in itertools.groupby(combinations, key=len):
-        sign = ' - ' if size % 2 else ' + '
-        gain_products = (''.join(itertools.chain.from_iterable(weights for weights, _ in comb)) for comb in group)
-        sum = '(' + ' + '.join(gain_products) + ')'
-        determinant += sign + sum
 
-    numerator = '0'
-
-    for path, nodes in paths:
-
-        determ = '1'
-
-        for size, group in itertools.groupby(combinations, key=len):
-            sign = ' - ' if size % 2 else ' + '
-            gain_products = []
-
-            for comb in group:
-                if not all(nodes.isdisjoint(nodes_) for _, nodes_ in comb):
-                    # If any cycle in the current combination touches the
-                    # current forward path, ignore it.
-                    break
-                gain_products.append(''.join(
-                    itertools.chain.from_iterable(
-                        weights for weights, _ in comb
-                    )
-                ))
-
-            if gain_products:
-                sum = '(' + ' + '.join(gain_products) + ')'
-                determ += sign + sum
-
-        s = f'({determ}) * {"".join(path)}'
-        numerator += ' + ' + s
-
-    print(numerator)
-    print(determinant)
-    pass
 
 g = nx.DiGraph()
 
