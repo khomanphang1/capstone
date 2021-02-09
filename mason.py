@@ -1,4 +1,4 @@
-from itertools import chain, tee, zip_longest, groupby
+from itertools import tee, zip_longest, groupby
 from typing import List, Set, Tuple, Any, Callable, Iterator
 from collections import OrderedDict
 
@@ -82,39 +82,39 @@ def determinant(graph: nx.DiGraph,
     return 1 + sp.Add.fromiter(gain_products_sums)
 
 
-def transfer_function(graph: nx.DiGraph, input_node: str, output_node: str) -> str:
+def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
+        -> sp.core.expr.Expr:
     """Computes the transfer function of a signal-flow graph.
 
     Args:
-        graph: A signal-flow graph with weighted edges.
+        sfg: A signal-flow graph with weighted edges.
         input_node: The name of the input node.
         output_node: The name of the output node.
 
     Returns:
         A string that represents the transfer function from the input to output
         node.
-
-    Raises:
-        KeyError: The input or output node is not in the signal-flow graph.
     """
 
     # Find all simple paths from the input node to the output node.
-    paths = [OrderedDict.fromkeys(nodes) for nodes in all_simple_paths(graph, input_node, output_node)]
+    paths = [OrderedDict.fromkeys(nodes) for nodes
+             in all_simple_paths(sfg, input_node, output_node)]
 
     # Find all simple cycles.
-    cycles = [OrderedDict.fromkeys(nodes) for nodes in simple_cycles(graph)]
+    cycles = [OrderedDict.fromkeys(nodes) for nodes in simple_cycles(sfg)]
 
     # Find all combinations of non-touching cycles, sorted by combination size.
     cycle_combinations = list(disjoint_combinations(cycles, key=lambda cycle: cycle.keys()))
     cycle_combinations.sort(key=len)
 
     # Find overall determinant.
-    denom = determinant(graph, cycle_combinations)
+    denom = determinant(sfg, cycle_combinations)
 
-    # For each forward path, find its gain and determinant.
-    path_gains = (sp.Mul.fromiter(graph.edges[u, v]['gain'] for u, v in pairwise(path))
+    # For each forward path, find its gain and determinant. Then, find the sum
+    # of their products.
+    path_gains = (sp.Mul.fromiter(sfg.edges[u, v]['gain'] for u, v in pairwise(path))
                   for path in paths)
-    determs = (determinant(graph, cycle_combinations, path=path)
+    determs = (determinant(sfg, cycle_combinations, path=path)
                for path in paths)
     sum_terms = (sp.Mul(path_gain, determ) for path_gain, determ in zip(path_gains, determs))
     numer = sp.Add.fromiter(sum_terms)
@@ -123,6 +123,11 @@ def transfer_function(graph: nx.DiGraph, input_node: str, output_node: str) -> s
 
 
 if __name__ == '__main__':
+    import numpy as np
+
+    # Example 1:
+    # Simple, single-variable gain expressions
+    # Real numbers
     graph = nx.DiGraph()
 
     edges = [
@@ -141,6 +146,75 @@ if __name__ == '__main__':
     for src, dest, gain in edges:
         graph.add_edge(src, dest, gain=sp.Symbol(gain))
 
-    sp.init_printing(use_unicode=True)
     h = transfer_function(graph, 'y1', 'y6')
-    sp.pprint(h)
+    sp.pprint(h, use_unicode=True)
+
+    # values = {'a': 3, 'b': 4, 'c': 12, 'd': 7, 'e': 5, 'f': 3, 'g': 1, 'h': 2,
+    #           'i': 2}
+    # func = h.subs(values)
+    # numeric_func = sp.lambdify('j', func, 'numpy')
+    #
+    # data = np.linspace(1, 10, 100)
+    # numeric_func(data)
+    #
+    #
+    #
+    # # Example 2:
+    # # Contains complex numbers
+    # # Edge can be expressions instead of single variables
+    #
+    # graph = nx.DiGraph()
+    #
+    # R_D, g_m, r_o, R_S, C_D, w = sp.symbols('R_D g_m r_o R_S C_D w')
+    #
+    # edges = [
+    #     ('v_i', 'v_gs', 1),
+    #     ('v_gs', 'v_x', g_m),
+    #     ('v_gs', 'I_sco', -g_m),
+    #     ('v_x', 'v_s', 1 / (1 / R_S + 1 / r_o)),
+    #     ('v_s', 'v_gs', -1),
+    #     ('v_s', 'I_sco', 1 / r_o),
+    #     ('I_sco', 'v_o', 1 / (1 / R_D + 1 / r_o + sp.I * w * C_D)), # sp.I * w * C_D
+    #     ('v_o', 'v_x', 1 / r_o)
+    # ]
+    #
+    # for src, dest, gain in edges:
+    #     graph.add_edge(src, dest, gain=gain)
+    #
+    # h = transfer_function(graph, 'v_i', 'v_o')
+    # sp.pprint(h.factor(), use_unicode=True)
+    #
+    # values = {
+    #     'R_D': 2e3,
+    #     'g_m': 200e-03,
+    #     'r_o': 2.64e6,
+    #     'R_S': 1e3,
+    #     'C_D': 200e-6,
+    # }
+    #
+    # func = h.subs(values)
+    # numeric_func = sp.lambdify(w, func, 'numpy')
+    #
+    # pass
+    #
+    #
+    #
+    #
+    #
+    #
+    # x = np.linspace(1e3, 100e3, 1000)
+    # y = numeric_func(x)
+    #
+    # mag, phase = np.abs(y), np.angle(y)
+    #
+    # import matplotlib.pyplot as plt
+    #
+    # plt.plot(x, phase)
+    #
+    # plt.show()
+    #
+    # pass
+
+
+
+
