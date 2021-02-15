@@ -21,8 +21,7 @@ def pairwise_circular(iterable):
     return zip_longest(a, b, fillvalue=first)
 
 
-def disjoint_combinations(items: List, key: Callable[[Any], Set]) \
-        -> Iterator[Tuple[OrderedDict, ...]]:
+def disjoint_combinations(items: List, key: Callable[[Any], Set]) -> Iterator[Tuple]:
     """Iterates over combinations of disjoint items.
 
     Iterates over combinations of disjoint items. Items are considered disjoint
@@ -33,10 +32,9 @@ def disjoint_combinations(items: List, key: Callable[[Any], Set]) \
         key: A function that maps each item to a set.
 
     Yields:
-        A tuple of items.
+        A tuple of items that constitutes a combination.
     """
-    def dfs(i: int, comb: List, keys: Set) \
-            -> Iterator[Tuple[OrderedDict, ...]]:
+    def dfs(i: int, comb: List, keys: Set) -> Iterator[Tuple]:
 
         if i == len(items):
             return
@@ -56,7 +54,7 @@ def disjoint_combinations(items: List, key: Callable[[Any], Set]) \
 
 def determinant(graph: nx.DiGraph,
                 cycle_combinations: List[Tuple[OrderedDict, ...]],
-                path: OrderedDict = None) -> sp.core.expr.Expr:
+                path: OrderedDict = None) -> sp.Expr:
 
     path = path or OrderedDict()
     gain_products_sums = []
@@ -83,7 +81,7 @@ def determinant(graph: nx.DiGraph,
 
 
 def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
-        -> sp.core.expr.Expr:
+        -> sp.Expr:
     """Computes the transfer function of a signal-flow graph.
 
     Args:

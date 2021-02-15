@@ -171,6 +171,7 @@ class Resistor(Component, TwoTerminal):
     def impedance(self):
         return sp.symbols(self.name)
 
+
 class Capacitor(Component, TwoTerminal):
 
     prefix = 'c'
