@@ -281,11 +281,11 @@ class HybridPiModel:
                 # For now, handle only BJTs.
                 transistor_section = match and match.group(1) == 'Bipolar'
 
-        for name in models or []:
+        for name in models:
             # Construct HybridPiModel instances from using dictionary as kwargs.
             models[name] = cls(**models[name])
 
-        return models or {}
+        return models
 
 
 class Circuit:
@@ -316,8 +316,12 @@ class Circuit:
         return '\n'.join(c.to_netlist_entry() for _, _, c in self.iter_components())
 
     @classmethod
-    def from_ltspice(cls, netlist: str, op_log: str) -> 'Circuit':
-        models = HybridPiModel.from_ltspice_op_log(op_log)
+    def from_ltspice(cls, netlist: str, op_log: str = None) -> 'Circuit':
+        if op_log is None:
+            models = {}
+        else:
+            models = HybridPiModel.from_ltspice_op_log(op_log)
+
         multigraph = nx.MultiGraph()
         dc_sources = []
 
@@ -347,6 +351,9 @@ class Circuit:
                 for comp in small_signal_comps:
                     multigraph.add_edge(comp.pos_node, comp.neg_node,
                                         key=comp.name, component=comp)
+
+        if op_log is None:
+            return cls(multigraph)
 
         for source in dc_sources:
             if isinstance(source, VoltageSource):
@@ -401,7 +408,7 @@ if __name__ == '__main__':
 
     # Instantiate a circuit by passing in the netlist file and log file.
     # The circuit will be converted to small-signal.
-    circuit = Circuit.from_ltspice(netlist, log)
+    circuit = Circuit.from_ltspice(netlist)
 
     # print('\nIterating through nodes:')
     # for node in circuit.multigraph.nodes:
