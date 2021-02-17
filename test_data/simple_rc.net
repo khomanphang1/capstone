@@ -1,0 +1,6 @@
+* C:\Users\shuof\Desktop\Capstone\test\circuitModule\netlist_simple_rc.asc
+V1 N001 0 24
+R1 N002 N001 4
+C1 N002 0 0.002
+.backanno
+.end

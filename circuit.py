@@ -281,11 +281,11 @@ class HybridPiModel:
                 # For now, handle only BJTs.
                 transistor_section = match and match.group(1) == 'Bipolar'
 
-        for name in models:
+        for name in models or []:
             # Construct HybridPiModel instances from using dictionary as kwargs.
             models[name] = cls(**models[name])
 
-        return models
+        return models or {}
 
 
 class Circuit:
@@ -390,8 +390,8 @@ if __name__ == '__main__':
     from os import path
     test_data_dir = path.join(path.dirname(__file__), 'test_data')
 
-    netlist_file = path.join(test_data_dir, '2N3904_common_emitter.net')
-    log_file = path.join(test_data_dir, '2N3904_common_emitter.log')
+    netlist_file = path.join(test_data_dir, 'simple_rc.net')
+    log_file = path.join(test_data_dir, 'simple_rc.log')
 
     with open(netlist_file) as f:
         netlist = f.read()
