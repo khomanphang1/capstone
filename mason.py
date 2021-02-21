@@ -1,5 +1,5 @@
 from itertools import tee, zip_longest, groupby
-from typing import List, Set, Tuple, Any, Callable, Iterator
+from typing import List, Set, Tuple, Any, Callable, Iterator, Optional
 from collections import OrderedDict
 
 import sympy as sp
@@ -21,7 +21,8 @@ def pairwise_circular(iterable):
     return zip_longest(a, b, fillvalue=first)
 
 
-def disjoint_combinations(items: List, key: Callable[[Any], Set]) -> Iterator[Tuple]:
+def disjoint_combinations(items: List, key: Callable[[Any], Set]) \
+        -> Iterator[Tuple]:
     """Iterates over combinations of disjoint items.
 
     Iterates over combinations of disjoint items. Items are considered disjoint
@@ -54,7 +55,22 @@ def disjoint_combinations(items: List, key: Callable[[Any], Set]) -> Iterator[Tu
 
 def determinant(graph: nx.DiGraph,
                 cycle_combinations: List[Tuple[OrderedDict, ...]],
-                path: OrderedDict = None) -> sp.Expr:
+                path: Optional[OrderedDict] = None) -> sp.Expr:
+    """Finds the determinant of an SFG.
+
+    Finds the determinant of an SFG, considering only feedback loops not
+    touching a given simple path. If no simple path is given, all feedback
+    loops are considered.
+
+    Args:
+        graph: An SFG.
+        cycle_combinations: All combinations of non-touching cycles in the SFG.
+        path: Optional; A simple path with which feedback loops should not
+            intersect.
+
+    Returns:
+        The determinant as a symbolic expression.
+    """
 
     path = path or OrderedDict()
     gain_products_sums = []
@@ -74,6 +90,7 @@ def determinant(graph: nx.DiGraph,
                          for u, v in pairwise_circular(cycle))
                 gain_products.append(sp.Mul.fromiter(gains))
 
+        # Odd-sized combinations have a negative sign.
         sign = -1 if size % 2 else 1
         gain_products_sums.append(sp.Add.fromiter(gain_products) * sign)
 
@@ -82,16 +99,19 @@ def determinant(graph: nx.DiGraph,
 
 def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
         -> sp.Expr:
-    """Computes the transfer function of a signal-flow graph.
+    """Computes the transfer function of an SFG.
 
     Args:
-        sfg: A signal-flow graph with weighted edges.
+        sfg: An SFG with weighted edges.
         input_node: The name of the input node.
         output_node: The name of the output node.
 
     Returns:
         A string that represents the transfer function from the input to output
         node.
+
+    Todo:
+        handle input nodes differently.
     """
 
     # Find all simple paths from the input node to the output node.
@@ -102,7 +122,8 @@ def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
     cycles = [OrderedDict.fromkeys(nodes) for nodes in simple_cycles(sfg)]
 
     # Find all combinations of non-touching cycles, sorted by combination size.
-    cycle_combinations = list(disjoint_combinations(cycles, key=lambda cycle: cycle.keys()))
+    cycle_combinations = list(disjoint_combinations(
+        cycles, key=lambda cycle: cycle.keys()))
     cycle_combinations.sort(key=len)
 
     # Find overall determinant.
@@ -110,22 +131,22 @@ def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
 
     # For each forward path, find its gain and determinant. Then, find the sum
     # of their products.
-    path_gains = (sp.Mul.fromiter(sfg.edges[u, v]['gain'] for u, v in pairwise(path))
+    path_gains = (sp.Mul.fromiter(sfg.edges[u, v]['gain']
+                                  for u, v in pairwise(path))
                   for path in paths)
-    determs = (determinant(sfg, cycle_combinations, path=path)
-               for path in paths)
-    sum_terms = (sp.Mul(path_gain, determ) for path_gain, determ in zip(path_gains, determs))
+    determs = (determinant(sfg, cycle_combinations, path) for path in paths)
+    sum_terms = (sp.Mul(path_gain, determ)
+                 for path_gain, determ in zip(path_gains, determs))
     numer = sp.Add.fromiter(sum_terms)
 
     return numer / denom
 
 
 if __name__ == '__main__':
-    import numpy as np
+    # Example:
+    # Find the transfer function between two nodes in an SFG. For simplicity,
+    # the gain associated with each edge is a single, unique variable.
 
-    # Example 1:
-    # Simple, single-variable gain expressions
-    # Real numbers
     graph = nx.DiGraph()
 
     edges = [
@@ -142,76 +163,11 @@ if __name__ == '__main__':
     ]
 
     for src, dest, gain in edges:
+        # Insert the edge, and its gain attribute to a symbolic variable.
         graph.add_edge(src, dest, gain=sp.Symbol(gain))
 
     h = transfer_function(graph, 'y1', 'y6')
     sp.pprint(h, use_unicode=True)
-
-    # values = {'a': 3, 'b': 4, 'c': 12, 'd': 7, 'e': 5, 'f': 3, 'g': 1, 'h': 2,
-    #           'i': 2}
-    # func = h.subs(values)
-    # numeric_func = sp.lambdify('j', func, 'numpy')
-    #
-    # data = np.linspace(1, 10, 100)
-    # numeric_func(data)
-    #
-    #
-    #
-    # # Example 2:
-    # # Contains complex numbers
-    # # Edge can be expressions instead of single variables
-    #
-    # graph = nx.DiGraph()
-    #
-    # R_D, g_m, r_o, R_S, C_D, w = sp.symbols('R_D g_m r_o R_S C_D w')
-    #
-    # edges = [
-    #     ('v_i', 'v_gs', 1),
-    #     ('v_gs', 'v_x', g_m),
-    #     ('v_gs', 'I_sco', -g_m),
-    #     ('v_x', 'v_s', 1 / (1 / R_S + 1 / r_o)),
-    #     ('v_s', 'v_gs', -1),
-    #     ('v_s', 'I_sco', 1 / r_o),
-    #     ('I_sco', 'v_o', 1 / (1 / R_D + 1 / r_o + sp.I * w * C_D)), # sp.I * w * C_D
-    #     ('v_o', 'v_x', 1 / r_o)
-    # ]
-    #
-    # for src, dest, gain in edges:
-    #     graph.add_edge(src, dest, gain=gain)
-    #
-    # h = transfer_function(graph, 'v_i', 'v_o')
-    # sp.pprint(h.factor(), use_unicode=True)
-    #
-    # values = {
-    #     'R_D': 2e3,
-    #     'g_m': 200e-03,
-    #     'r_o': 2.64e6,
-    #     'R_S': 1e3,
-    #     'C_D': 200e-6,
-    # }
-    #
-    # func = h.subs(values)
-    # numeric_func = sp.lambdify(w, func, 'numpy')
-    #
-    # pass
-    #
-    #
-    #
-    #
-    #
-    #
-    # x = np.linspace(1e3, 100e3, 1000)
-    # y = numeric_func(x)
-    #
-    # mag, phase = np.abs(y), np.angle(y)
-    #
-    # import matplotlib.pyplot as plt
-    #
-    # plt.plot(x, phase)
-    #
-    # plt.show()
-    #
-    # pass
 
 
 
