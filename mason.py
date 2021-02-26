@@ -149,7 +149,7 @@ if __name__ == '__main__':
 
     graph = nx.DiGraph()
 
-    edges = [
+    graph = [
         ('y1', 'y2', 'a'),
         ('y2', 'y3', 'b'),
         ('y3', 'y2', 'j'),

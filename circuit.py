@@ -1,33 +1,82 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple
-from dataclasses import dataclass
-import networkx as nx
+from typing import Dict, Tuple, Callable, Union, Optional
+from collections import OrderedDict
 import re
-import sympy as sp
+
+import networkx as nx
+
+
+_si_prefix = {
+    'y': 1e-24,  # yocto
+    'z': 1e-21,  # zepto
+    'a': 1e-18,  # atto
+    'f': 1e-15,  # femto
+    'p': 1e-12,  # pico
+    'n': 1e-9,   # nano
+    'u': 1e-6,   # micro
+    'm': 1e-3,   # mili
+    'c': 1e-2,   # centi
+    'd': 1e-1,   # deci
+    'k': 1e3,    # kilo
+    'M': 1e6,    # mega
+    'G': 1e9,    # giga
+    'T': 1e12,   # tera
+    'P': 1e15,   # peta
+    'E': 1e18,   # exa
+    'Z': 1e21,   # zetta
+    'Y': 1e24,   # yotta
+}
+
+
+def si_prefix_to_float(s) -> float:
+    """Converts a string ending in an SI prefix to a float.
+
+    Args:
+        s: A string.
+
+    Returns:
+        A floating point number.
+    """
+    if not isinstance(s, str):
+        return float(s)
+
+    last = s[-1] if s else ''
+
+    if not last.isnumeric() and last != '.':
+        if last not in _si_prefix:
+            raise ValueError
+        return float(s[:-1]) * _si_prefix[last]
+
+    else:
+        return float(s)
 
 
 class ComponentFactory:
+    """A factory class that handles component construction."""
 
-    prefix_registry: Dict[str, 'Component'] = {}
+    _netlist_prefix_registry = {}
+
+    @classmethod
+    def register(cls, prefix, constructor: Callable[[str], 'Component']):
+        cls._netlist_prefix_registry[prefix] = constructor
 
     @classmethod
     def from_netlist_entry(cls, entry: str) -> 'Component':
-        """Creates a component from an LTspice netlist entry.
+        """Creates a component from a netlist entry.
 
-        The exact type of component created is determined by the first
-        character (i.e. prefix) of the netlist entry.
+        Args:
+            entry: A line in a LTSpice netlist.
 
-        :param entry: a line in an LTspice netlist
-        :return: a component
+        Returns:
+            A component.
         """
-        # Prefixes are case-insensitive.
         prefix = entry[0].lower()
+        constructor = cls._netlist_prefix_registry.get(prefix)
 
-        if prefix not in cls.prefix_registry:
-            raise ValueError(f'No component subclass is registered with prefix '
-                             f'"{prefix}".')
+        if not constructor:
+            raise ValueError(f'No component found with prefix {prefix}.')
 
-        return cls.prefix_registry[prefix].from_netlist_entry(entry)
+        return constructor(entry)
 
 
 class TwoTerminal:
@@ -38,102 +87,130 @@ class TwoTerminal:
         self.pos_node = pos_node
         self.neg_node = neg_node
 
-    @property
-    @abstractmethod
-    def impedance(self):
-        ...
+    def is_shorted(self):
+        return self.pos_node == self.neg_node
 
 
 class Component(ABC):
+    """Component base class.
+    """
 
-    # Component subclasses must define a prefix to register with the factory.
-    prefix: str = NotImplemented
+    _prefix = NotImplemented
 
     def __init_subclass__(cls):
-        if cls.prefix is NotImplemented:
-            raise NotImplementedError('Concrete components must define a '
-                                      'prefix character.')
+        # Register the subclass constructor with ComponentFactory.
+        if cls._prefix is NotImplemented:
+            raise NotImplementedError('Component subclass must define a prefix.')
 
-        # Upon the creating a subclass, register its prefix with
-        # ComponentFactory.
-        ComponentFactory.prefix_registry[cls.prefix] = cls
+        ComponentFactory.register(cls._prefix, cls.from_netlist_entry)
 
     def __init__(self, name: str):
         self.name = name
 
     def __repr__(self):
         attributes = [f'{k}={v}' for k, v in self.__dict__.items()]
-        return str(f'{self.__class__}({", ".join(attributes)})')
+        return str(f'{self.__class__.__name__}({", ".join(attributes)})')
 
     @classmethod
     @abstractmethod
     def from_netlist_entry(cls, entry: str) -> 'Component':
-        """Creates a component from a netlist entry string.
+        """Creates a component from a netlist entry.
 
-        Subclasses must implement this method.
+        Args:
+            entry: A netlist entry.
 
-        :param entry: a line in an LTspice netlist
-        :return: a component
+        Returns:
+            A component.
+        """
+        ...
+
+    @abstractmethod
+    def to_netlist_entry(self) -> str:
+        """Converts a component to a netlist entry.
+
+        Returns:
+            A netlist entry.
         """
         ...
 
 
 class VoltageSource(Component, TwoTerminal):
 
-    prefix = 'v'
+    _prefix = 'v'
 
-    def __init__(self, name: str, pos_node: str, neg_node: str, voltage: str):
+    def __init__(self, name: str,
+                 pos_node: str,
+                 neg_node: str,
+                 voltage: Union[str, float]):
+
         Component.__init__(self, name)
         TwoTerminal.__init__(self, pos_node, neg_node)
         self.voltage = voltage
 
     def is_dc(self) -> bool:
-        try:
-            float(self.voltage)
-        except ValueError:
-            return False
-        return True
+        return isinstance(self.voltage, float)
 
     @classmethod
     def from_netlist_entry(cls, entry: str) -> 'VoltageSource':
-        args = entry.split(' ', 3)
-        return cls(*args)
+        name, pos_node, neg_node, voltage = entry.split(' ', 3)
+
+        # A numeric voltage value is interpreted as DC.
+        try:
+            voltage = si_prefix_to_float(voltage)
+        except ValueError:
+            pass
+
+        return VoltageSource(name, pos_node, neg_node, voltage)
 
     def to_netlist_entry(self) -> str:
-        return ' '.join([self.name, self.pos_node, self.neg_node, self.voltage])
+        args = (self.name, self.pos_node, self.neg_node, self.voltage)
+        return ' '.join(str(arg) for arg in args)
 
 
 class CurrentSource(Component, TwoTerminal):
 
-    prefix = 'i'
+    _prefix = 'i'
 
-    def __init__(self, name: str, pos_node: str, neg_node: str, current: str):
+    def __init__(self, name: str,
+                 pos_node: str,
+                 neg_node: str,
+                 current: Union[str, float]):
+
         Component.__init__(self, name)
         TwoTerminal.__init__(self, pos_node, neg_node)
         self.current = current
 
     def is_dc(self) -> bool:
-        try:
-            float(self.current)
-        except ValueError:
-            return False
-        return True
+        return isinstance(self.current, float)
 
     @classmethod
     def from_netlist_entry(cls, entry: str) -> 'CurrentSource':
-        args = entry.split(' ', 3)
-        return cls(*args)
+        name, pos_node, neg_node, current = entry.split(' ', 3)
+
+        # A numeric voltage value is interpreted as DC.
+        try:
+            current = si_prefix_to_float(current)
+        except ValueError:
+            pass
+
+        return CurrentSource(name, pos_node, neg_node, current)
 
     def to_netlist_entry(self) -> str:
-        return ' '.join([self.name, self.pos_node, self.neg_node, self.current])
+        args = (self.name, self.pos_node, self.neg_node, self.current)
+        return ' '.join(str(arg) for arg in args)
 
 
 class VoltageDependentCurrentSource(Component, TwoTerminal):
 
-    prefix = 'g'
+    _prefix = 'g'
 
-    def __init__(self, name: str, pos_node: str, neg_node: str,
-                 pos_input_node: str, neg_input_node: str, gain: str):
+    def __init__(self, name: str,
+                 pos_node: str,
+                 neg_node: str,
+                 pos_input_node: str,
+                 neg_input_node: str,
+                 gain: Union[str, float]):
+
         Component.__init__(self, name)
         TwoTerminal.__init__(self, pos_node, neg_node)
         self.pos_input_node = pos_input_node
@@ -142,65 +219,85 @@ class VoltageDependentCurrentSource(Component, TwoTerminal):
 
     @classmethod
     def from_netlist_entry(cls, entry: str) -> 'VoltageDependentCurrentSource':
-        args = entry.split(' ', 5)
-        return cls(*args)
+        name, pos_node, neg_node, pos_input_node, neg_input_node, gain = \
+            entry.split(' ', 5)
+
+        try:
+            gain = si_prefix_to_float(gain)
+        except ValueError:
+            pass
+
+        return VoltageDependentCurrentSource(name, pos_node, neg_node,
+                                             pos_input_node, neg_input_node,
+                                             gain)
 
     def to_netlist_entry(self) -> str:
-        return ' '.join([self.name, self.pos_node, self.neg_node, self.pos_input_node,
-                         self.neg_input_node, self.gain])
+        args = (self.name, self.pos_node, self.neg_node, self.pos_input_node,
+                self.neg_input_node, self.gain)
+
+        return ' '.join(str(arg) for arg in args)
 
 
 class Resistor(Component, TwoTerminal):
 
-    prefix = 'r'
+    _prefix = 'r'
 
-    def __init__(self, name: str, pos_node: str, neg_node: str, value: str):
+    def __init__(self, name: str,
+                 pos_node: str,
+                 neg_node: str,
+                 resistance: float):
+
         Component.__init__(self, name)
         TwoTerminal.__init__(self, pos_node, neg_node)
-        self.value = value
+        self.resistance = resistance
 
     @classmethod
     def from_netlist_entry(cls, entry: str) -> 'Resistor':
-        args = entry.split(' ', 3)
-        return cls(*args)
+        name, pos_node, neg_node, resistance = entry.split(' ', 3)
+        resistance = si_prefix_to_float(resistance)
+
+        return Resistor(name, pos_node, neg_node, resistance)
 
     def to_netlist_entry(self) -> str:
-        return ' '.join([self.name, self.pos_node, self.neg_node, self.value])
-
-    @property
-    def impedance(self):
-        return sp.symbols(self.name)
+        args = (self.name, self.pos_node, self.neg_node, self.resistance)
+        return ' '.join(str(arg) for arg in args)
 
 
 class Capacitor(Component, TwoTerminal):
 
-    prefix = 'c'
+    _prefix = 'c'
 
-    def __init__(self, name: str, pos_node: str, neg_node: str,
-                 capacitance: str):
+    def __init__(self, name: str,
+                 pos_node: str,
+                 neg_node: str,
+                 capacitance: float):
         Component.__init__(self, name)
         TwoTerminal.__init__(self, pos_node, neg_node)
         self.capacitance = capacitance
 
     @classmethod
     def from_netlist_entry(cls, entry: str) -> 'Capacitor':
-        args = entry.split(' ', 3)
-        return cls(*args)
+        name, pos_node, neg_node, capacitance = entry.split(' ', 3)
+        capacitance = si_prefix_to_float(capacitance)
+
+        return Capacitor(name, pos_node, neg_node, capacitance)
 
     def to_netlist_entry(self) -> str:
-        return ' '.join([self.name, self.pos_node, self.neg_node, self.capacitance])
-
-    @property
-    def impedance(self):
-        return 1 / (sp.symbols('s') * sp.symbols(self.name))
+        args = (self.name, self.pos_node, self.neg_node, self.capacitance)
+        return ' '.join(str(arg) for arg in args)
 
 
 class BipolarTransistor(Component):
 
-    prefix = 'q'
+    _prefix = 'q'
 
-    def __init__(self, name: str, collector: str, base: str, emitter: str,
-                 substrate: str, model: str):
+    def __init__(self, name: str,
+                 collector: str,
+                 base: str,
+                 emitter: str,
+                 substrate: str,
+                 model: str):
+
         Component.__init__(self, name)
         self.collector = collector
         self.base = base
@@ -210,82 +307,101 @@ class BipolarTransistor(Component):
 
     @classmethod
     def from_netlist_entry(cls, entry: str) -> 'BipolarTransistor':
-        args = entry.split(' ', 5)
-        return cls(*args)
+        name, collector, base, emitter, substrate, model = \
+            entry.split(' ', 5)
+        return BipolarTransistor(name, collector, base, emitter, substrate,
+                                 model)
 
-    def small_signal_components(self, model: 'HybridPiModel') -> List[Component]:
-        rpi = Resistor('RPI_' + self.name, self.base, self.emitter, model.rpi)
-        g = VoltageDependentCurrentSource('G_' + self.name, self.collector,
-                                          self.emitter, self.base,
-                                          self.emitter, model.gm)
-        ro = Resistor('RO_' + self.name, self.collector, self.emitter, model.ro)
-        return [rpi, g, ro]
+    def to_netlist_entry(self) -> str:
+        args = (self.name, self.collector, self.base, self.emitter,
+                self.substrate, self.model)
+
+        return ' '.join(args)
+
+    def small_signal_equivalent(self, g_m: float, r_pi: float, r_o: float) \
+            -> Tuple[Component, Component, Component]:
+        """Finds the small-signal equivalent of the transistor.
+
+        Args:
+            g_m: The transconductance.
+            r_pi: The resistance between the base and emitter nodes.
+            r_o: The resistance between the collector and emitter nodes.
+
+        Returns:
+            A tuple (g, r_pi, r_o), where g is a voltage-dependent current
+            source, and r_pi and r_o are resistors.
+        """
+
+        r_pi = Resistor(
+            f'R_PI_{self.name}',
+            self.base,
+            self.emitter,
+            r_pi
+        )
+
+        g = VoltageDependentCurrentSource(
+            f'G_{self.name}',
+            self.collector,
+            self.emitter,
+            self.base,
+            self.emitter,
+            g_m
+        )
+
+        r_o = Resistor(
+            f'R_O_{self.name}',
+            self.collector,
+            self.emitter,
+            r_o
+        )
+
+        return (g, r_pi, r_o)
 
 
 transistor_section_pattern = re.compile(r' *--- (\S+) Transistors --- *$')
 
 
-@dataclass
-class HybridPiModel:
-    gm: str
-    rpi: str
-    ro: str
+def get_hybrid_pi_parameters(op_point_log: str) \
+        -> Dict[str, Tuple[float, float, float]]:
+    """Extract the hybrid-pi model parameters.
 
-    @classmethod
-    def from_ltspice_op_log(cls, log: str) -> Dict[str, 'HybridPiModel']:
-        """
-        Parses an operating point analysis log file produced by LTspice and
-        extracts the hybrid-pi small-signal parameters for each transistor.
+    Args:
+        op_point_log: An LTSpice operating point analysis log.
 
-        :param op_log_file: an operating point analysis log file
-        :param encoding: the file encoding, defaults to "utf-8"
-        :return: a dictionary of models with transistor names as keys
-        """
-        transistor_section = False
-        valid_keys = {'gm', 'rpi', 'ro'}
-        transistor_names = None
-        models = None
+    Returns:
+        A dictionary that maps transistor names to (g_m, r_pi, r_o) tuples.
 
-        for line in log.splitlines():
-            if transistor_section:
-                # Currently inside a transistor section.
+    Todo:
+        Add support MOSFET transistors.
+    """
+    in_transistor_section = False
+    relevant_rows = OrderedDict.fromkeys(('Name', 'Gm', 'Rpi', 'Ro'))
 
-                # Data in transistor section is whitespace-delimited.
-                row = re.findall(r'\S+', line)
+    for line in op_point_log.splitlines():
 
-                if not row:
-                    # The end of a transistor section is marked by an empty
-                    # line.
-                    transistor_section = False
-                    continue
+        if not in_transistor_section:
+            in_transistor_section = bool(transistor_section_pattern.match(line))
+            continue
 
-                # Strip trailing ":" character from row header.
-                key = row[0][:-1].lower()
+        row = re.findall(r'\S+', line)
 
-                if key == 'name':
-                    # Initialize models with transistor names as keys, and
-                    # {} as values. As we iterate over subsequent rows, {}
-                    # is populated.
-                    transistor_names = row[1:]
-                    models = dict.fromkeys(transistor_names, {})
+        if not row:
+            in_transistor_section = False
+            continue
 
-                elif key in valid_keys:
-                    # Add parameter name-value pair for each transistor.
-                    for name, value in zip(transistor_names, row[1:]):
-                        models[name][key] = value
+        row_header = row[0][:-1]
 
+        if row_header in relevant_rows:
+            if row_header == 'Name':
+                relevant_rows[row_header] = [name.lower() for name in row[1:]]
             else:
-                # Check that the line is a transistor section header. Set
-                # the transistor_section flag accordingly.
-                match = transistor_section_pattern.match(line)
-                # For now, handle only BJTs.
-                transistor_section = match and match.group(1) == 'Bipolar'
+                relevant_rows[row_header] = [si_prefix_to_float(val)
+                                             for val in row[1:]]
 
-        for name in models:
-            # Construct HybridPiModel instances from using dictionary as kwargs.
-            models[name] = cls(**models[name])
+    names = relevant_rows.pop('Name')
+    params = zip(*(val for _, val in relevant_rows.items()))  # (Gm, Rpi, Ro)
 
-        return models
+    return {name: param for name, param in zip(names, params)}
 
 
 class Circuit:
@@ -316,99 +432,102 @@ class Circuit:
         return '\n'.join(c.to_netlist_entry() for _, _, c in self.iter_components())
 
     @classmethod
-    def from_ltspice(cls, netlist: str, op_log: str = None) -> 'Circuit':
-        if op_log is None:
-            models = {}
-        else:
-            models = HybridPiModel.from_ltspice_op_log(op_log)
+    def from_ltspice_netlist(cls, netlist: str,
+                             op_point_log: Optional[str] = None) -> 'Circuit':
 
-        multigraph = nx.MultiGraph()
+        hybrid_pi_parameters = get_hybrid_pi_parameters(op_point_log) if \
+                                  op_point_log else {}
+        graph = nx.MultiGraph()
         dc_sources = []
 
         for line in netlist.splitlines():
-            if line.startswith('.') or line.startswith('*'):
-                # LTspice comments are ignored.
+
+            if line.startswith(('.', '*')):
+                # Ignore comments and models.
                 continue
 
-            # Instantiate component.
-            comp = ComponentFactory.from_netlist_entry(line)
+            component = ComponentFactory.from_netlist_entry(line)
 
-            if isinstance(comp, TwoTerminal):
-                # Two terminal components are added to the graph as-is.
-                multigraph.add_edge(comp.pos_node, comp.neg_node,
-                                    key=comp.name, component=comp)
+            if isinstance(component, TwoTerminal):
+                # Add two-terminal components to circuit as-is.
+                graph.add_edge(component.pos_node, component.neg_node,
+                               key=component.name, component=component)
 
                 # Mark DC sources to be turned off later.
-                if (isinstance(comp, VoltageSource) or
-                        isinstance(comp, CurrentSource)) and comp.is_dc():
-                    dc_sources.append(comp)
+                if (isinstance(component, (VoltageSource, CurrentSource)) and
+                        component.is_dc()):
+                    dc_sources.append(component)
 
-            elif isinstance(comp, BipolarTransistor):
-                # Transistors are first converted to small signal
-                # equivalents components.
-                model = models[comp.name.lower()]
-                small_signal_comps = comp.small_signal_components(model)
-                for comp in small_signal_comps:
-                    multigraph.add_edge(comp.pos_node, comp.neg_node,
-                                        key=comp.name, component=comp)
+            elif isinstance(component, BipolarTransistor):
+                # Replace transistors with small-signal equivalent.
+                g_m, r_pi, r_o = hybrid_pi_parameters[component.name.lower()]
 
-        if op_log is None:
-            return cls(multigraph)
+                for comp in component.small_signal_equivalent(g_m, r_pi, r_o):
+                    graph.add_edge(comp.pos_node, comp.neg_node,
+                                   key=comp.name, component=comp)
+
+        for node in graph:
+            graph.nodes[node]['alias'] = set()
 
         for source in dc_sources:
+
             if isinstance(source, VoltageSource):
-                nodes = (source.pos_node, source.neg_node)
-                relabel_to = next((node for node in nodes if node == '0'),
-                                  min(nodes))
-                relabel_from = next((node for node in nodes
-                                     if node != relabel_to), None)
+                node_names = (source.pos_node, source.neg_node)
+                rename_to = next((node for node in node_names if node == '0'),
+                                 min(node_names))
+                rename_from = next((node for node in node_names
+                                    if node != rename_to), None)
 
-                if not relabel_from:
-                    raise ValueError('Cannot handle shorted DC source yet.')
+                if not rename_from:
+                    raise ValueError(f'Invalid circuit: source {source.name}' 
+                                     'is shorted.')
 
-                # Remove the voltage source.
-                multigraph.remove_edge(source.pos_node, source.neg_node,
-                                       source.name)
+                graph.nodes[rename_to]['alias'].add(rename_from)
 
-                # Find all components that connects the node relabel_from,
-                # and relabel their pos_node and/or neg_nodes.
-                for nbr, nbrdict in multigraph.adj[relabel_from].items():
+                graph.remove_edge(source.pos_node,
+                                  source.neg_node,
+                                  source.name)
+
+                for nbr, nbrdict in graph.adj[rename_from].items():
                     for edge in nbrdict.items():
                         # node_from, node_to, edge_key, component
                         # print(relabel_from, nbr, edge[0], edge[1]['instance'])
                         instance = edge[1]['component']
 
-                        if instance.pos_node == relabel_from:
-                            instance.pos_node = relabel_to
-                        if instance.neg_node == relabel_from:
-                            instance.neg_node = relabel_to
-                
-                # Relabel node relabel_from relabel_to
-                nx.relabel_nodes(multigraph, {relabel_from: relabel_to},
+                        if instance.pos_node == rename_from:
+                            instance.pos_node = rename_to
+
+                        if instance.neg_node == rename_from:
+                            instance.neg_node = rename_to
+
+                # Relabel node relabel_from as relabel_to
+                nx.relabel_nodes(graph, {rename_from: rename_to},
                                  copy=False)
 
-            else:
-                raise ValueError('Cannot handle DC current sources yet.')
-
-        return cls(multigraph)
+        return Circuit(graph)
 
 
 if __name__ == '__main__':
+
     from os import path
     test_data_dir = path.join(path.dirname(__file__), 'test_data')
 
-    netlist_file = path.join(test_data_dir, 'simple_rc.net')
-    log_file = path.join(test_data_dir, 'simple_rc.log')
+    netlist_file = path.join(test_data_dir, '2N3904_common_emitter.net')
+    log_file = path.join(test_data_dir, '2N3904_common_emitter.log')
 
     with open(netlist_file) as f:
         netlist = f.read()
 
     with open(log_file) as f:
-        log = f.read()
+        op_point_log = f.read()
+
+    circ = Circuit.from_ltspice_netlist(netlist, op_point_log)
+    circ.print_components()
+    pass
 
     # Instantiate a circuit by passing in the netlist file and log file.
     # The circuit will be converted to small-signal.
-    circuit = Circuit.from_ltspice(netlist)
+    # circuit = Circuit.from_ltspice(netlist, log)
 
     # print('\nIterating through nodes:')
     # for node in circuit.multigraph.nodes:
@@ -438,9 +557,9 @@ if __name__ == '__main__':
     #     # V2.pos_node is Vin, meaning Vin is the positive node.
     #     # V2.neg_node is 0, meaning 0 is the negative node.
 
-    for node in circuit.iter_nodes():
-        for nbr, component in circuit.iter_neighbours(node):
-            print(f'{node} <-> {nbr}: {component}')
+    # for node in circuit.iter_nodes():
+    #     for nbr, component in circuit.iter_neighbours(node):
+    #         print(f'{node} <-> {nbr}: {component}')
 
     # for n, nbrsdict in circuit.multigraph.adjacency():
     #     print('*' * 100)

@@ -3,6 +3,7 @@ import dill
 
 import db
 import mason
+from ltspice2svg import asc_to_svg
 
 
 app = Flask(__name__)
@@ -44,6 +45,7 @@ def circuit_to_dict(circuit: db.Circuit):
 def create_circuit():
     netlist = request.json['netlist']
     op_point_log = request.json['op_point_log']
+    schematic = request.json['schematic']
 
     # Instantiate circuit object from netlist and op_point_log.
     # Then, perform DPI analysis on circuit to get SFG.
@@ -56,7 +58,8 @@ def create_circuit():
         netlist=netlist,
         op_point_log=op_point_log,
         parameters=parameters,
-        sfg=dill.dumps(sfg)
+        sfg=dill.dumps(sfg),
+        schematic=schematic
     ).save()
 
     # Convert circuit object to json form
@@ -102,8 +105,6 @@ def bode(id, input, output):
         start_freq = float(request.args.get('start_freq'))
         stop_freq = float(request.args.get('stop_freq'))
         steps_per_decade = int(request.args.get('steps_per_decade'))
-        form = request.args.get('form')
-        assert form in ('rectangular', 'polar')
     except:
         abort(400)
 
@@ -145,6 +146,7 @@ def bode(id, input, output):
                                    num=num_steps, endpoint=True, base=10)
 
     out = numeric(freq)
+
     magnitude = np.abs(out).tolist()
     phase = np.angle(out, deg=True).tolist()
 
@@ -161,8 +163,6 @@ def patch_circuit_parameters(id):
     if not circuit:
         abort(404)
 
-    keys = circuit.parameters.keys()
-
     if not request.json.keys() <= circuit.parameters.keys():
         abort(400)
 
@@ -177,6 +177,24 @@ def patch_circuit_parameters(id):
 @app.route('/circuits/<id>', methods=['GET'])
 def get_circuit(id):
     return circuit_to_dict(db.Circuit.objects(id=id).first())
+
+
+@app.route('/circuits/<id>/schematic', methods=['GET'])
+def get_schematic(id):
+    circuit = db.Circuit.objects(id=id).first()
+
+    if circuit.schematic is None:
+        return {'svg': None}
+
+    if circuit.svg is None:
+        try:
+            circuit.svg = asc_to_svg(circuit.schematic)
+            circuit.save()
+        except Exception as e:
+            print(e)
+            abort(400)
+
+    return circuit.svg
 
 
 app.run()
