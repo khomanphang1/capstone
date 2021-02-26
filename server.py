@@ -3,7 +3,9 @@ import dill
 
 import db
 import mason
-from ltspice2svg import asc_to_svg
+import ltspice2svg
+import dpi
+import circuit as cir
 
 
 app = Flask(__name__)
@@ -51,7 +53,11 @@ def create_circuit():
     # Then, perform DPI analysis on circuit to get SFG.
     # For now, use hard-coded mock SFG data.
 
+
     from mock_data import sfg, parameters
+
+    # circ = cir.Circuit.from_ltspice_netlist(netlist, op_point_log)
+    # sfg = dpi.construct_graph(circ)
 
     circuit = db.Circuit(
         name='2n3904_common_emitter',
@@ -188,7 +194,7 @@ def get_schematic(id):
 
     if circuit.svg is None:
         try:
-            circuit.svg = asc_to_svg(circuit.schematic)
+            circuit.svg = ltspice2svg.asc_to_svg(circuit.schematic)
             circuit.save()
         except Exception as e:
             print(e)
