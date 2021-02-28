@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, abort
 import dill
+from flask_cors import CORS, cross_origin
 
 import db
 import mason
@@ -10,6 +11,7 @@ import circuit as cir
 
 app = Flask(__name__)
 app.config['DEBUG'] = True
+CORS(app)
 
 
 def circuit_to_dict(circuit: db.Circuit):
