@@ -149,7 +149,7 @@ if __name__ == '__main__':
 
     graph = nx.DiGraph()
 
-    graph = [
+    edges = [
         ('y1', 'y2', 'a'),
         ('y2', 'y3', 'b'),
         ('y3', 'y2', 'j'),
@@ -168,6 +168,9 @@ if __name__ == '__main__':
 
     h = transfer_function(graph, 'y1', 'y6')
     sp.pprint(h, use_unicode=True)
+
+    ltx = sp.latex(h)
+    print(ltx)
 
 
 
