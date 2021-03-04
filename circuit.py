@@ -40,6 +40,7 @@ def si_prefix_to_float(s) -> float:
     if not isinstance(s, str):
         return float(s)
 
+    s = s.strip()
     last = s[-1] if s else ''
 
     if not last.isnumeric() and last != '.':
@@ -197,6 +198,44 @@ class CurrentSource(Component, TwoTerminal):
 
     def to_netlist_entry(self) -> str:
         args = (self.name, self.pos_node, self.neg_node, self.current)
+        return ' '.join(str(arg) for arg in args)
+
+
+class VoltageDependentVoltageSource(Component, TwoTerminal):
+
+    _prefix = 'e'
+
+    def __init__(self, name: str,
+                 pos_node: str,
+                 neg_node: str,
+                 pos_input_node: str,
+                 neg_input_node: str,
+                 gain: Union[str, float]):
+
+        Component.__init__(self, name)
+        TwoTerminal.__init__(self, pos_node, neg_node)
+        self.pos_input_node = pos_input_node
+        self.neg_input_node = neg_input_node
+        self.gain = gain
+
+    @classmethod
+    def from_netlist_entry(cls, entry: str) -> 'VoltageDependentVoltageSource':
+        name, pos_node, neg_node, pos_input_node, neg_input_node, gain = \
+            entry.split(' ', 5)
+
+        try:
+            gain = si_prefix_to_float(gain)
+        except ValueError:
+            pass
+
+        return VoltageDependentVoltageSource(name, pos_node, neg_node,
+                                             pos_input_node, neg_input_node,
+                                             gain)
+
+    def to_netlist_entry(self) -> str:
+        args = (self.name, self.pos_node, self.neg_node, self.pos_input_node,
+                self.neg_input_node, self.gain)
+
         return ' '.join(str(arg) for arg in args)
 
 
@@ -432,6 +471,14 @@ class Circuit:
         return '\n'.join(c.to_netlist_entry() for _, _, c in self.iter_components())
 
     @classmethod
+    def from_ltspice_schematic(cls, schematic: str,
+                               op_point_log: Optional[str] = None) -> 'Circuit':
+        import ltspice
+
+        netlist = ltspice.asc_to_netlist(schematic)
+        return cls.from_ltspice_netlist(netlist, op_point_log)
+
+    @classmethod
     def from_ltspice_netlist(cls, netlist: str,
                              op_point_log: Optional[str] = None) -> 'Circuit':
 
@@ -468,6 +515,9 @@ class Circuit:
 
         for node in graph:
             graph.nodes[node]['alias'] = set()
+
+        if not op_point_log:
+            return Circuit(graph)
 
         for source in dc_sources:
 
@@ -512,16 +562,22 @@ if __name__ == '__main__':
     from os import path
     test_data_dir = path.join(path.dirname(__file__), 'test_data')
 
-    netlist_file = path.join(test_data_dir, '2N3904_common_emitter.net')
-    log_file = path.join(test_data_dir, '2N3904_common_emitter.log')
+    # netlist_file = path.join(test_data_dir, '2N3904_common_emitter.net')
+    # log_file = path.join(test_data_dir, '2N3904_common_emitter.log')
 
-    with open(netlist_file) as f:
-        netlist = f.read()
+    # schematic_file = path.join(test_data_dir, 'transresistance.asc')
+    schematic_file = path.join(test_data_dir, 'common_source.asc')
 
-    with open(log_file) as f:
-        op_point_log = f.read()
+    # with open(netlist_file) as f:
+    #     netlist = f.read()
+    #
+    # with open(log_file) as f:
+    #     op_point_log = f.read()
 
-    circ = Circuit.from_ltspice_netlist(netlist, op_point_log)
+    with open(schematic_file) as f:
+        schematic = f.read()
+
+    circ = Circuit.from_ltspice_schematic(schematic, op_point_log=None)
     circ.print_components()
     pass
 

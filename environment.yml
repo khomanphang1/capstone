@@ -5,7 +5,7 @@ channels:
 dependencies:
   - blas=1.0
   - brotlipy=0.7.0
-  - ca-certificates=2020.12.5
+  - ca-certificates=2021.1.19
   - certifi=2020.12.5
   - cffi=1.14.4
   - chardet=4.0.0
@@ -15,6 +15,7 @@ dependencies:
   - decorator=4.4.2
   - dill=0.3.3
   - flask=1.1.2
+  - flask-cors=3.0.10
   - freetype=2.10.4
   - icu=58.2
   - idna=2.10
@@ -39,7 +40,7 @@ dependencies:
   - numpy=1.19.2
   - numpy-base=1.19.2
   - olefile=0.46
-  - openssl=1.1.1i
+  - openssl=1.1.1j
   - pillow=8.1.0
   - pip=20.3.3
   - pycparser=2.20
