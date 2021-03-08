@@ -48,7 +48,7 @@ def circuit_to_dict(circuit: db.Circuit):
 @app.route('/circuits', methods=['POST'])
 def create_circuit():
     netlist = request.json['netlist']
-    op_point_log = request.json['op_point_log']
+    op_point_log = request.json['opPointLog']
     schematic = request.json['schematic']
 
     # Instantiate circuit object from netlist and op_point_log.
