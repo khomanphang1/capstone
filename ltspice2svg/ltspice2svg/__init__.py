@@ -273,7 +273,8 @@ def _close(x):
         return(x2)
 
 def _tw_in_px(text,family,size,weight): #text width in pixel, size in px from 1 to 144, weight only normal or bold
-    filer=open(sysPath+r'\Resource\widths\\'+str(size)+'.dat','rb')
+    filePath=os.path.join(sysPath, "Resource", "widths", str(size)+".dat")
+    filer=open(filePath,'rb')
     try:
         while True:
             z=font_width()
@@ -852,7 +853,8 @@ def draw(spiceFile,saveAddress):
                         pIntsecLocations[start]=1
                         pIntsecLocations[end]=1
                 elif z[0]=='SYMBOL':
-                    filePath=sysPath+r'\Resource\sym\\'+z[1]+'.txt'
+                    # filePath=sysPath+r'\Resource\sym\\'+z[1]+'.txt'
+                    filePath = os.path.join(sysPath, "Resource", "sym", z[1]+".txt")
                     symbC=Coordinate(-float(z[2]),-float(z[3]))
                     orientation=z[4]
                     if orientation[0]=='M':
