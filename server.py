@@ -21,18 +21,18 @@ def circuit_to_dict(circuit: db.Circuit):
 
     sfg = dill.loads(circuit.sfg)
 
-    for src, dest, gain in sfg.edges(data='gain'):
-        gain = sfg.edges[src, dest]['gain']
+    for src, dest, weight in sfg.edges(data='weight'):
+        weight = sfg.edges[src, dest]['weight']
 
-        if isinstance(gain, sp.Expr):
-            numeric = gain.subs(circuit.parameters)
+        if isinstance(weight, sp.Expr):
+            numeric = weight.subs(circuit.parameters)
         else:
-            numeric = gain
+            numeric = weight
 
         magnitude = float(sp.Abs(numeric))
         phase = float(sp.arg(numeric))
-        sfg.edges[src, dest]['gain'] = {
-            'symbolic': sp.latex(gain),
+        sfg.edges[src, dest]['weight'] = {
+            'symbolic': sp.latex(weight),
             'magnitude': magnitude,
             'phase': phase
         }

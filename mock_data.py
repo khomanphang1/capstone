@@ -21,8 +21,8 @@ edges = [
     ('v_o', 'v_x', 1 / r_o)
 ]
 
-for src, dest, gain in edges:
-    graph.add_edge(src, dest, gain=gain)
+for src, dest, weight in edges:
+    graph.add_edge(src, dest, weight=weight)
 
 sfg = graph
 

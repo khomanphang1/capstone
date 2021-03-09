@@ -85,7 +85,7 @@ def determinant(graph: nx.DiGraph,
                 # If all cycles in this combination are pairwise disjoint with
                 # the given path, compute the product of loop gains.
 
-                gains = (graph.edges[u, v]['gain']
+                gains = (graph.edges[u, v]['weight']
                          for cycle in comb
                          for u, v in pairwise_circular(cycle))
                 gain_products.append(sp.Mul.fromiter(gains))
@@ -131,7 +131,7 @@ def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
 
     # For each forward path, find its gain and determinant. Then, find the sum
     # of their products.
-    path_gains = (sp.Mul.fromiter(sfg.edges[u, v]['gain']
+    path_gains = (sp.Mul.fromiter(sfg.edges[u, v]['weight']
                                   for u, v in pairwise(path))
                   for path in paths)
     determs = (determinant(sfg, cycle_combinations, path) for path in paths)
@@ -164,7 +164,7 @@ if __name__ == '__main__':
 
     for src, dest, gain in edges:
         # Insert the edge, and its gain attribute to a symbolic variable.
-        graph.add_edge(src, dest, gain=sp.Symbol(gain))
+        graph.add_edge(src, dest, weight=sp.Symbol(gain))
 
     h = transfer_function(graph, 'y1', 'y6')
     sp.pprint(h, use_unicode=True)
