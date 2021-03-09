@@ -1,0 +1,8 @@
+* C:\Users\Syouq\AppData\Local\Temp\tmp3c6i_pxe
+RS Vs 0 5k
+RD 0 Vo 30k
+Ro Vo Vs 200k
+G1 Vo Vs Vg Vs 10e-3
+Vi Vg 0 V
+.backanno
+.end
