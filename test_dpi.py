@@ -174,14 +174,14 @@ def test4():
     from os import path
     test_data_dir = path.join(path.dirname(__file__), 'test_data')
 
-    netlist_file = path.join(test_data_dir, 'npn_ce.cir')
-    log_file = path.join(test_data_dir, 'npn_ce.log')
+    netlist_file = path.join(test_data_dir, 'common_source.net')
+    log_file = path.join(test_data_dir, 'common_source.log')
     with open(netlist_file) as f:
         netlist = f.read()
 
-    with open(log_file) as f:
+    with open(log_file,'r+') as f:
         log = f.read()
-    c_in = circuit.Circuit.from_ltspice(netlist, log)
+    c_in = circuit.Circuit.from_ltspice_netlist(netlist, log)
     for n in c_in.multigraph.nodes:
         print("node:")
         print(n)
@@ -200,9 +200,9 @@ def test4():
     for edge in c_in.multigraph.edges(data="component"):
         print(edge)
     sfg = DPI_algorithm(c_in)
-    h = mason.transfer_function(sfg.graph, 'Vn001', 'Vn002')
+    h = mason.transfer_function(sfg.graph, 'Vg', 'Vo')
     mason.sp.pprint(h.factor(), use_unicode=True)
-
+    print("here")
     # print(h)
     # source, target , weight_name , component = edge
     # print(source , target , weight_name , component)
