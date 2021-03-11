@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, abort
 import dill
 from flask_cors import CORS, cross_origin
 
+
 import db
 import mason
 import ltspice2svg
@@ -10,7 +11,7 @@ import circuit as cir
 
 
 app = Flask(__name__)
-app.config['DEBUG'] = True
+app.config['DEBUG'] = False
 CORS(app)
 
 
@@ -25,7 +26,7 @@ def circuit_to_dict(circuit: db.Circuit):
         weight = sfg.edges[src, dest]['weight']
 
         if isinstance(weight, sp.Expr):
-            numeric = weight.subs(circuit.parameters)
+            numeric = weight.subs('s', sp.I * sp.Symbol('w')).subs(circuit.parameters)
         else:
             numeric = weight
 
@@ -48,6 +49,7 @@ def circuit_to_dict(circuit: db.Circuit):
 @app.route('/circuits', methods=['POST'])
 def create_circuit():
 
+
     # If opPointLog is not given, it is assumed that the signal is already in
     # small-signal form.
 
@@ -63,7 +65,8 @@ def create_circuit():
             request.json.get('opPointLog', None)
         )
 
-    sfg = dpi.construct_graph(circ)
+    sfg = dpi.DPI_algorithm(circ).graph
+    parameters = circ.parameters()
 
     circuit = db.Circuit(
         name='2n3904_common_emitter',
@@ -92,9 +95,15 @@ def get_circuit_transfer_function(id, input, output):
     try:
         sfg = dill.loads(circuit.sfg)
         symbolic = mason.transfer_function(sfg, input, output)
-        numeric = symbolic.subs({k: v for k, v in circuit.parameters.items()
-                                 if k != 'w'})
+
+        # Hack to replace s with w * I
+        params = circuit.parameters.copy()
+        del params['w']
+        params['s'] = sp.I * sp.Symbol('w')
+
+        numeric = symbolic.subs(params)
         numeric = sp.lambdify('w', numeric, 'numpy')
+
     except Exception as err:
         print(err)
         abort(404)
@@ -129,8 +138,13 @@ def bode(id, input, output):
         try:
             sfg = dill.loads(circuit.sfg)
             symbolic = mason.transfer_function(sfg, input, output)
-            numeric = symbolic.subs({k: v for k, v in circuit.parameters.items()
-                                     if k != 'w'})
+
+            # Hack to replace s with w * I
+            params = circuit.parameters.copy()
+            del params['w']
+            params['s'] = sp.I * sp.Symbol('w')
+
+            numeric = symbolic.subs(params)
             numeric = sp.lambdify('w', numeric, modules='numpy')
         except Exception as err:
             print(err)
