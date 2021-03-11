@@ -47,27 +47,31 @@ def circuit_to_dict(circuit: db.Circuit):
 
 @app.route('/circuits', methods=['POST'])
 def create_circuit():
-    netlist = request.json['netlist']
-    op_point_log = request.json['opPointLog']
-    schematic = request.json['schematic']
 
-    # Instantiate circuit object from netlist and op_point_log.
-    # Then, perform DPI analysis on circuit to get SFG.
-    # For now, use hard-coded mock SFG data.
+    # If opPointLog is not given, it is assumed that the signal is already in
+    # small-signal form.
 
+    if 'schematic' in request.json:
+        circ = cir.Circuit.from_ltspice_schematic(
+            request.json['schematic'],
+            request.json.get('opPointLog', None)
+        )
 
-    from mock_data import sfg, parameters
+    elif 'netlist' in request.json:
+        circ = cir.Circuit.from_ltspice_netlist(
+            request.json['netlist'],
+            request.json.get('opPointLog', None)
+        )
 
-    # circ = cir.Circuit.from_ltspice_netlist(netlist, op_point_log)
-    # sfg = dpi.construct_graph(circ)
+    sfg = dpi.construct_graph(circ)
 
     circuit = db.Circuit(
         name='2n3904_common_emitter',
-        netlist=netlist,
-        op_point_log=op_point_log,
-        parameters=parameters,
+        netlist=request.json.get('netlist', None),
+        op_point_log=request.json.get('opPointLog', None),
+        parameters=circ.parameters(),
         sfg=dill.dumps(sfg),
-        schematic=schematic
+        schematic=request.json.get('schematic', None)
     ).save()
 
     # Convert circuit object to json form

@@ -91,6 +91,11 @@ class TwoTerminal:
     def is_shorted(self):
         return self.pos_node == self.neg_node
 
+    @property
+    @abstractmethod
+    def value(self):
+        ...
+
 
 class Component(ABC):
     """Component base class.
@@ -167,6 +172,10 @@ class VoltageSource(Component, TwoTerminal):
         args = (self.name, self.pos_node, self.neg_node, self.voltage)
         return ' '.join(str(arg) for arg in args)
 
+    @property
+    def value(self):
+        return self.voltage
+
 
 class CurrentSource(Component, TwoTerminal):
 
@@ -199,6 +208,10 @@ class CurrentSource(Component, TwoTerminal):
     def to_netlist_entry(self) -> str:
         args = (self.name, self.pos_node, self.neg_node, self.current)
         return ' '.join(str(arg) for arg in args)
+
+    @property
+    def value(self):
+        return self.current
 
 
 class VoltageDependentVoltageSource(Component, TwoTerminal):
@@ -238,6 +251,10 @@ class VoltageDependentVoltageSource(Component, TwoTerminal):
 
         return ' '.join(str(arg) for arg in args)
 
+    @property
+    def value(self):
+        return self.gain
+
 
 class VoltageDependentCurrentSource(Component, TwoTerminal):
 
@@ -276,6 +293,10 @@ class VoltageDependentCurrentSource(Component, TwoTerminal):
 
         return ' '.join(str(arg) for arg in args)
 
+    @property
+    def value(self):
+        return self.gain
+
 
 class Resistor(Component, TwoTerminal):
 
@@ -301,6 +322,10 @@ class Resistor(Component, TwoTerminal):
         args = (self.name, self.pos_node, self.neg_node, self.resistance)
         return ' '.join(str(arg) for arg in args)
 
+    @property
+    def value(self):
+        return self.resistance
+
 
 class Capacitor(Component, TwoTerminal):
 
@@ -324,6 +349,10 @@ class Capacitor(Component, TwoTerminal):
     def to_netlist_entry(self) -> str:
         args = (self.name, self.pos_node, self.neg_node, self.capacitance)
         return ' '.join(str(arg) for arg in args)
+
+    @property
+    def value(self):
+        return self.capacitance
 
 
 class BipolarTransistor(Component):
@@ -394,7 +423,7 @@ class BipolarTransistor(Component):
             r_o
         )
 
-        return (g, r_pi, r_o)
+        return g, r_pi, r_o
 
 
 transistor_section_pattern = re.compile(r' *--- (\S+) Transistors --- *$')
@@ -448,6 +477,11 @@ class Circuit:
     """
     def __init__(self, multigraph: nx.MultiGraph):
         self.multigraph = multigraph
+
+    def parameters(self):
+        return {comp.name: comp.value
+                for _, _, comp in self.iter_components()
+                if type(comp.value) is float}
 
     def print_components(self):
         for e in self.multigraph.edges(data='component'):
