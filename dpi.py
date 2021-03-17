@@ -1,6 +1,6 @@
 import re
 import networkx as nx
-import circuit as cir
+import circuit_parser as cir
 from collections import defaultdict
 import sympy as sy
 

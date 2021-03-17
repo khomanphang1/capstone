@@ -1,13 +1,8 @@
-from flask import Flask, request, jsonify, abort
-import dill
-from flask_cors import CORS, cross_origin
-
+from flask import Flask, request, abort
+from flask_cors import CORS
+from distutils.util import strtobool
 
 import db
-import mason
-import ltspice2svg
-import dpi
-import circuit as cir
 
 
 app = Flask(__name__)
@@ -15,213 +10,200 @@ app.config['DEBUG'] = False
 CORS(app)
 
 
-def circuit_to_dict(circuit: db.Circuit):
+@app.route('/circuits/<circuit_id>', methods=['GET'])
+def get_circuit(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
 
-    import networkx as nx
-    import sympy as sp
+    if not circuit:
+        abort(404, description='Circuit not found')
 
-    sfg = dill.loads(circuit.sfg)
+    try:
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
 
-    for src, dest, weight in sfg.edges(data='weight'):
-        weight = sfg.edges[src, dest]['weight']
+        return circuit.to_dict(fields)
 
-        if isinstance(weight, sp.Expr):
-            numeric = weight.subs('s', sp.I * sp.Symbol('w')).subs(circuit.parameters)
-        else:
-            numeric = weight
-
-        magnitude = float(sp.Abs(numeric))
-        phase = float(sp.arg(numeric))
-        sfg.edges[src, dest]['weight'] = {
-            'symbolic': sp.latex(weight),
-            'magnitude': magnitude,
-            'phase': phase
-        }
-
-    return {
-        '_id': str(circuit.id),
-        'name': circuit.name,
-        'parameters': circuit.parameters,
-        'sfg': nx.cytoscape_data(sfg)
-    }
+    except Exception as e:
+        abort(400, description=str(e))
 
 
 @app.route('/circuits', methods=['POST'])
 def create_circuit():
+    name = request.json['name']
+    netlist = request.json['netlist']
 
-
-    # If opPointLog is not given, it is assumed that the signal is already in
-    # small-signal form.
-
-    if 'schematic' in request.json:
-        circ = cir.Circuit.from_ltspice_schematic(
-            request.json['schematic'],
-            request.json.get('opPointLog', None)
-        )
-
-    elif 'netlist' in request.json:
-        circ = cir.Circuit.from_ltspice_netlist(
-            request.json['netlist'],
-            request.json.get('opPointLog', None)
-        )
-
-    sfg = dpi.DPI_algorithm(circ).graph
-    parameters = circ.parameters()
-
-    circuit = db.Circuit(
-        name='2n3904_common_emitter',
-        netlist=request.json.get('netlist', None),
-        op_point_log=request.json.get('opPointLog', None),
-        parameters=circ.parameters(),
-        sfg=dill.dumps(sfg),
-        schematic=request.json.get('schematic', None)
-    ).save()
-
-    # Convert circuit object to json form
-
-    return circuit_to_dict(circuit)
-
-
-@app.route('/circuits/<id>/transfer_function/<input>/<output>', methods=['GET'])
-def get_circuit_transfer_function(id, input, output):
-    circuit = db.Circuit.objects(id=id).first()
-    tf = circuit.transfer_functions.filter(input=input, output=output).first()
-
-    import sympy as sp
-
-    if tf:
-        return {'transfer_function': sp.latex(dill.loads(tf.symbolic))}
+    schematic = request.json.get('schematic')
+    op_point_log = request.json.get('op_point_log')
 
     try:
-        sfg = dill.loads(circuit.sfg)
-        symbolic = mason.transfer_function(sfg, input, output)
+        circuit = db.Circuit.create(name, netlist, schematic, op_point_log)
+    except Exception as e:
+        abort(400, str(e))
 
-        # Hack to replace s with w * I
-        params = circuit.parameters.copy()
-        del params['w']
-        params['s'] = sp.I * sp.Symbol('w')
+    try:
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
 
-        numeric = symbolic.subs(params)
-        numeric = sp.lambdify('w', numeric, 'numpy')
+        return circuit.to_dict(fields)
 
-    except Exception as err:
-        print(err)
-        abort(404)
+    except Exception as e:
+        abort(400, description=str(e))
 
-    circuit.transfer_functions.append(db.TransferFunction(
-        input=input,
-        output=output,
-        symbolic=dill.dumps(symbolic),
-        numeric=dill.dumps(numeric, recurse=True)
-    ))
+
+@app.route('/circuits/<circuit_id>', methods=['PATCH'])
+def patch_circuit(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    circuit.update_parameters(request.json)
+    circuit.save()
+
+    try:
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+
+        return circuit.to_dict(fields)
+
+    except Exception as e:
+        abort(400, description=str(e))
+
+
+@app.route('/circuits/<circuit_id>/transfer_function', methods=['GET'])
+def get_transfer_function(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    input_node = request.args.get('input_node')
+    output_node = request.args.get('output_node')
+    latex = request.args.get('latex', default=True,
+                             type=lambda s: bool(strtobool(s)))
+
+    try:
+        transfer_function = circuit.compute_transfer_function(
+            input_node,
+            output_node,
+            latex,
+            cache_result=True
+        )
+
+    except Exception as e:
+        abort(400, description=str(e))
 
     circuit.save()
 
-    return {'transfer_function': sp.latex(symbolic)}
+    return {'transfer_function': transfer_function}
 
 
-@app.route('/circuits/<id>/transfer_function/<input>/<output>/bode', methods=['GET'])
-def bode(id, input, output):
+@app.route('/circuits/<circuit_id>/transfer_function/bode', methods=['GET'])
+def get_transfer_function_bode(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    input_node = request.args.get('input_node')
+    output_node = request.args.get('output_node')
+    start_freq = request.args.get('start_freq', type=float)
+    end_freq = request.args.get('end_freq', type=float)
+    points_per_decade = request.args.get('points_per_decade', type=int)
+    frequency_unit = request.args.get('frequency_unit', default='hz')
+    gain_unit = request.args.get('gain_unit', default='db')
+    phase_unit = request.args.get('phase_unit', default='deg')
+
     try:
-        start_freq = float(request.args.get('start_freq'))
-        stop_freq = float(request.args.get('stop_freq'))
-        steps_per_decade = int(request.args.get('steps_per_decade'))
-    except:
-        abort(400)
+        freq, gain, phase = circuit.eval_transfer_function(
+            input_node,
+            output_node,
+            start_freq,
+            end_freq,
+            points_per_decade,
+            frequency_unit,
+            gain_unit,
+            phase_unit,
+            cache_result=True
+        )
 
-    circuit = db.Circuit.objects(id=id).first()
-    tf = circuit.transfer_functions.filter(input=input, output=output).first()
+    except Exception as e:
+        abort(400, description=str(e))
 
-    import sympy as sp
-
-    if not tf:
-        try:
-            sfg = dill.loads(circuit.sfg)
-            symbolic = mason.transfer_function(sfg, input, output)
-
-            # Hack to replace s with w * I
-            params = circuit.parameters.copy()
-            del params['w']
-            params['s'] = sp.I * sp.Symbol('w')
-
-            numeric = symbolic.subs(params)
-            numeric = sp.lambdify('w', numeric, modules='numpy')
-        except Exception as err:
-            print(err)
-            abort(404)
-
-        circuit.transfer_functions.append(db.TransferFunction(
-            input=input,
-            output=output,
-            symbolic=dill.dumps(symbolic),
-            numeric=dill.dumps(numeric, recurse=True)
-        ))
-
-        circuit.save()
-
-    else:
-        numeric = dill.loads(tf.numeric)
-
-    import math
-    import numpy as np
-
-    num_decades = int(math.log10(stop_freq / start_freq))
-    num_steps = steps_per_decade * num_decades
-    freq = 2 * np.pi * np.logspace(math.log10(start_freq),
-                                   math.log10(stop_freq),
-                                   num=num_steps, endpoint=True, base=10)
-
-    out = numeric(freq)
-
-    magnitude = np.abs(out).tolist()
-    phase = np.angle(out, deg=True).tolist()
+    circuit.save()
 
     return {
-        'magnitude': magnitude,
+        'frequency': freq,
+        'gain': gain,
         'phase': phase
     }
 
 
-@app.route('/circuits/<id>', methods=['PATCH'])
-def patch_circuit_parameters(id):
-    circuit = db.Circuit.objects(id=id).first()
+@app.route('/circuits/<circuit_id>/loop_gain', methods=['GET'])
+def get_loop_gain(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
 
     if not circuit:
-        abort(404)
+        abort(404, description='Circuit not found')
 
-    if not request.json.keys() <= circuit.parameters.keys():
-        abort(400)
+    latex = request.args.get('latex', default=True,
+                             type=lambda s: bool(strtobool(s)))
 
-    circuit.parameters.update(request.json)
+    try:
+        loop_gain = circuit.compute_loop_gain(
+            latex,
+            cache_result=True
+        )
 
-    circuit.transfer_functions.delete()
+    except Exception as e:
+        abort(400, description=str(e))
+
     circuit.save()
 
-    return circuit_to_dict(circuit)
+    return {'loop_gain': loop_gain}
 
 
-@app.route('/circuits/<id>', methods=['GET'])
-def get_circuit(id):
-    return circuit_to_dict(db.Circuit.objects(id=id).first())
+@app.route('/circuits/<circuit_id>/loop_gain/bode', methods=['GET'])
+def get_loop_gain_bode(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
 
+    if not circuit:
+        abort(404, description='Circuit not found')
 
-@app.route('/circuits/<id>/schematic', methods=['GET'])
-def get_schematic(id):
-    circuit = db.Circuit.objects(id=id).first()
+    start_freq = request.args.get('start_freq', type=float)
+    end_freq = request.args.get('end_freq', type=float)
+    points_per_decade = request.args.get('points_per_decade', type=int)
+    frequency_unit = request.args.get('frequency_unit', default='hz')
+    gain_unit = request.args.get('gain_unit', default='db')
+    phase_unit = request.args.get('phase_unit', default='deg')
 
-    if circuit.schematic is None:
-        return {'svg': None}
+    try:
+        freq, gain, phase = circuit.eval_loop_gain(
+            start_freq,
+            end_freq,
+            points_per_decade,
+            frequency_unit,
+            gain_unit,
+            phase_unit,
+            cache_result=True
+        )
 
-    if circuit.svg is None:
-        try:
-            circuit.svg = ltspice2svg.asc_to_svg(circuit.schematic)
-            circuit.save()
-        except Exception as e:
-            print(e)
-            abort(400)
+    except Exception as e:
+        abort(400, description=str(e))
 
-    return circuit.svg
+    circuit.save()
+
+    return {
+        'frequency': freq,
+        'gain': gain,
+        'phase': phase
+    }
 
 
 app.run()
-

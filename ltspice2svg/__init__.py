@@ -47,10 +47,18 @@ def asc_to_svg(schematic: str) -> str:
             f.write(schematic)
 
         script_dir, _ = os.path.split(__file__)
-        s = subprocess.check_output(['python',
-                                     os.path.join(script_dir, '_asc_to_svg.py'),
-                                     asc_file,
-                                     svg_file])
+
+
+        try:
+            s = subprocess.check_output(['python',
+                                         os.path.join(script_dir, '_asc_to_svg.py'),
+                                         asc_file,
+                                         svg_file])
+        except Exception:
+            s = subprocess.check_output(['python3',
+                                         os.path.join(script_dir, '_asc_to_svg.py'),
+                                         asc_file,
+                                         svg_file])
 
         with open(svg_file, 'r') as f:
             # Skip one line for the SVG element.

@@ -1,0 +1,71 @@
+Circuit: * C:\Users\shuof\PycharmProjects\capstone\test_data\MC1552G.asc
+
+C5: both pins shorted together -- ignoring.
+WARNING: Less than two connections to node GAIN_SELECT_INPUT_1.  This node is used by R9.
+Direct Newton iteration for .op point succeeded.
+Semiconductor Device Operating Points:
+                        --- Diodes ---
+Name:     d2_q7       d1_q5
+Model:      d           d
+Id:      6.35e-04    1.70e-03
+Vd:      6.43e-01    6.69e-01
+Req:     4.07e+01    1.52e+01
+CAP:     0.00e+00    0.00e+00
+
+                        --- Bipolar Transistors ---
+Name:       q8          q6          q1          q2          q3
+Model:    2n3904      2n3904      2n3904      2n3904      2n3904
+Ib:       2.11e-06    1.44e-04   -7.06e-13    5.88e-04   -5.97e-12
+Ic:       6.61e-04   -1.42e-04    7.16e-13    1.20e-03    6.00e-12
+Vbe:      6.43e-01    6.43e-01    8.47e-09    7.04e-01    1.53e-02
+Vbc:     -4.69e+00    6.43e-01   -7.04e-01    6.88e-01   -5.98e+00
+Vce:      5.33e+00    0.00e+00    7.04e-01    1.53e-02    6.00e+00
+BetaDC:   3.14e+02   -9.85e-01   -1.01e+00    2.03e+00   -1.01e+00
+Gm:       2.55e-02    1.17e-05    3.89e-13    6.78e-02    7.39e-13
+Rpi:      1.23e+04    1.37e+04    9.99e+11    1.89e+03    9.98e+11
+Rx:       2.00e+01    2.00e+01    2.00e+01    2.00e+01    2.00e+01
+Ro:       1.58e+05    4.59e+01    1.00e+16    1.14e+01    5.54e+15
+Cbe:      2.14e-11    2.00e-11    8.00e-12    6.69e-11    8.05e-12
+Cbc:      2.08e-12    5.50e-09    3.22e-12    2.22e-08    1.94e-12
+Cjs:      0.00e+00    0.00e+00    0.00e+00    0.00e+00    0.00e+00
+BetaAC:   3.13e+02    1.60e-01    3.89e-01    1.28e+02    7.37e-01
+Cbx:      0.00e+00    0.00e+00    0.00e+00    0.00e+00    0.00e+00
+Ft:       1.73e+08    2.09e+03    1.31e-02    4.84e+05    1.08e-02
+
+Name:       q4
+Model:    2n3904
+Ib:       5.08e-06
+Ic:       1.52e-03
+Vbe:      6.66e-01
+Vbc:     -2.54e-03
+Vce:      6.69e-01
+BetaDC:   2.99e+02
+Gm:       5.84e-02
+Rpi:      5.09e+03
+Rx:       2.00e+01
+Ro:       6.59e+04
+Cbe:      3.31e-11
+Cbc:      4.00e-12
+Cjs:      0.00e+00
+BetaAC:   2.98e+02
+Cbx:      0.00e+00
+Ft:       2.51e+08
+
+
+
+Date: Wed Mar 17 16:56:54 2021
+Total elapsed time: 0.094 seconds.
+
+tnom = 27
+temp = 27
+method = trap
+totiter = 24
+traniter = 0
+tranpoints = 0
+accept = 0
+rejected = 0
+matrix size = 32
+fillins = 12
+solver = Normal
+Matrix Compiler1: 3.13 KB object code size
+Matrix Compiler2: 3.03 KB object code size

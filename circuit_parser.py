@@ -483,7 +483,8 @@ class Circuit:
                   for _, _, comp in self.iter_components()
                   if type(comp.value) is float}
 
-        params['w'] = float(1e3)
+        params['f'] = 1e3
+
         return params
 
     def print_components(self):

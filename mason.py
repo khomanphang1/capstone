@@ -2,7 +2,7 @@ from itertools import tee, zip_longest, groupby
 from typing import List, Set, Tuple, Any, Callable, Iterator, Optional
 from collections import OrderedDict
 
-import sympy as sp
+import sympy
 import networkx as nx
 from networkx.algorithms import all_simple_paths, simple_cycles
 
@@ -33,7 +33,7 @@ def disjoint_combinations(items: List, key: Callable[[Any], Set]) \
         key: A function that maps each item to a set.
 
     Yields:
-        A tuple of items that constitutes a combination.
+        A combination of items.
     """
     def dfs(i: int, comb: List, keys: Set) -> Iterator[Tuple]:
 
@@ -55,11 +55,11 @@ def disjoint_combinations(items: List, key: Callable[[Any], Set]) \
 
 def determinant(graph: nx.DiGraph,
                 cycle_combinations: List[Tuple[OrderedDict, ...]],
-                path: Optional[OrderedDict] = None) -> sp.Expr:
+                path: Optional[OrderedDict] = None) -> sympy.Expr:
     """Finds the determinant of an SFG.
 
     Finds the determinant of an SFG, considering only feedback loops not
-    touching a given simple path. If no simple path is given, all feedback
+    touching a given simple path. If no such path is given, all feedback
     loops are considered.
 
     Args:
@@ -69,9 +69,8 @@ def determinant(graph: nx.DiGraph,
             intersect.
 
     Returns:
-        The determinant as a symbolic expression.
+        The determinant expression.
     """
-
     path = path or OrderedDict()
     gain_products_sums = []
 
@@ -82,23 +81,23 @@ def determinant(graph: nx.DiGraph,
         for comb in group:
 
             if all(path.keys().isdisjoint(cycle.keys()) for cycle in comb):
-                # If all cycles in this combination are pairwise disjoint with
-                # the given path, compute the product of loop gains.
+                # If all cycles in this combination do not intersect the path,
+                # compute the product of loop gains.
 
                 gains = (graph.edges[u, v]['weight']
                          for cycle in comb
                          for u, v in pairwise_circular(cycle))
-                gain_products.append(sp.Mul.fromiter(gains))
+                gain_products.append(sympy.Mul.fromiter(gains))
 
         # Odd-sized combinations have a negative sign.
         sign = -1 if size % 2 else 1
-        gain_products_sums.append(sp.Add.fromiter(gain_products) * sign)
+        gain_products_sums.append(sympy.Add.fromiter(gain_products) * sign)
 
-    return 1 + sp.Add.fromiter(gain_products_sums)
+    return 1 + sympy.Add.fromiter(gain_products_sums)
 
 
 def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
-        -> sp.Expr:
+        -> Tuple[sympy.Expr, sympy.Expr]:
     """Computes the transfer function of an SFG.
 
     Args:
@@ -107,11 +106,7 @@ def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
         output_node: The name of the output node.
 
     Returns:
-        A string that represents the transfer function from the input to output
-        node.
-
-    Todo:
-        handle input nodes differently.
+        A tuple consisting of the transfer function and loop gain expression.
     """
 
     # Find all simple paths from the input node to the output node.
@@ -131,15 +126,43 @@ def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
 
     # For each forward path, find its gain and determinant. Then, find the sum
     # of their products.
-    path_gains = (sp.Mul.fromiter(sfg.edges[u, v]['weight']
-                                  for u, v in pairwise(path))
+    path_gains = (sympy.Mul.fromiter(sfg.edges[u, v]['weight']
+                                     for u, v in pairwise(path))
                   for path in paths)
     determs = (determinant(sfg, cycle_combinations, path) for path in paths)
-    sum_terms = (sp.Mul(path_gain, determ)
-                 for path_gain, determ in zip(path_gains, determs))
-    numer = sp.Add.fromiter(sum_terms)
+    numer = sympy.Add.fromiter(
+        sympy.Mul(path_gain, determ)
+        for path_gain, determ in zip(path_gains, determs)
+    )
 
-    return numer / denom
+    # Final result
+    transfer_function = numer / denom
+    loop_gain = 1 - denom
+
+    return transfer_function, loop_gain
+
+
+def loop_gain(sfg: nx.DiGraph) -> sympy.Expr:
+    """Computes the loop gain of a given SFG.
+
+    Args:
+        sfg: An SFG with weighted edges.
+
+    Returns:
+        The loop gain expression.
+    """
+    # Find all simple cycles.
+    cycles = [OrderedDict.fromkeys(nodes) for nodes in simple_cycles(sfg)]
+
+    # Find all combinations of non-touching cycles, sorted by combination size.
+    cycle_combinations = list(disjoint_combinations(
+        cycles, key=lambda cycle: cycle.keys()))
+    cycle_combinations.sort(key=len)
+
+    # Find overall determinant.
+    determ = determinant(sfg, cycle_combinations)
+
+    return 1 - determ
 
 
 if __name__ == '__main__':
@@ -164,13 +187,15 @@ if __name__ == '__main__':
 
     for src, dest, gain in edges:
         # Insert the edge, and its gain attribute to a symbolic variable.
-        graph.add_edge(src, dest, weight=sp.Symbol(gain))
+        graph.add_edge(src, dest, weight=sympy.Symbol(gain))
 
-    h = transfer_function(graph, 'y1', 'y6')
-    sp.pprint(h, use_unicode=True)
+    tf, lg = transfer_function(graph, 'y1', 'y6')
 
-    ltx = sp.latex(h)
-    print(ltx)
+    print('Transfer function:')
+    sympy.pprint(tf, use_unicode=True)
+
+    print('\nLoop gain:')
+    sympy.pprint(lg, use_unicode=True)
 
 
 

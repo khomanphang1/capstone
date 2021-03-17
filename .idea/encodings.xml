@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="Encoding">
-    <file url="file://$PROJECT_DIR$/test_data/npn_cb.raw" charset="UTF-16" />
-    <file url="file://$PROJECT_DIR$/test_data/npn_ce.asc" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/test_data/npn_ce.asc" charset="windows-1252" />
-  </component>
-</project>
