@@ -56,7 +56,7 @@ import sympy
 #
 freq = 2j * sympy.pi * sympy.Symbol('f')
 
-
+print('\n')
 print('Numerical values for SFG Edges')
 print('------------------------------')
 # Iterate over each edge in the SFG
