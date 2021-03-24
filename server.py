@@ -6,7 +6,7 @@ import db
 
 
 app = Flask(__name__)
-app.config['DEBUG'] = False
+# app.config['DEBUG'] = False
 CORS(app)
 
 

@@ -74,10 +74,10 @@ class Circuit(Document):
             sfg = dill.loads(self.sfg)
             freq = 2j * math.pi * sympy.Symbol('f')
 
-            for src, dst, weight in sfg.edges(data='weight'):
+            for src, dst in sfg.edges:
                 symbolic = sfg.edges[src, dst]['weight']
 
-                if isinstance(weight, sympy.Expr):
+                if isinstance(symbolic, sympy.Expr):
                     numeric = symbolic.subs('s', freq).subs(self.parameters)
                 else:
                     numeric = symbolic
@@ -85,7 +85,7 @@ class Circuit(Document):
                 magnitude, phase = cmath.polar(numeric)
 
                 sfg.edges[src, dst]['weight'] = {
-                    'symbolic': str(weight),
+                    'symbolic': str(symbolic),
                     'magnitude': magnitude,
                     'phase': phase
                 }

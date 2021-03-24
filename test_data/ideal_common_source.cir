@@ -2,7 +2,7 @@
 RS Vs 0 5k
 RD 0 Vo 30k
 Ro Vo Vs 200k
-G1 Vo Vs Vs Vs 10e-3
-Vi Vs 0 V
+G1 Vo Vs Vg Vs 10e-3
+Vi Vg 0 1
 .backanno
 .end

@@ -45,7 +45,14 @@ def si_prefix_to_float(s) -> float:
 
     if not last.isnumeric() and last != '.':
         if last not in _si_prefix:
+            # Handle cases where some prefixes are case-insensitive
+            last = last.lower()
+
+        if last not in _si_prefix:
+            # Neither the lower case or original case version of the prefix
+            # is valid
             raise ValueError
+
         return float(s[:-1]) * _si_prefix[last]
 
     else:
@@ -597,83 +604,16 @@ class Circuit:
 
 if __name__ == '__main__':
 
-    from os import path
-    test_data_dir = path.join(path.dirname(__file__), 'test_data')
+    import os
+    import json
 
-    # netlist_file = path.join(test_data_dir, '2N3904_common_emitter.net')
-    # log_file = path.join(test_data_dir, '2N3904_common_emitter.log')
+    root = os.path.join(os.path.dirname(__file__), 'test_data')
+    json_path = os.path.join(root, 'json', 'ideal_common_source.json')
 
-    # schematic_file = path.join(test_data_dir, 'transresistance.asc')
-    schematic_file = path.join(test_data_dir, 'common_source.asc')
+    with open(json_path, 'r') as f:
+        args = json.loads(f.read())
 
-    # with open(netlist_file) as f:
-    #     netlist = f.read()
-    #
-    # with open(log_file) as f:
-    #     op_point_log = f.read()
-
-    with open(schematic_file) as f:
-        schematic = f.read()
-
-    circ = Circuit.from_ltspice_schematic(schematic, op_point_log=None)
+    circ = Circuit.from_ltspice_netlist(args['netlist'],
+                                        args.get('op_point_log'))
     circ.print_components()
     pass
-
-    # Instantiate a circuit by passing in the netlist file and log file.
-    # The circuit will be converted to small-signal.
-    # circuit = Circuit.from_ltspice(netlist, log)
-
-    # print('\nIterating through nodes:')
-    # for node in circuit.multigraph.nodes:
-    #     print(node)
-    #
-    # print('\nIterating through edges:')
-    # for edge in circuit.multigraph.edges:
-    #     src_node, dst_node, component_name = edge
-    #     print(f'{component_name}: {src_node} <-> {dst_node}')
-
-    # print('\nIterating through edges, this time with component names and objects:')
-    # for edge in circuit.multigraph.edges(keys=True, data='component'):
-    #     src_node, dst_node, component_name, component_obj = edge
-    #     print(f'{component_name}: {src_node} <-> {dst_node}')
-    #     print(f'\t{component_obj}')
-    #
-    #     # Node that because the multigraph is undirected, we need some way to
-    #     # keep track of the polarity of components. This is done by inspecting
-    #     # component objects, which are instances of Component classes. They
-    #     # specify which node is positive and which node is negative.
-    #
-    #     # Example:
-    #     # V2: 0 <-> Vin
-    #     #
-    #     # V2 is the name of a voltage source.
-    #     # V2 exists between node 0 and node Vin.
-    #     # V2.pos_node is Vin, meaning Vin is the positive node.
-    #     # V2.neg_node is 0, meaning 0 is the negative node.
-
-    # for node in circuit.iter_nodes():
-    #     for nbr, component in circuit.iter_neighbours(node):
-    #         print(f'{node} <-> {nbr}: {component}')
-
-    # for n, nbrsdict in circuit.multigraph.adjacency():
-    #     print('*' * 100)
-    #     print(f'Current node = {n}')
-    #     # print(f'\tNeighbours = {[nbr for nbr in nbrsdict]}')
-    #
-    #     for nbr, edgedict in nbrsdict.items():
-    #         print(f'\tNeighbour = {nbr}')
-    #         # print(f'\tEdges between {n} and {nbr}: {[key for key in edgedict]}')
-    #
-    #         for key, edge_attrib_dict in edgedict.items():
-    #             print(f'\t\tComponent {key}: {n} <-> {nbr}')
-    #             component_obj = edge_attrib_dict['component']
-    #             print(f'\t\t\t{component_obj}')
-
-
-    # print(f'\nAccess the neighbours of a specific node "VE":')
-    # for nbr, edgedict in circuit.multigraph['VE'].items():
-    #     print(f'\tNeighbour: {nbr}')
-    #     for key, edge_attrib_dict in edgedict.items():
-    #         print(f'\t\tComponent {key}: {n} <-> {nbr}')
-    #         component_obj = edge_attrib_dict['component']
-    #         print(f'\t\t{component_obj}')
