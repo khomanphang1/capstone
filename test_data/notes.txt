@@ -1,0 +1,1 @@
+1. changing component values do not change biasing

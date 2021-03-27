@@ -1,8 +1,8 @@
 * C:\Users\shuof\PycharmProjects\capstone\test_data\transresistance.asc
-E1 Voc 0 0 Vp 100
-Ro Voc Vo 200k
-Rid Vp 0 10k
-RF Vo Vp 5k
-Is 0 Vp I
+Is 0 Vn 1m
+Rid 0 Vn 100k
+RF Vn Vo 10k
+E1 Voc 0 0 Vn 100
+Ro Vo Voc 1k
 .backanno
 .end

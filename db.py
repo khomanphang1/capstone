@@ -220,6 +220,8 @@ class Circuit(Document):
         input_node: str,
         output_node: str,
         latex: bool = True,
+        factor: bool = True,
+        numerical: bool = False,
         cache_result: bool = False
     ) -> str:
         """Computes the transfer function between a pair of input and output nodes.
@@ -227,7 +229,11 @@ class Circuit(Document):
         Args:
             input_node: The name of the input node.
             output_node: The name of the output node.
-            latex: If True, formats the transfer function in latex.
+            latex: If True, formats the transfer function in latex. Defaults to
+                True.
+            factor: If True, factors the expression. Defaults to True.
+            numerical: If True, substitutes all symbols for numerical values,
+                except 's'. Defaults to False.
             cache_result: If True, caches the computed transfer function;
                 save() should be called to propagate changes to the cache.
 
@@ -239,6 +245,14 @@ class Circuit(Document):
             output_node,
             cache_result=cache_result
         )
+
+        if numerical:
+            sympy_expression = sympy_expression.subs(
+                {k: v for k, v in self.parameters.items() if k != 'f'}
+            )
+
+        if factor:
+            sympy_expression = sympy_expression.factor()
 
         return sympy.latex(sympy_expression) if latex \
             else str(sympy_expression)
@@ -310,7 +324,7 @@ class Circuit(Document):
         if gain_unit in (None, ''):
             gain = np.abs(output)
         elif gain_unit == 'db':
-            gain = 20 * np.log(np.abs(output))
+            gain = 20 * np.log10(np.abs(output))
         else:
             raise ValueError('Invalid gain unit.')
 
@@ -357,11 +371,20 @@ class Circuit(Document):
 
         return sympy_expression, lambda_function
 
-    def compute_loop_gain(self, latex: bool = False, cache_result: bool = False):
+    def compute_loop_gain(
+        self,
+        latex: bool = False,
+        factor: bool = True,
+        numerical: bool = False,
+        cache_result: bool = False
+    ):
         """Computes the loop gain function of a circuit.
 
         Args:
             latex: If True, formats the function in latex.
+            factor: If True, factors the expression. Defaults to True.
+            numerical: If True, substitutes all symbols for numerical values,
+                except 's'. Defaults to False.
             cache_result: If True, caches the computed loop gain function;
                 save() should be called to propagate changes to the cache.
 
@@ -369,6 +392,14 @@ class Circuit(Document):
             The loop gain function.
         """
         sympy_expression, _ = self._compute_loop_gain(cache_result=cache_result)
+
+        if numerical:
+            sympy_expression = sympy_expression.subs(
+                {k: v for k, v in self.parameters.items() if k != 'f'}
+            )
+
+        if factor:
+            sympy_expression = sympy_expression.factor()
 
         return sympy.latex(sympy_expression) if latex else str(sympy_expression)
 
@@ -431,7 +462,7 @@ class Circuit(Document):
         if gain_unit in (None, ''):
             gain = np.abs(output)
         elif gain_unit == 'db':
-            gain = 20 * np.log(np.abs(output))
+            gain = 20 * np.log10(np.abs(output))
         else:
             raise ValueError('Invalid gain unit.')
 

@@ -87,12 +87,18 @@ def get_transfer_function(circuit_id):
     output_node = request.args.get('output_node')
     latex = request.args.get('latex', default=True,
                              type=lambda s: bool(strtobool(s)))
+    factor = request.args.get('factor', default=True,
+                              type=lambda s: bool(strtobool(s)))
+    numerical = request.args.get('numerical', default=False,
+                                 type=lambda s: bool(strtobool(s)))
 
     try:
         transfer_function = circuit.compute_transfer_function(
             input_node,
             output_node,
-            latex,
+            latex=latex,
+            factor=factor,
+            numerical=numerical,
             cache_result=True
         )
 
@@ -154,10 +160,16 @@ def get_loop_gain(circuit_id):
 
     latex = request.args.get('latex', default=True,
                              type=lambda s: bool(strtobool(s)))
+    factor = request.args.get('factor', default=True,
+                              type=lambda s: bool(strtobool(s)))
+    numerical = request.args.get('numerical', default=False,
+                                 type=lambda s: bool(strtobool(s)))
 
     try:
         loop_gain = circuit.compute_loop_gain(
-            latex,
+            latex=latex,
+            factor=factor,
+            numerical=numerical,
             cache_result=True
         )
 
