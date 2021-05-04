@@ -1,0 +1,549 @@
+****************************************************************************
+get-circuit
+
+Route: GET /circuits/<id>
+Description: Get circuit data. 
+
+Example:
+
+127.0.0.1:5000/circuits/60282be724b84836cf10ead3
+
+{
+    "_id": "60282be724b84836cf10ead3",
+    "name": "2n3904_common_emitter",
+    "parameters": {
+        "C_D": 1e-05,
+        "R_D": 20000.0,
+        "R_S": 4,
+        "g_m": 2,
+        "r_o": 3,
+        "w": 100000.0
+    },
+    "sfg": {
+        "data": [],
+        "directed": true,
+        "elements": {
+            "edges": [
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 1.0,
+                            "phase": 0.0,
+                            "symbolic": "1"
+                        },
+                        "source": "v_i",
+                        "target": "v_gs"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 2.0,
+                            "phase": 0.0,
+                            "symbolic": "g_{m}"
+                        },
+                        "source": "v_gs",
+                        "target": "v_x"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 2.0,
+                            "phase": 3.141592653589793,
+                            "symbolic": "- g_{m}"
+                        },
+                        "source": "v_gs",
+                        "target": "I_sco"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 1.7142857142857142,
+                            "phase": 0.0,
+                            "symbolic": "\\frac{1}{\\frac{1}{r_{o}} + \\frac{1}{R_{S}}}"
+                        },
+                        "source": "v_x",
+                        "target": "v_s"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 0.948669067053995,
+                            "phase": -1.2490007730732746,
+                            "symbolic": "\\frac{1}{i C_{D} w + \\frac{1}{r_{o}} + \\frac{1}{R_{D}}}"
+                        },
+                        "source": "I_sco",
+                        "target": "v_o"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 1.0,
+                            "phase": 3.141592653589793,
+                            "symbolic": "-1"
+                        },
+                        "source": "v_s",
+                        "target": "v_gs"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 0.3333333333333333,
+                            "phase": 0.0,
+                            "symbolic": "\\frac{1}{r_{o}}"
+                        },
+                        "source": "v_s",
+                        "target": "I_sco"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 0.3333333333333333,
+                            "phase": 0.0,
+                            "symbolic": "\\frac{1}{r_{o}}"
+                        },
+                        "source": "v_o",
+                        "target": "v_x"
+                    }
+                }
+            ],
+            "nodes": [
+                {
+                    "data": {
+                        "id": "v_i",
+                        "name": "v_i",
+                        "value": "v_i"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_gs",
+                        "name": "v_gs",
+                        "value": "v_gs"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_x",
+                        "name": "v_x",
+                        "value": "v_x"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "I_sco",
+                        "name": "I_sco",
+                        "value": "I_sco"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_s",
+                        "name": "v_s",
+                        "value": "v_s"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_o",
+                        "name": "v_o",
+                        "value": "v_o"
+                    }
+                }
+            ]
+        },
+        "multigraph": false
+    }
+}
+****************************************************************************
+get-bode
+
+Description: For a given circuit and input / output node pair, find the numerical gain and 
+			phase values for its transfer function over the specified frequency range. 
+
+Route: GET /circuits/<id>/transfer_function/<input_node>/<output_node>/bode
+Query parameters: start_freq, stop_freq, steps_per_decade, form (polar or rectangular)
+
+Example:
+
+127.0.0.1:5000/circuits/60282be724b84836cf10ead3/transfer_function/v_o/v_x/bode?start_freq=1000&stop_freq=100000&steps_per_decade=10&form=polar
+
+{
+    "magnitude": [
+        0.3614231943927363,
+        0.29567775220935477,
+        0.2398348221809999,
+        0.19460514990886232,
+        0.15936806985107888,
+        0.13286623655467733,
+        0.11362326972662226,
+        0.10014869883234485,
+        0.09104636056780872,
+        0.0850954751763994
+    ],
+    "phase": [
+        -52.114640796768455,
+        -54.61064821700591,
+        -55.415642352676436,
+        -54.47720150053989,
+        -51.85674425466858,
+        -47.747021605862884,
+        -42.499470864751906,
+        -36.609179642559205,
+        -30.622986486131026,
+        -25.00669539874863
+    ]
+}
+
+****************************************************************************
+patch-circuit
+
+Description: Update the parameter value(s) in the circuit.
+
+Route: PATCH /circuits/60282be724b84836cf10ead3
+
+Example:
+
+{
+    "C_D": 10e-6,
+    "R_D": 20e3
+}
+
+{
+    "_id": "60282be724b84836cf10ead3",
+    "name": "2n3904_common_emitter",
+    "parameters": {
+        "C_D": 1e-05,
+        "R_D": 20000.0,
+        "R_S": 4,
+        "g_m": 2,
+        "r_o": 3,
+        "w": 100000.0
+    },
+    "sfg": {
+        "data": [],
+        "directed": true,
+        "elements": {
+            "edges": [
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 1.0,
+                            "phase": 0.0,
+                            "symbolic": "1"
+                        },
+                        "source": "v_i",
+                        "target": "v_gs"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 2.0,
+                            "phase": 0.0,
+                            "symbolic": "g_{m}"
+                        },
+                        "source": "v_gs",
+                        "target": "v_x"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 2.0,
+                            "phase": 3.141592653589793,
+                            "symbolic": "- g_{m}"
+                        },
+                        "source": "v_gs",
+                        "target": "I_sco"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 1.7142857142857142,
+                            "phase": 0.0,
+                            "symbolic": "\\frac{1}{\\frac{1}{r_{o}} + \\frac{1}{R_{S}}}"
+                        },
+                        "source": "v_x",
+                        "target": "v_s"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 0.948669067053995,
+                            "phase": -1.2490007730732746,
+                            "symbolic": "\\frac{1}{i C_{D} w + \\frac{1}{r_{o}} + \\frac{1}{R_{D}}}"
+                        },
+                        "source": "I_sco",
+                        "target": "v_o"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 1.0,
+                            "phase": 3.141592653589793,
+                            "symbolic": "-1"
+                        },
+                        "source": "v_s",
+                        "target": "v_gs"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 0.3333333333333333,
+                            "phase": 0.0,
+                            "symbolic": "\\frac{1}{r_{o}}"
+                        },
+                        "source": "v_s",
+                        "target": "I_sco"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 0.3333333333333333,
+                            "phase": 0.0,
+                            "symbolic": "\\frac{1}{r_{o}}"
+                        },
+                        "source": "v_o",
+                        "target": "v_x"
+                    }
+                }
+            ],
+            "nodes": [
+                {
+                    "data": {
+                        "id": "v_i",
+                        "name": "v_i",
+                        "value": "v_i"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_gs",
+                        "name": "v_gs",
+                        "value": "v_gs"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_x",
+                        "name": "v_x",
+                        "value": "v_x"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "I_sco",
+                        "name": "I_sco",
+                        "value": "I_sco"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_s",
+                        "name": "v_s",
+                        "value": "v_s"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_o",
+                        "name": "v_o",
+                        "value": "v_o"
+                    }
+                }
+            ]
+        },
+        "multigraph": false
+    }
+}
+
+****************************************************************************
+post-circuit
+
+Description: Create a new circuit from netlist and op_point_log files. 
+Route: POST /circuits
+
+Example:
+{
+    "netlist": "...",
+    "op_point_log": "..."
+}
+
+{
+    "_id": "602a0a946ebd7b22df3004ca",
+    "name": "2n3904_common_emitter",
+    "parameters": {
+        "C_D": 5,
+        "R_D": 1,
+        "R_S": 4,
+        "g_m": 2,
+        "r_o": 3,
+        "w": 100000.0
+    },
+    "sfg": {
+        "data": [],
+        "directed": true,
+        "elements": {
+            "edges": [
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 1.0,
+                            "phase": 0.0,
+                            "symbolic": "1"
+                        },
+                        "source": "v_i",
+                        "target": "v_gs"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 2.0,
+                            "phase": 0.0,
+                            "symbolic": "g_{m}"
+                        },
+                        "source": "v_gs",
+                        "target": "v_x"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 2.0,
+                            "phase": 3.141592653589793,
+                            "symbolic": "- g_{m}"
+                        },
+                        "source": "v_gs",
+                        "target": "I_sco"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 1.7142857142857142,
+                            "phase": 0.0,
+                            "symbolic": "\\frac{1}{\\frac{1}{r_{o}} + \\frac{1}{R_{S}}}"
+                        },
+                        "source": "v_x",
+                        "target": "v_s"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 1.999999999992889e-06,
+                            "phase": -1.57079366012823,
+                            "symbolic": "\\frac{1}{i C_{D} w + \\frac{1}{r_{o}} + \\frac{1}{R_{D}}}"
+                        },
+                        "source": "I_sco",
+                        "target": "v_o"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 1.0,
+                            "phase": 3.141592653589793,
+                            "symbolic": "-1"
+                        },
+                        "source": "v_s",
+                        "target": "v_gs"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 0.3333333333333333,
+                            "phase": 0.0,
+                            "symbolic": "\\frac{1}{r_{o}}"
+                        },
+                        "source": "v_s",
+                        "target": "I_sco"
+                    }
+                },
+                {
+                    "data": {
+                        "gain": {
+                            "magnitude": 0.3333333333333333,
+                            "phase": 0.0,
+                            "symbolic": "\\frac{1}{r_{o}}"
+                        },
+                        "source": "v_o",
+                        "target": "v_x"
+                    }
+                }
+            ],
+            "nodes": [
+                {
+                    "data": {
+                        "id": "v_i",
+                        "name": "v_i",
+                        "value": "v_i"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_gs",
+                        "name": "v_gs",
+                        "value": "v_gs"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_x",
+                        "name": "v_x",
+                        "value": "v_x"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "I_sco",
+                        "name": "I_sco",
+                        "value": "I_sco"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_s",
+                        "name": "v_s",
+                        "value": "v_s"
+                    }
+                },
+                {
+                    "data": {
+                        "id": "v_o",
+                        "name": "v_o",
+                        "value": "v_o"
+                    }
+                }
+            ]
+        },
+        "multigraph": false
+    }
+}
+
+****************************************************************************
+get-transfer-function
+
+Description: For a given circuit and input/output node pairk, find its transfer function
+Route: GET /circuits/<id>/transfer_function/<input_node>/<output_node>
+
+Example:
+127.0.0.1:5000/circuits/60282be724b84836cf10ead3/transfer_function/v_i/v_o
+
+{
+    "transfer_function": "\\frac{- \\frac{g_{m}}{i C_{D} w + \\frac{1}{r_{o}} + \\frac{1}{R_{D}}} + \\frac{g_{m}}{r_{o} \\left(\\frac{1}{r_{o}} + \\frac{1}{R_{S}}\\right) \\left(i C_{D} w + \\frac{1}{r_{o}} + \\frac{1}{R_{D}}\\right)}}{\\frac{g_{m}}{\\frac{1}{r_{o}} + \\frac{1}{R_{S}}} - \\frac{g_{m}}{r_{o} \\left(\\frac{1}{r_{o}} + \\frac{1}{R_{S}}\\right) \\left(i C_{D} w + \\frac{1}{r_{o}} + \\frac{1}{R_{D}}\\right)} + 1 - \\frac{1}{r_{o}^{2} \\left(\\frac{1}{r_{o}} + \\frac{1}{R_{S}}\\right) \\left(i C_{D} w + \\frac{1}{r_{o}} + \\frac{1}{R_{D}}\\right)}}"
+}

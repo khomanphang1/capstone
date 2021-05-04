@@ -1,0 +1,17 @@
+div.bode-section {
+    margin-top: 10px;
+    border: 1px solid black;
+    padding: 10px;
+}
+div.plot-container {
+    width: 800px;
+    display: grid;
+}
+
+div.plot-0 {
+    grid-row: 1
+}
+
+div.plot-1 {
+    grid-row: 2
+}
