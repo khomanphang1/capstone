@@ -1,1 +1,1 @@
-web: python start_production_server.py
+web: waitress-serve --port=$PORT server:app
