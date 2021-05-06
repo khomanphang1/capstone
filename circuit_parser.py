@@ -108,6 +108,13 @@ class Component(ABC):
     """Component base class.
     """
 
+    # The prefix field is used to indicate that a subclass is capable of
+    # parsing a particular type of netlist component. For example, if a
+    # subclass sets prefix = "V", then, when the parser encounters the
+    # netlist entry "Vs n001 n002 ...", it will invoke the from_netlist_entry
+    # function for that particular subclass. This makes it easier to add support
+    # for additional components, who can simply inherit from this base class.
+
     _prefix = NotImplemented
 
     def __init_subclass__(cls):

@@ -1,4 +1,4 @@
-from flask import Flask, request, abort
+from flask import Flask, request, abort, send_from_directory
 from flask_cors import CORS
 from distutils.util import strtobool
 
@@ -8,6 +8,11 @@ import db
 app = Flask(__name__)
 # app.config['DEBUG'] = False
 CORS(app)
+
+
+@app.route('/app/<path:path>')
+def serve_webpage(path):
+    return send_from_directory('public', path)
 
 
 @app.route('/circuits/<circuit_id>', methods=['GET'])

@@ -1,6 +1,7 @@
 from typing import Tuple, List, Union, Optional, Dict, Callable, Iterable
 
 from mongoengine import *
+from datetime import datetime
 import sympy
 import mason
 import math
@@ -13,7 +14,12 @@ import ltspice2svg
 import networkx as nx
 
 # Connects to a localhost MongoDB database.
-connect('capstone')
+# connect('capstone')
+
+connection_str = 'mongodb+srv://admin:WNdJlYyMejhtALjH@cluster0.76jlr.mongodb.net/'\
+                 'myFirstDatabase?retryWrites=true&w=majority'
+
+connect(host=connection_str)
 
 
 class TransferFunction(EmbeddedDocument):
@@ -47,6 +53,12 @@ class Circuit(Document):
     sfg = BinaryField()
     transfer_functions = EmbeddedDocumentListField(TransferFunction)
     loop_gain = EmbeddedDocumentField(LoopGainFunction)
+    created = DateTimeField(default=datetime.utcnow)
+    meta = {
+        'indexes': [
+            {'fields': ['created'], 'expireAfterSeconds': 86400}
+        ]
+    }
 
     def to_dict(self, fields: Optional[Iterable[str]] = None) -> Dict:
         """Returns a dictionary representation of the Circuit document.
