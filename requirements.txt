@@ -1,3 +1,4 @@
+-tspice2svg==2021.6
 brotlipy==0.7.0
 certifi==2020.12.5
 cffi==1.14.4
@@ -7,7 +8,9 @@ cryptography==3.3.1
 cycler==0.10.0
 decorator==4.4.2
 dill==0.3.3
+dnspython==1.16.0
 Flask==1.1.2
+Flask-Cors==3.0.10
 idna==2.10
 itsdangerous==1.1.0
 Jinja2==2.11.3
@@ -33,6 +36,7 @@ python-dateutil==2.8.1
 requests==2.25.1
 setuptools==52.0.0.post20210125
 six==1.15.0
+svgwrite==1.4.1
 sympy==1.7.1
 tornado==6.1
 urllib3==1.26.3
