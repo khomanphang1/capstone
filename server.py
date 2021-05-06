@@ -223,4 +223,5 @@ def get_loop_gain_bode(circuit_id):
     }
 
 
-app.run()
+if __name__ == '__main__':
+    app.run()

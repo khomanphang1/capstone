@@ -17,7 +17,7 @@ import networkx as nx
 # connect('capstone')
 
 connection_str = 'mongodb+srv://admin:WNdJlYyMejhtALjH@cluster0.76jlr.mongodb.net/'\
-                 'myFirstDatabase?retryWrites=true&w=majority'
+                 'capstone?retryWrites=true&w=majority'
 
 connect(host=connection_str)
 
