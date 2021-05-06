@@ -17,7 +17,7 @@ form.addEventListener('submit', async function(event) {
     console.log(json);
 
     try {
-        const response = await fetch(`{$baseUrl}/circuits`,
+        const response = await fetch(`${baseUrl}/circuits`,
         {
             method: 'POST', // *GET, POST, PUT, DELETE, etc.
             mode: 'cors', // no-cors, *cors, same-origin
