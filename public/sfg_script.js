@@ -1,3 +1,4 @@
+const baseUrl = window.location.origin;
 
 const circuitId = sessionStorage.getItem('circuitId');
 
@@ -188,7 +189,7 @@ function sfg_patch_request(params) {
 
     let fields = "id,name,parameters,sfg,svg"
 
-    let url = new URL(`/circuits/${circuitId}`)
+    let url = new URL(`${baseUrl}/circuits/${circuitId}`)
     url.searchParams.append("fields", fields)
 
     fetch(url, {
@@ -214,7 +215,7 @@ function load_interface() {
 
     let fields = "id,name,parameters,sfg,svg"
 
-    var url = new URL(`/circuits/${circuitId}`)
+    var url = new URL(`${baseUrl}/circuits/${circuitId}`)
     url.searchParams.append("fields", fields)
 
     fetch(url)
@@ -267,7 +268,7 @@ document.addEventListener('DOMContentLoaded', load_interface);
 async function sfg_toggle() {
     symbolic_flag = !symbolic_flag
     try {
-        let url = new URL(`/circuits/${circuitId}`)
+        let url = new URL(`${baseUrl}/circuits/${circuitId}`)
         const response = await fetch(url)
         let data = await response.json()
         update_frontend(data)
@@ -351,7 +352,7 @@ function make_transfer_func(input_node, output_node) {
     let numerical_toggle = true
     let params = {input_node: input_node, output_node: output_node, latex: latex_toggle,
         factor: factor_toggle, numerical: numerical_toggle}
-    var url = new URL(`/circuits/${circuitId}/transfer_function`)
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/transfer_function`)
     Object.keys(params).forEach(key => url.searchParams.append(key, params[key]))
     fetch(url)
     .then(response => response.json())
@@ -473,7 +474,7 @@ function fetch_transfer_bode_data(input_params) {
     delete new_params["input_node_bode"]
     delete new_params["output_node_bode"]
     
-    var url = new URL(`/circuits/${circuitId}/transfer_function/bode`)
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/transfer_function/bode`)
     Object.keys(new_params).forEach(key => url.searchParams.append(key, new_params[key]))
 
     fetch(url)
@@ -603,7 +604,7 @@ function make_bode_plots(data, dom_element) {
 
 
 function make_loop_gain() {
-    var url = new URL(`/circuits/${circuitId}/loop_gain`)
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/loop_gain`)
     fetch(url)
     .then(response => response.json())
     .then(data => {
@@ -712,7 +713,7 @@ function make_loop_gain_bode_panel() {
 
 
 function fetch_loop_gain_bode_data(input_params) {
-    var url = new URL(`/circuits/${circuitId}/loop_gain/bode`)
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/loop_gain/bode`)
     Object.keys(input_params).forEach(key => url.searchParams.append(key, input_params[key]))
 
     fetch(url)
