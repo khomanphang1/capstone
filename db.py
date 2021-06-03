@@ -1,4 +1,5 @@
 from typing import Tuple, List, Union, Optional, Dict, Callable, Iterable
+import os
 
 from mongoengine import *
 from datetime import datetime
@@ -13,13 +14,14 @@ from dpi import DPI_algorithm as DPI
 import ltspice2svg
 import networkx as nx
 
-# Connects to a localhost MongoDB database.
-# connect('capstone')
 
-connection_str = 'mongodb+srv://admin:WNdJlYyMejhtALjH@cluster0.76jlr.mongodb.net/'\
-                 'capstone?retryWrites=true&w=majority'
-
-connect(host=connection_str)
+if 'DB_URI' in os.environ:
+    # Connect to production database
+    connection_str = os.environ['DB_URI']
+    connect(host=connection_str)
+else:
+    # Connect to local development database
+    connect('capstone')
 
 
 class TransferFunction(EmbeddedDocument):
