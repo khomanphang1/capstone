@@ -282,6 +282,19 @@ if (el) {
     el.addEventListener('click', sfg_toggle)
 }
 
+let refresh_button = document.getElementById("refresh-button");
+if (refresh_button) {
+    refresh_button.addEventListener('click', () => {
+        window.location.reload()
+    })
+}
+
+let return_landing = document.getElementById("return-landing");
+if (return_landing) {
+    return_landing.addEventListener('click', () => {
+        window.location.replace('./landing.html');
+    })
+}
 
 //transfer function display helper - load MathJax script
 function load_latex() {
