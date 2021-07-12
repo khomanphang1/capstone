@@ -35,4 +35,18 @@ Performs driving-point impedance analysis on a small-signal circuit, and outputs
 
 `mason.py`
 
-Applies Mason's gain formula to calculate the transfer function aa
+Applies Mason's gain formula to calculate the transfer function and loop gain of an SFG.
+
+`/ltspice2svg`
+
+A thin wrapper around the [ltspice2svg](https://github.com/harshvinay752/ltspice2svg) package. It converts .asc schematic files to a web-friendly SVG format.
+
+`db.py`
+
+Performs CRUD operations against a local mongodb instance, or if environment variable DB_URI is specified, the production MongoDB instance URI in the cloud. Responsible for serializing and de-serializing SFGs, gain expressions, etc.
+
+`server.py`
+
+Run a development server on port 5000. When in production, Heroku does not launch the development server, but runs the app in waitress instead (see Procfile).
+
+
