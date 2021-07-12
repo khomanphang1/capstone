@@ -35,17 +35,4 @@ Performs driving-point impedance analysis on a small-signal circuit, and outputs
 
 `mason.py`
 
-Applies Mason's gain formula to calculate the transfer function and loop gain of an input SFG.
-
-`db.py`
-Responsible for handling CRUD operations against a MongoDB instance. This includes serializing / deserializing SFGs, circuit graphs, gain expressions, etc. Connects to a local development database if the environment variable `DB_URI` does not exist.
-
-`server.py`
-
-Starts the local development server on port 5000. Note that in production, the appliction uses the `waitress` WSGI server as indicated in the Procfile.
-
-`/ltspice2svg` 
-
-A thin wrapper around the original [ltspice2svg](https://github.com/harshvinay752/ltspice2svg) package, which creates svgs from the .asc files.
-
-# Deploying
+Applies Mason's gain formula to calculate the transfer function aa
