@@ -3,7 +3,7 @@
 
 # Running the Application Locally
 1. Install [LTspice](https://www.analog.com/en/design-center/design-tools-and-calculators/ltspice-simulator.html)
-    * Under Tools -> Control Panel -> Netlist Options, check the *Convert 'µ' to 'u'* option - this forces LTspice to encode its output as UTF-8.
+    * When installation is complete, launch LTspice. Under Tools -> Control Panel -> Netlist Options, check the *Convert 'µ' to 'u'* option - this forces LTspice to encode its output as UTF-8.
     
 2. Install [Python 3](https://www.python.org/downloads/). This application was only tested on Python 3.9.x.
 
