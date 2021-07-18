@@ -90,4 +90,11 @@ Runs a development server on port 5000.
 Note that when deployed to Heroku, the application uses Procfile to launch a production-quality waitress server instead of 
 flasks's built-in development server.
 
+# How to deploy
+This application is currently deployed to Heroku. The deployment process itself is quite straightforward, you simply have to 
+reference [Heroku's Getting Started with Python guide](https://devcenter.heroku.com/articles/getting-started-with-python). Note 
+that there is an additional step of setting the DB_URI environment variable in the console to point to your production mongodb
+instance. 
 
+The database instance is hosted on mongodb atlas cloud. To view its contents, obtain the connection string for your cluster from 
+https://account.mongodb.com/account/login. Then, install MongoDB compass and connect to the cluster to view its contents. 
