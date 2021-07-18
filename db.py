@@ -132,7 +132,7 @@ class Circuit(Document):
                 the circuit is presumed to be in small-signal form. Defaults to
                 None.
         """
-        # Parse the circuit and enerate its small-signal representation.
+        # Parse the circuit and generate its small-signal representation.
         circuit = circuit_parser.Circuit.from_ltspice_netlist(netlist,
                                                               op_point_log)
 
