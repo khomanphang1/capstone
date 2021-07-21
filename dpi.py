@@ -90,6 +90,10 @@ def DPI_algorithm( circuit : cir.Circuit ):
         complete = False
         for ne in circuit.multigraph.neighbors(n):
             for k in circuit.multigraph.get_edge_data(n , ne):
+                if (isinstance(circuit.multigraph.edges[n,ne,k]['component'], cir.CurrentSource)):
+                    cur_target = "Isc" + n[1:].lower() if n.startswith("V") else "Isc" + n.lower()
+                    cur_source = "I_S"
+                    sfg.graph.add_edge( cur_source , cur_target , weight = "1" )
                 if (isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageSource) and ne == "0") or isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentVoltageSource) and ne == "0":
                     impedance = 0
                     complete = True
