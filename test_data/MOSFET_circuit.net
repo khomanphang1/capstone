@@ -1,0 +1,13 @@
+* C:\Users\Syouq\AppData\Local\Temp\tmpdsxmmett
+I_in 0 Vin 1
+R1 Vout Vin 100k
+M1 Vin Vin Vout Vout AON6667_P
+M2 Vout Vin 0 0 AON6667_N
+R2 Vout 0 200k
+R3 VCC Vin 1k
+.model NMOS NMOS
+.model PMOS PMOS
+.lib C:\Users\Syouq\OneDrive\??\LTspiceXVII\lib\cmp\standard.mos
+.op
+.backanno
+.end
