@@ -1,6 +1,6 @@
 # What is it
 
-# Link to Production Applictaion
+# Link to Production Application
 https://floating-savannah-01315.herokuapp.com/app/landing.html
 
 # Running the Application Locally
