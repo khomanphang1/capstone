@@ -79,11 +79,12 @@ class ComponentFactory:
             A component.
         """
         prefix = entry[0].lower()
-        
+        print(prefix)
+        print(cls._netlist_prefix_registry)
         constructor = cls._netlist_prefix_registry.get(prefix)
 
         if not constructor:
-            
+            print("not registered", prefix)
             raise ValueError(f'No component found with prefix {prefix}.')
         
         return constructor(entry)
@@ -120,7 +121,7 @@ class Component(ABC):
     _prefix = NotImplemented
 
     def __init_subclass__(cls):
-        
+        print("in init subclass", cls)
         # Register the subclass constructor with ComponentFactory.
         if cls._prefix is NotImplemented:
             raise NotImplementedError('Component subclass must define a prefix.')
@@ -392,10 +393,10 @@ class BipolarTransistor(Component):
 
     @classmethod
     def from_netlist_entry(cls, entry: str) -> 'BipolarTransistor':
-        
+        print("in from_netlist_entry:",entry)
         name, collector, base, emitter, substrate, model = \
             entry.split(' ', 5)
-        
+        print(name, ", ", collector, ", ", base, ", ", emitter, ", ", substrate, " , ", model)
         return BipolarTransistor(name, collector, base, emitter, substrate,
                                  model)
 
@@ -464,10 +465,10 @@ class MOSFET(Component):
 
     @classmethod
     def from_netlist_entry(cls, entry: str) -> 'MOSFET':
-        
+        print("in from_netlist_entry:",entry)
         name, collector, base, emitter, substrate, model = \
             entry.split(' ', 5)
-        
+        print(name, ", ", collector, ", ", base, ", ", emitter, ", ", substrate, " , ", model)
         return MOSFET(name, collector, base, emitter, substrate,
                                  model)
 
@@ -532,27 +533,27 @@ def get_hybrid_pi_parameters(op_point_log: str) \
     Todo:
         Add support MOSFET transistors.
     """
-    
+    print("in get_hybrid_pi_parameters")
     in_transistor_section = False
     relevant_rows = OrderedDict.fromkeys(('Name', 'Gm', 'Rpi', 'Ro', 'Id', 'Gds'))
 
     for line in op_point_log.splitlines():
-        
+        print("the line that is being parsed:\n", line,"\n")
 
         if not in_transistor_section:
 
             in_transistor_section = bool(transistor_section_pattern.match(line))
-            
+            print("transistor regular expression matching:\n",line,"\n",transistor_section_pattern.match(line), transistor_section_pattern,"\n")
             continue
         
         row = re.findall(r'\S+', line)
-        
+        print(row)
         if not row:
             in_transistor_section = False
             continue
 
         row_header = row[0][:-1]
-        
+        print("row_header:",row_header)
         if row_header in relevant_rows:
             if row_header == 'Name':
                 relevant_rows[row_header] = [name.lower() for name in row[1:]]
@@ -561,19 +562,24 @@ def get_hybrid_pi_parameters(op_point_log: str) \
                                              for val in row[1:]]
 
     
+    print("after loop",relevant_rows,"\n")
     names = relevant_rows.pop('Name')
-    
-    #mosfet situation
+    print("names:",names)
     if(len(names) and names[0][0] == 'm'):
+        print("inside:",relevant_rows['Gds'])
         _Id = relevant_rows.pop('Id')
+        print("Id",_Id)
         _Gds = relevant_rows.pop('Gds')
-        _lambda = [_Gds[0]/_Id[0], _Gds[1]/_Id[1]]
-        relevant_rows['Ro'] = [1 / ( _lambda[0] * _Id[0]) , 1 / ( _lambda[1] * _Id[1])]
-        relevant_rows['Rpi'] = [1e25, 1e25]
-       
-    
+        print("_Gds",_Gds)
+        _lambda = [ _Gds[i]/_Id[i] for i in range(len(_Gds))] # [ _Gds[i]/_Id[i] for i in range(len(_Gds))] , [_Gds[0]/_Id[0], _Gds[1]/_Id[1]]
+        print("lambda:",_lambda)
+        relevant_rows['Ro'] = [ 1 / ( _lambda[i] * _Id[i]) for i in range(len(_lambda))] # [ 1 / ( _lambda[i] * _Id[i]) for i in range(len(_lambda))] , [1 / ( _lambda[0] * _Id[0]) , 1 / ( _lambda[1] * _Id[1])]
+        print(relevant_rows['Ro'])
+        relevant_rows['Rpi'] = [ 1e25 for i in range(len(_Gds))] # [ 1e25 for i in range(len(_Gds))]
+        print(relevant_rows['Rpi'])
+    print("after loop",relevant_rows,"\n")
     params = zip(*(val for _, val in relevant_rows.items() if val is not None))  # (Gm, Rpi, Ro)
-    
+    print("exit get_hybrid_pi_parameters")
     return {name: param for name, param in zip(names, params)}
 
 
@@ -624,20 +630,20 @@ class Circuit:
     @classmethod
     def from_ltspice_netlist(cls, netlist: str,
                              op_point_log: Optional[str] = None) -> 'Circuit':
-        
+        print("op log:",op_point_log)
         hybrid_pi_parameters = get_hybrid_pi_parameters(op_point_log) if \
                                   op_point_log else {}
-        
+        print("parameters:",hybrid_pi_parameters)
         graph = nx.MultiGraph()
         dc_sources = []
 
-        
+        print("in from_ltspice_netlist!!!")
         for line in netlist.splitlines():
 
-            if line.startswith(('.', '*')):
+            if line.startswith(('.', '*', ';')):
                 # Ignore comments and models.
                 continue
-            
+            print("in line loop", line)
             component = ComponentFactory.from_netlist_entry(line)
 
             if isinstance(component, TwoTerminal):
@@ -652,24 +658,25 @@ class Circuit:
 
             elif isinstance(component, BipolarTransistor):
                 # Replace transistors with small-signal equivalent.
-                
+                print("before small signal equivalent")
                 g_m, r_pi, r_o = hybrid_pi_parameters[component.name.lower()]
-                
+                print(f"parameters: {g_m},{r_pi},{r_o}")
                 for comp in component.small_signal_equivalent(g_m, r_pi, r_o):
                     graph.add_edge(comp.pos_node, comp.neg_node,
                                    key=comp.name, component=comp)
-                
+                print("after small signal equivalent")
                 
             elif isinstance(component, MOSFET):
                 # Replace transistors with small-signal equivalent.
-                
+                print("before small signal equivalent in MOSFET:",hybrid_pi_parameters)
+                print(component.name)
                 g_m, r_pi, r_o = hybrid_pi_parameters[component.name.lower()]
-                
+                print(f"parameters: {g_m},{r_pi},{r_o}")
                 for comp in component.small_signal_equivalent(g_m, r_pi, r_o):
                     graph.add_edge(comp.pos_node, comp.neg_node,
                                    key=comp.name, component=comp)
-                
-        
+                print("after small signal equivalent")
+        print("after from_ltspice_netlist!!!")
         for node in graph:
             graph.nodes[node]['alias'] = set()
 
