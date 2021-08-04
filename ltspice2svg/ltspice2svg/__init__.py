@@ -361,6 +361,7 @@ def _mirrorAlign(alignment,isMirror):
         
         
 def _leftBottomC(coordinate,textAlignment,textSize,tw):
+    leftBottom=Coordinate(coordinate.getX(),coordinate.getY()+textSize*0.5)
     if textAlignment=='Left':
         #leftMidC=Coordinate
         leftBottom=Coordinate(coordinate.getX(),coordinate.getY()+textSize*0.5)
