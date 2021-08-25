@@ -28,7 +28,7 @@
         </div>
         <div id="transfer-func-bode-form">
           <h1> Transfer Function Bode Plot </h1>
-          <button onclick="plotInputGuide()">input guide</button>
+          <!-- <button onclick="plotInputGuide()">input guide</button> -->
         </div>
 
         <div id="loop-gain-form">
@@ -36,14 +36,14 @@
         </div>
         <div id="loop-gain-bode-form">
           <h1> Loop Gain Bode Plot </h1>
-          <button onclick="plotInputGuide()">input guide</button>
+          <!-- <button onclick="plotInputGuide()">input guide</button> -->
         </div>
 
-        <script>
+        <!-- <script>
           function plotInputGuide() {
             alert("frequency unit: hz (default) or rad/s;\ngain unit: db (default) or None;\nphase unit: degree (default) or rad;\nWhen leaving the unit fields empty, default units will be used\n" );
           }
-        </script>
+        </script> -->
       </div>
 
       <div class="middle-layer">
@@ -63,33 +63,43 @@
           <div class="circuit-panel">
             <div id="circuit-svg"></div>
           </div>
-        </div>
-      </div>
 
-      <div class="right-layer"> 
-        <div class="transfer-panel">  
-          <h1> Transfer Funtion: </h1>
-          <div id="trans-funtion"></div>
-        </div>
-
-        <div class="loop-gain-panel">  
-          <h1> Loop Gain: </h1>
-          <div id="loop-gain"></div>
-        </div>
-
-        <div class = "bode-section">
-          <h1>Bode plot section</h1>
-          <div class="plot-container">
-              <div class="plot-0">
-                  <canvas id="transfer-bode-plot"></canvas>
+          <div class="right-layer"> 
+            <div class="transfer-panel">  
+              <h1> Transfer Funtion: </h1>
+              <div id="trans-funtion"></div>
+            </div>
+    
+            <div class="loop-gain-panel">  
+              <h1> Loop Gain: </h1>
+              <div id="loop-gain"></div>
+            </div>
+    
+            <div class = "bode-section">
+              <h1>Bode plot section</h1>
+              <div class="plot-container">
+                  <div class="plot-0">
+                      <canvas id="transfer-bode-plot"></canvas>
+                  </div>
+                  <div class="plot-1">
+                    <canvas id="loop-gain-bode-plot"></canvas>
+                </div>
               </div>
-              <div class="plot-1">
-                <canvas id="loop-gain-bode-plot"></canvas>
             </div>
           </div>
+
+
+
         </div>
 
+        
+
+
+
       </div>
+
+      
+
     </div> 
     <div id="latex-script">
 

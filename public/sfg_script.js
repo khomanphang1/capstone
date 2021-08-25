@@ -397,8 +397,8 @@ function make_schematics(data) {
         svg.setAttribute("height",(bbox.height+20) + "px");
         // Add a black border to the SVG so it's easier to visualize it.
         svg.setAttribute("style", "border:1px solid black");
-        svg.setAttribute("height", "400px");
-        svg.setAttribute("width", "800px");
+        svg.setAttribute("height", "600px");
+        svg.setAttribute("width", "1200px");
     }
 }
 
@@ -413,12 +413,12 @@ function make_transfer_bode_panel() {
     let element_type_dict = {
         input_node_bode: "text",
         output_node_bode: "text",
-        start_freq: "number",
-        end_freq: "number",
+        start_freq_hz: "number",
+        end_freq_hz: "number",
         points_per_decade: "number",
-        frequency_unit: "text",
-        gain_unit: "text",
-        phase_unit: "text"
+        // frequency_unit_hz: "text",
+        // gain_unit_db: "text",
+        // phase_unit_deg: "text"
     }
 
     for (key in element_type_dict) {
@@ -445,14 +445,15 @@ function make_transfer_bode_panel() {
     form.addEventListener("submit", event => {
         event.preventDefault()
 
-        let form_list = ["input_node_bode", "output_node_bode", "start_freq", "end_freq", "points_per_decade", "frequency_unit", "gain_unit", "phase_unit"]
+        let form_list = ["input_node_bode", "output_node_bode", "start_freq", "end_freq", "points_per_decade"]
+        // let form_list = ["input_node_bode", "output_node_bode", "start_freq", "end_freq", "points_per_decade", "frequency_unit_hz", "gain_unit_db", "phase_unit_deg"]
         // required fields ["input_node_bode", "output_node_bode", "start_freq", "end_freq", "points_per_decade"]
         let form_params = {}
 
         //default values for optional fields
-        form_params["frequency_unit"] = "hz"
-        form_params["gain_unit"] = "db"
-        form_params["phase_unit"] = "deg"
+        // form_params["frequency_unit_hz"] = "hz"
+        // form_params["gain_unit_db"] = "db"
+        // form_params["phase_unit_deg"] = "deg"
 
         let i;
         for (i=0; i < form_list.length; i++) {
@@ -658,12 +659,12 @@ function make_loop_gain_bode_panel() {
 
     let element_list = []
     let element_type_dict = {
-        start_freq_lg: "number",
-        end_freq_lg: "number",
-        points_per_decade_lg: "number",
-        frequency_unit_lg: "text",
-        gain_unit_lg: "text",
-        phase_unit_lg: "text"
+        Start_freq_hz: "number",
+        End_freq_hz: "number",
+        Points_per_decade: "number",
+        // frequency_hz_lg: "text",
+        // gain_db_lg: "text",
+        // phase_deg_lg: "text"
     }
 
     for (key in element_type_dict) {
@@ -690,14 +691,15 @@ function make_loop_gain_bode_panel() {
     form.addEventListener("submit", event => {
         event.preventDefault()
 
-        let form_list = ["start_freq", "end_freq", "points_per_decade", "frequency_unit", "gain_unit", "phase_unit"]
+        let form_list = ["Start_freq_hz", "End_freq_hz", "Points_per_decade"]
+        // let form_list = ["start_freq", "end_freq", "points_per_decade", "frequency_hz", "gain_db", "phase_deg"]
         // required fields ["start_freq", "end_freq", "points_per_decade"]
         let form_params = {}
 
         //default values for optional fields
-        form_params["frequency_unit"] = "hz"
-        form_params["gain_unit"] = "db"
-        form_params["phase_unit"] = "deg"
+        // form_params["frequency_hz"] = "hz"
+        // form_params["gain_db"] = "db"
+        // form_params["phase_deg"] = "deg"
 
         let i;
         for (i=0; i < form_list.length; i++) {

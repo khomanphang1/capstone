@@ -4,12 +4,10 @@ body {
   }
 
   #cy {
-    position: absolute;
-    left: 12%;
-    top: 5%;
-    bottom: 40%;
-    right: 50%;
+    position: relative;
     z-index: 99;
+    height: 600px;
+    width: 1200px;
   }
 
   h1 {
@@ -29,7 +27,7 @@ body {
   }
 
   .sfg_section {
-    display: relative;
+    position: relative;
   }
 
   .panels {
@@ -37,7 +35,7 @@ body {
   }
 
   .circuit-panel {
-    margin-top: 75%;
+    margin-top: 5%;
   }
 
   .middle-layer {
@@ -47,12 +45,9 @@ body {
   .right-layer {
     display: block;
     width: 50%;
-    margin-left: 30px;
-    margin-right: 30px;
   }
 
   .parameter-panel {
-    display: absolute;
     width: 150px;
     border: 1px solid black;
     padding: 10px;
@@ -60,7 +55,7 @@ body {
   }
 
   /* laptop */
-  @media screen and (min-width: 1200px) and (max-width: 1600px) {
+  /* @media screen and (min-width: 1200px) and (max-width: 1600px) {
     #cy {
       position: absolute;
       left: 13%;
@@ -80,4 +75,4 @@ body {
     .circuit-panel {
       margin-top: 60%;
     }
-  }
+  } */
