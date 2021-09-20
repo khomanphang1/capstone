@@ -450,30 +450,35 @@ class MOSFET(Component):
     _prefix = 'm'
 
     def __init__(self, name: str,
-                 collector: str,
-                 base: str,
-                 emitter: str,
+                 source: str,
+                 gate: str,
+                 drain: str,
                  substrate: str,
                  model: str):
 
         Component.__init__(self, name)
-        self.collector = collector
-        self.base = base
-        self.emitter = emitter
+        self.source = source
+        self.gate = gate
+        self.drain = drain
         self.substrate = substrate
         self.model = model
 
     @classmethod
     def from_netlist_entry(cls, entry: str) -> 'MOSFET':
         print("in from_netlist_entry:",entry)
-        name, collector, base, emitter, substrate, model = \
+        name, source, gate, drain, substrate, model = \
             entry.split(' ', 5)
-        print(name, ", ", collector, ", ", base, ", ", emitter, ", ", substrate, " , ", model)
-        return MOSFET(name, collector, base, emitter, substrate,
+        if(model.startswith("P") ):
+            print("starts with p:")
+            print(name, ", ", source, ", ", gate, ", ", drain, ", ", substrate, " , ", model)
+            return MOSFET(name, source, gate, drain, substrate,
+                                 model)
+        print(name, ", ", source, ", ", gate, ", ", drain, ", ", substrate, " , ", model)
+        return MOSFET(name, drain, gate, source, substrate,
                                  model)
 
     def to_netlist_entry(self) -> str:
-        args = (self.name, self.collector, self.base, self.emitter,
+        args = (self.name, self.source, self.gate, self.drain,
                 self.substrate, self.model)
 
         return ' '.join(args)
@@ -494,24 +499,24 @@ class MOSFET(Component):
 
         r_pi = Resistor(
             f'R_PI_{self.name}',
-            self.base,
-            self.emitter,
+            self.gate,
+            self.source,
             1e25
         )
 
         g = VoltageDependentCurrentSource(
             f'G_{self.name}',
-            self.collector,
-            self.emitter,
-            self.base,
-            self.emitter,
+            self.source,
+            self.drain,
+            self.gate,
+            self.source,
             g_m
         )
 
         r_o = Resistor(
             f'R_O_{self.name}',
-            self.collector,
-            self.emitter,
+            self.drain,
+            self.source,
             r_o
         )
 
