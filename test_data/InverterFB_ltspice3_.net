@@ -1,0 +1,23 @@
+* C:\Users\Syouq\OneDrive\桌面\test circuits\InverterFB_ltspice3_.asc
+RF Vo vs 10k
+Vp Vp 0 2
+Vn Vn 0 -2
+M2 Vo vs Vn Vn NMOS0P5 l=3u w=20u
+M1 Vo vs Vp Vp PMOS0P5 l=3u w=60u
+Is 0 vs SINE(0 0.1m 1)
+.model NMOS NMOS
+.model PMOS PMOS
+.lib C:\Users\Syouq\OneDrive\文档\LTspiceXVII\lib\cmp\standard.mos
+* Inverter with resistive FB TIA
+.model	PMOS0P5	PMOS(Level=1 VTO=-0.6 GAMMA=0.45 PHI=0.75
++		LD=0.09E-06 WD=0 UO=115 LAMBDA=0.2 TOX=9.5E-9 PB=0.9 CJ=0.93E-3
++		CJSW=170E-12 MJ=0.5 MJSW=0.35 CGDO=0.35E-9 JS=5E-9 CGBO=0.38E-9
++		CGSO=0.35E
+.OP
+.model	NMOS0P5	NMOS(Level=1 VTO=0.7 GAMMA=0.5 PHI=0.8
++		LD=0.08E-06 WD=0 UO=460 LAMBDA=0.1 TOX=9.5E-9 PB=0.9 CJ=0.57E-3
++		CJSW=120E-12 MJ=0.5 MJSW=0.4 CGDO=0.4E-9 JS=10E-9 CGBO=0.38E-9
++		CGSO=0.4E-9)
+* * Uncomment for transient analysis\n* .tran 0 10
+.backanno
+.end
