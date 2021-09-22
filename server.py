@@ -124,8 +124,8 @@ def get_transfer_function_bode(circuit_id):
 
     input_node = request.args.get('input_node')
     output_node = request.args.get('output_node')
-    start_freq = request.args.get('start_freq', type=float)
-    end_freq = request.args.get('end_freq', type=float)
+    start_freq = request.args.get('start_freq_hz', type=float)
+    end_freq = request.args.get('end_freq_hz', type=float)
     points_per_decade = request.args.get('points_per_decade', type=int)
     frequency_unit = request.args.get('frequency_unit', default='hz')
     gain_unit = request.args.get('gain_unit', default='db')
@@ -193,8 +193,8 @@ def get_loop_gain_bode(circuit_id):
     if not circuit:
         abort(404, description='Circuit not found')
 
-    start_freq = request.args.get('start_freq', type=float)
-    end_freq = request.args.get('end_freq', type=float)
+    start_freq = request.args.get('start_freq_hz', type=float)
+    end_freq = request.args.get('end_freq_hz', type=float)
     points_per_decade = request.args.get('points_per_decade', type=int)
     frequency_unit = request.args.get('frequency_unit', default='hz')
     gain_unit = request.args.get('gain_unit', default='db')
