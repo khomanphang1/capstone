@@ -468,11 +468,7 @@ class MOSFET(Component):
         print("in from_netlist_entry:",entry)
         name, source, gate, drain, substrate, model = \
             entry.split(' ', 5)
-        if(model.startswith("P") ):
-            print("starts with p:")
-            print(name, ", ", source, ", ", gate, ", ", drain, ", ", substrate, " , ", model)
-            return MOSFET(name, source, gate, drain, substrate,
-                                 model)
+        
         print(name, ", ", source, ", ", gate, ", ", drain, ", ", substrate, " , ", model)
         return MOSFET(name, drain, gate, source, substrate,
                                  model)
