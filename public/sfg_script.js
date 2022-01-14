@@ -9,6 +9,11 @@ if (!circuitId) {
 var symbolic_flag = false //feature toggle
 let current_data = null //session data
 
+// Function to convert float to exponential
+function expo(x, f) {
+  return Number.parseFloat(x).toExponential(f);
+}
+
 function edge_helper(sample_data, flag) {
     let sfg_elements = JSON.parse(JSON.stringify(sample_data.sfg.elements))
     let edge_length = sample_data.sfg.elements.edges.length
@@ -22,7 +27,8 @@ function edge_helper(sample_data, flag) {
     } else {
         for (i = 0; i < edge_length; i++) {
             let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
-            new_edge.data.weight = new_edge.data.weight.magnitude.toFixed(2)
+            //new_edge.data.weight = new_edge.data.weight.magnitude.toFixed(2)
+            new_edge.data.weight = expo((new_edge.data.weight.magnitude), 2)
             sfg_edges.push(new_edge)
         }
     }
