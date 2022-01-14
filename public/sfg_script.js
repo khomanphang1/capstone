@@ -43,14 +43,14 @@ function make_sfg(elements) {
     var cy = window.cy = cytoscape({
         container: document.getElementById('cy'),
 
-        // layout: {
-        // name: 'grid',
-        // rows: 3,
-        // cols: 3
-        // },
-
         layout: {
-            name: 'cose',
+            name: 'dagre',
+            nodeSep: 200,
+            edgeSep: 200,
+            rankSep: 100,
+            rankDir: 'LR',
+            fit: true,
+            minLen: function( edge ){ return 2 } 
         },
 
         style: [
