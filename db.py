@@ -99,7 +99,7 @@ class Circuit(Document):
                 magnitude, phase = cmath.polar(numeric)
 
                 sfg.edges[src, dst]['weight'] = {
-                    'symbolic': str(symbolic),
+                    'symbolic': sympy.latex(symbolic) if isinstance(symbolic, sympy.Expr) else str(symbolic),
                     'magnitude': magnitude,
                     'phase': phase
                 }

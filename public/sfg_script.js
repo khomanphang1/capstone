@@ -8,6 +8,7 @@ if (!circuitId) {
 
 var symbolic_flag = false //feature toggle
 let current_data = null //session data
+let edge_symbolic_label;
 
 // Function to convert float to exponential
 function expo(x, f) {
@@ -18,15 +19,19 @@ function edge_helper(sample_data, flag) {
     let sfg_elements = JSON.parse(JSON.stringify(sample_data.sfg.elements))
     let edge_length = sample_data.sfg.elements.edges.length
     let sfg_edges = []
+    edge_symbolic_label = new Array(edge_length)
+
     if (flag) {
-        for (i = 0; i < edge_length; i++) {
-            let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
-            new_edge.data.weight = new_edge.data.weight.symbolic
-            sfg_edges.push(new_edge)
-        }
+        return;
+        // for (i = 0; i < edge_length; i++) {
+        //     let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
+        //     new_edge.data.weight = new_edge.data.weight.symbolic
+        //     sfg_edges.push(new_edge)
+        // }
     } else {
         for (i = 0; i < edge_length; i++) {
             let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
+            edge_symbolic_label[i] = new_edge.data.weight.symbolic
             //new_edge.data.weight = new_edge.data.weight.magnitude.toFixed(2)
             new_edge.data.weight = expo((new_edge.data.weight.magnitude), 2)
             sfg_edges.push(new_edge)
@@ -71,8 +76,9 @@ function make_sfg(elements) {
         {
             selector: 'edge',
             style: {
-            // 'curve-style': 'unbundled-bezier',
-            'curve-style': 'bezier',
+            'curve-style': 'unbundled-bezier',
+            'control-point-distance': '-25 20 -25',
+            //'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
             'content': 'data(weight)'
             }
@@ -134,7 +140,67 @@ function make_sfg(elements) {
 
         elements: elements
     });
+    
 
+    const time2 = new Date()
+    let time_elapse = (time2 - time1)/1000
+    console.log("SFG loading time: " + time_elapse + " seconds")
+}
+
+function display_mag_sfg() {
+    let cy = window.cy;
+
+    let updates = new Array(cy.edges().length)
+    let edges = new Array(cy.edges().length)
+
+    cy.edges().forEach((edge,idx) => {
+        
+        edges[idx] = edge.popper({
+            content: () => {
+            let div = document.createElement('div');
+
+            //div.classList.add('popper-div');
+            div.id = 'edge-' + idx;
+            div.style.cssText = `font-size:${cy.zoom()*16 + 'px'};font-weight:400;`
+            div.classList.add('label')
+        
+            div.innerHTML = '$$' + edge_symbolic_label[idx] + '$$';
+            //div.innerHTML = '$$\\frac{y}{2x} + C$$';
+
+
+        
+            //document.getElementById('magnitudes').appendChild(div);
+            //document.body.appendChild(div);
+            document.getElementsByClassName('sfg-section')[0].appendChild(div);
+            return div;
+            },
+            popper: {
+                modifiers: {
+                    preventOverflow: {
+                        enabled: true,
+                        boundariesElement: document.getElementsByClassName('sfg-section')[0],
+                        padding: 5
+                    },
+                    hide:  {
+                        enabled: true,
+                    }
+            }
+        }})
+
+        updates[idx] = () => {
+            edges[idx].update();
+            document.querySelector(`#edge-${idx}`).style.fontSize = cy.zoom()*16 + 'px';
+        }
+          
+        edge.connectedNodes().on('position', updates[idx]);
+        
+        cy.on('pan zoom resize', updates[idx]);
+    
+    });
+
+    MathJax.typeset();
+    
+    cy.style().selector('edge').css({'content': ''}).update()
     const time2 = new Date()
     let time_elapse = (time2 - time1)/1000
     console.log("SFG loading time: " + time_elapse + " seconds")
@@ -277,7 +343,21 @@ async function sfg_toggle() {
         let url = new URL(`${baseUrl}/circuits/${circuitId}`)
         const response = await fetch(url)
         let data = await response.json()
-        update_frontend(data)
+
+        //remove existing magnitude labels
+        const symbolic_labels = document.querySelectorAll('.label');
+        symbolic_labels.forEach(label => {
+            label.remove();
+        });
+
+        if(symbolic_flag) {
+            display_mag_sfg();
+        }
+        else {
+            window.cy.style().selector('edge').css({'content': 'data(weight)'}).update();
+        }
+        
+        
     } catch {
         alert("error when toggle sfg")
     }
