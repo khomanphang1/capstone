@@ -339,7 +339,16 @@ document.addEventListener('DOMContentLoaded', load_interface);
 
 async function sfg_toggle() {
     symbolic_flag = !symbolic_flag
+    //document.getElementById("frequency-slider").disabled = !document.getElementById("frequency-slider").disabled
     try {
+        // Disable frequency slider on symbolic
+        if (!symbolic_flag) {
+            document.getElementById("frequency-slider").disabled = false;
+        }
+        else {
+            document.getElementById("frequency-slider").disabled = true;
+        }
+
         let url = new URL(`${baseUrl}/circuits/${circuitId}`)
         const response = await fetch(url)
         let data = await response.json()
@@ -381,6 +390,19 @@ if (return_landing) {
         window.location.replace('./landing.html');
     })
 }
+
+let frequency_slider = document.getElementById("frequency-slider");
+var output = document.getElementById("frequency-value");
+output.innerHTML = frequency_slider.value;
+
+frequency_slider.oninput = function() {
+    output.innerHTML = this.value;
+    let form_data = {}
+    form_data['f'] = parseInt(this.value);
+    sfg_patch_request(form_data);
+}
+
+
 
 //transfer function display helper - load MathJax script
 function load_latex() {
