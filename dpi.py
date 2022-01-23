@@ -206,31 +206,46 @@ def DPI_algorithm( circuit : cir.Circuit ):
         print("edge:(source , target)",e)
         print("weight information:",sfg.graph.get_edge_data(*e))
         print("\n")
+    print("nodes:")
+    for n in sfg.graph.nodes:
+        print(n)
     
     # reorder edges to have sources in the beginning of list
     ordered_edges = []
     for e in sfg.graph.edges:
         source = e[0]
         target = e[1]
-        print("st:", source, target)
-        if source == "Vs" or target == "Vs" and len(ordered_edges) > 0:
-            ordered_edges.insert(0, (source, target, sfg.graph.get_edge_data(*e).get('weight')))
+        ordered_edges.append((source, target, sfg.graph.get_edge_data(*e).get('weight')))
+
+    input_nodes = []
+    other_nodes = []
+    output_nodes = []
+    for n in sfg.graph.nodes:
+        print("node:", n)
+        if n.endswith("s") or n.endswith("g") or n.endswith("in") or n.endswith("i"):
+            input_nodes.append(n)
+        elif n.endswith("o") or n.endswith("out"):
+            output_nodes.append(n)
         else:
-            ordered_edges.append((source, target, sfg.graph.get_edge_data(*e).get('weight')))
-    sfg.graph.clear_edges()
-    print("ordered:", ordered_edges)
-    # sfg.graph.add_weighted_edges_from(ordered_edges)
+            other_nodes.append(n)
+    ordered_nodes = input_nodes + other_nodes + output_nodes
+    
+    sfg.graph.clear()
+
+    for on in ordered_nodes:
+        sfg.graph.add_node(on)
+    
     for oe in ordered_edges:
-        print("edge is:", oe)
         sfg.graph.add_edge(oe[0], oe[1], weight = oe[2])
-    # sfg.graph.reverse()
 
     print("After reordering")
     for e in sfg.graph.edges:
         print("edge:(source , target)",e)
         print("weight information:",sfg.graph.get_edge_data(*e))
         print("\n")
-
+    print("nodes:")
+    for n in sfg.graph.nodes:
+        print(n)
     return sfg
 
 class SFGraph(object):
@@ -252,11 +267,6 @@ class SFGraph(object):
         #print(type(source))
         source_node = Node( node_name = str(source) , is_ground = False )
         target_node = Node( node_name = str(target) , is_ground = False )
-        print("in add_edge (s,t):", source_node.node_name, target_node.node_name)
-        # prioritize vs and isc in the beggining of the graph
-        if source_node.node_name == 'Vs' or target_node.node_name == "Vs":
-            print("we have voltage source (s,t):", source_node.node_name, target_node.node_name)
-            self.edge_list.insert(0, Edge( source_node.node_name , target_node.node_name , weight ))
         self.edge_list.append( Edge( source_node.node_name , target_node.node_name , weight ) )
         if target_node.node_name not in self.nodes_name_map:
             #if str(target) not in self.nodes_name_map:
