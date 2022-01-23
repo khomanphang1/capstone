@@ -76,14 +76,19 @@ class Capacitor(Component):
 class SFG():
     def __init__(self):
         self.graph = nx.DiGraph()
+        self.edges = []
     
     def add_edge(self, source , target , wt):
         self.graph.add_edge(source, target , weight = wt)
+    
+    def add_all_edges(self, edges):
+        self.graph.add_edges_from(edges)
     
 def DPI_algorithm( circuit : cir.Circuit ):
     sfg = SFG()
     impedance_list = []
     neighbors = defaultdict(list)
+
     for n in circuit.multigraph.nodes:
         print("node:",n)
         for ne in circuit.multigraph.neighbors(n):
@@ -111,6 +116,7 @@ def DPI_algorithm( circuit : cir.Circuit ):
                 if (isinstance(circuit.multigraph.edges[n,ne,k]['component'], cir.CurrentSource)):
                     cur_target = "Isc" + n[1:].lower() if n.startswith("V") else "Isc" + n.lower()
                     cur_source = circuit.multigraph.edges[n,ne,k]['component'].name
+                    print("adding edge:", cur_source, cur_target)
                     sfg.graph.add_edge( cur_source , cur_target , weight = "1" )
                 if (isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageSource) and ne == "0") or isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentVoltageSource) and ne == "0":
                     
@@ -130,11 +136,13 @@ def DPI_algorithm( circuit : cir.Circuit ):
                             if sfg.graph.has_edge(cur_source, cur_target):
                                 sfg.graph.edges[cur_source , cur_target]['weight'] += " + " + ("(s*"+circuit.multigraph.edges[n,ne,k]['component'].name +")" if isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.Capacitor) else "1/" + circuit.multigraph.edges[n,ne,k]['component'].name)
                             else:
+                                print("adding edge:", cur_source, cur_target)
                                 sfg.graph.add_edge(cur_source , cur_target , weight = "+" + ("(s*"+circuit.multigraph.edges[n,ne,k]['component'].name +")" if isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.Capacitor) else "1/" + circuit.multigraph.edges[n,ne,k]['component'].name))
                         else:
                             if sfg.graph.has_edge(cur_source, cur_target):
                                 sfg.graph.edges[cur_source , cur_target]['weight'] += " + 1 " 
                             else:
+                                print("adding edge:", cur_source, cur_target)
                                 sfg.graph.add_edge(cur_source , cur_target , weight = "+ 1 " )
                     elif isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentCurrentSource):
                         print("found volage dependent current source!!")
@@ -145,6 +153,7 @@ def DPI_algorithm( circuit : cir.Circuit ):
                         if sfg.graph.has_edge(cur_source_1, cur_target):
                             sfg.graph.edges[cur_source_1, cur_target]['weight'] += (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].neg_node else " + ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name)
                         else:
+                            print("adding edge:", cur_source_1, cur_target)
                             sfg.graph.add_edge( cur_source_1, cur_target , weight = (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].neg_node else " + ")  + str(circuit.multigraph.edges[n,ne,k]['component'].name))
                             
                         
@@ -158,12 +167,14 @@ def DPI_algorithm( circuit : cir.Circuit ):
                             if sfg.graph.has_edge(cur_source_1, cur_target):
                                 sfg.graph.edges[cur_source_1, cur_target]['weight'] += (" + " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " - ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name)
                             else:
+                                print("adding edge:", cur_source_1, cur_target)
                                 sfg.graph.add_edge( cur_source_1, cur_target , weight = (" + " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " - ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name))
                         if neg_input_node != "0":
                             cur_source_2 = "V" + neg_input_node.lower() if not neg_input_node.startswith("V") else neg_input_node
                             if sfg.graph.has_edge(cur_source_2, cur_target):
                                 sfg.graph.edges[cur_source_2, cur_target]['weight'] += ((" - " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " + ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name))
                             else:
+                                print("adding edge:", cur_source_2, cur_target)
                                 sfg.graph.add_edge( cur_source_2, cur_target , weight = (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " + ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name))
 
 
@@ -178,10 +189,8 @@ def DPI_algorithm( circuit : cir.Circuit ):
         impedance_list.append(impedance)
         source = "Isc" + n[1:].lower() if n.startswith("V") else "Isc" + n.lower()
         target = "V" + n.lower() if not n.startswith("V") else n
-        sfg.graph.add_edge(  source , target , weight = impedance )
-        
-        
-        
+        print("adding edge:", source, target)
+        sfg.graph.add_edge(  source , target , weight = impedance )         
         
     print("graph information")
     for e in sfg.graph.edges:
@@ -197,6 +206,46 @@ def DPI_algorithm( circuit : cir.Circuit ):
         print("edge:(source , target)",e)
         print("weight information:",sfg.graph.get_edge_data(*e))
         print("\n")
+    print("nodes:")
+    for n in sfg.graph.nodes:
+        print(n)
+    
+    # reorder edges to have sources in the beginning of list
+    ordered_edges = []
+    for e in sfg.graph.edges:
+        source = e[0]
+        target = e[1]
+        ordered_edges.append((source, target, sfg.graph.get_edge_data(*e).get('weight')))
+
+    input_nodes = []
+    other_nodes = []
+    output_nodes = []
+    for n in sfg.graph.nodes:
+        print("node:", n)
+        if n.endswith("s") or n.endswith("g") or n.endswith("in") or n.endswith("i"):
+            input_nodes.append(n)
+        elif n.endswith("o") or n.endswith("out"):
+            output_nodes.append(n)
+        else:
+            other_nodes.append(n)
+    ordered_nodes = input_nodes + other_nodes + output_nodes
+    
+    sfg.graph.clear()
+
+    for on in ordered_nodes:
+        sfg.graph.add_node(on)
+    
+    for oe in ordered_edges:
+        sfg.graph.add_edge(oe[0], oe[1], weight = oe[2])
+
+    print("After reordering")
+    for e in sfg.graph.edges:
+        print("edge:(source , target)",e)
+        print("weight information:",sfg.graph.get_edge_data(*e))
+        print("\n")
+    print("nodes:")
+    for n in sfg.graph.nodes:
+        print(n)
     return sfg
 
 class SFGraph(object):
@@ -214,7 +263,7 @@ class SFGraph(object):
         pass
     
     def add_edge(self , source , target , weight):
-        #print("in add edge")
+        print("in add edge")
         #print(type(source))
         source_node = Node( node_name = str(source) , is_ground = False )
         target_node = Node( node_name = str(target) , is_ground = False )

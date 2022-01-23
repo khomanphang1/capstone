@@ -80,7 +80,11 @@ function make_sfg(elements) {
             'control-point-distance': '-25 20 -25',
             //'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
-            'content': 'data(weight)'
+            'content': 'data(weight)',
+            'text-margin-y': '20px',
+            'text-margin-x': '20px',
+            // 'source-text-margin-y': '20px',
+            // 'target-text-margin-y': '20px'
             }
         },
 
@@ -144,6 +148,7 @@ function make_sfg(elements) {
 
     const time2 = new Date()
     let time_elapse = (time2 - time1)/1000
+    console.log("elements:", elements)
     console.log("SFG loading time: " + time_elapse + " seconds")
 }
 
