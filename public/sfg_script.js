@@ -524,13 +524,15 @@ function make_frequency_bounds() {
 
     var min_range = document.getElementById("min-range")
     var max_range = document.getElementById("max-range")
-    var update-range = document.getElementById("update-range")
+    var update_range = document.getElementById("update-range")
     form.appendChild(min_range)
     form.appendChild(max_range)
-    form.appendChild(update-range)
+    form.appendChild(update_range)
 
     form.addEventListener("submit", event => {
-        let min = document.querySelector('#imin-range').value
+        event.preventDefault()
+
+        let min = document.querySelector('#min-range').value
         let max = document.querySelector('#max-range').value
 
         if (min < max){
