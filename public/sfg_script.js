@@ -77,7 +77,7 @@ function make_sfg(elements) {
             selector: 'edge',
             style: {
             'curve-style': 'unbundled-bezier',
-            'control-point-distance': '-25 20 -25',
+            'control-point-distance': '-40',
             //'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
             'content': 'data(weight)',
@@ -144,6 +144,12 @@ function make_sfg(elements) {
 
         elements: elements
     });
+
+    cy.edges().forEach((edge,idx) => {
+        if((edge.sourceEndpoint().x === edge.targetEndpoint().x) || (edge.sourceEndpoint().y === edge.targetEndpoint().y)) {
+            edge.css({'control-point-distance': '0'})
+        }
+    })
     
 
     const time2 = new Date()
