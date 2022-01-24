@@ -58,9 +58,18 @@
             <input type="checkbox" id="refresh-button"> Refresh SFG
             <input type="checkbox" id="return-landing"> Return to landing page
             <div class="slider">
-            <input type="range" min="1" max="10000" value="5000" class="custom-range" id="frequency-slider" style="width:400px;">
+              <input class="frequency-range" type="text" placeholder="1Hz" id="min-range">
+              <input type="range" min="1" max="10000" value="5000" class="custom-range" id="frequency-slider" style="width:400px;">
+              <input class="frequency-range" type="text" placeholder="10000 Hz" id="max-range">
+             <!-- <div> -->
+              <span id="frequency-value"> </span> Hz
+              <input type="submit" value="Update Range" id="update-range">
+
+              <div id="frequency-form">
+                <h1> Frequency Range </h1>
+              </div>
+             <!-- </div> -->
             </div>
-            Frequency: <span id="frequency-value"></span> Hz
           </div>
           <div class="sfg-section">
             <h1>SFG Simulation</h1>

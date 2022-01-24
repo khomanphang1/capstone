@@ -326,6 +326,9 @@ function render_frontend(data) {
     // load bode plot
     make_transfer_bode_panel()
     make_loop_gain_bode_panel()
+
+    // Frequency bounds form
+    make_frequency_bounds()
 }
 
 
@@ -514,6 +517,34 @@ function make_schematics(data) {
         svg.setAttribute("width", "1200px");
     }
 }
+
+function make_frequency_bounds() {
+    var form = document.createElement("form")
+    form.id = "frequency-bounds-form"
+
+    var min_range = document.getElementById("min-range")
+    var max_range = document.getElementById("max-range")
+    var update-range = document.getElementById("update-range")
+    form.appendChild(min_range)
+    form.appendChild(max_range)
+    form.appendChild(update-range)
+
+    form.addEventListener("submit", event => {
+        let min = document.querySelector('#imin-range').value
+        let max = document.querySelector('#max-range').value
+
+        if (min < max){
+            document.getElementById("frequency-slider").min = min
+            document.getElementById("frequency-slider").max = max
+        }
+        /*else {
+            alert("input invalid")
+        }*/
+    });
+
+    document.getElementById("frequency-form").appendChild(form)
+}
+
 
 
 function make_transfer_bode_panel() {

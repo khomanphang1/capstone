@@ -97,6 +97,14 @@ body {
   transition: opacity .2s;
 }
 
+.frequency-range {
+    width: 40px;
+}
+
+#frequency-value {
+    text-align: center;
+}
+
 /* https://codepen.io/MartijnCuppens/pen/MGZLbQ */
 
 $custom-range-thumb-disabled-bg: #adb5bd;
