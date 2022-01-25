@@ -535,13 +535,13 @@ function make_frequency_bounds() {
         let min = document.querySelector('#min-range').value
         let max = document.querySelector('#max-range').value
 
-        if (min < max){
+        if (min >= 0 && max >= 0 && min < max){
             document.getElementById("frequency-slider").min = min
             document.getElementById("frequency-slider").max = max
         }
-        /*else {
+        else {
             alert("input invalid")
-        }*/
+        }
     });
 
     document.getElementById("frequency-form").appendChild(form)
