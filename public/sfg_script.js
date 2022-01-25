@@ -399,15 +399,21 @@ if (return_landing) {
     })
 }
 
+// HTML Frequency slider element
 let frequency_slider = document.getElementById("frequency-slider");
+
+// HTML Element displaying current frequency from slider
 var output = document.getElementById("frequency-value");
+
+// Update the display of the frequency value with the current value from the slider
 output.innerHTML = frequency_slider.value;
 
 frequency_slider.oninput = function() {
-    output.innerHTML = this.value;
+    output.innerHTML = this.value;          // get current value of frequency from frequency slider
     let form_data = {}
-    form_data['f'] = parseInt(this.value);
-    sfg_patch_request(form_data);
+    form_data['f'] = parseInt(this.value);  // populate form with frequency request
+    sfg_patch_request(form_data);           // send patch request to backend,
+                                            // this function receives new values and redraws sfg
 }
 
 
