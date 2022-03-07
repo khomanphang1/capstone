@@ -57,6 +57,11 @@ body {
   .label[x-out-of-boundaries] {
     display: none !important;
   }
+
+  [id^=edge-] {
+    text-shadow: 5px 5px #d3d3d3, -5px -5px #d3d3d3, -5px 5px #d3d3d3, 5px -5px #d3d3d3;
+    z-index: 999;
+  }
   /* laptop */
   /* @media screen and (min-width: 1200px) and (max-width: 1600px) {
     #cy {

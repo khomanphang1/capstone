@@ -81,10 +81,8 @@ function make_sfg(elements) {
             //'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
             'content': 'data(weight)',
-            'text-margin-y': '20px',
-            'text-margin-x': '20px',
-            // 'source-text-margin-y': '20px',
-            // 'target-text-margin-y': '20px'
+            'text-outline-width': '4',
+            'text-outline-color': '#E8E8E8'
             }
         },
 
@@ -151,7 +149,6 @@ function make_sfg(elements) {
         }
     })
     
-
     const time2 = new Date()
     let time_elapse = (time2 - time1)/1000
     console.log("elements:", elements)
@@ -173,6 +170,7 @@ function display_mag_sfg() {
             //div.classList.add('popper-div');
             div.id = 'edge-' + idx;
             div.style.cssText = `font-size:${cy.zoom()*16 + 'px'};font-weight:400;`
+            
             div.classList.add('label')
         
             div.innerHTML = '$$' + edge_symbolic_label[idx] + '$$';
