@@ -33,7 +33,11 @@ function edge_helper(sample_data, flag) {
             let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
             edge_symbolic_label[i] = new_edge.data.weight.symbolic
             //new_edge.data.weight = new_edge.data.weight.magnitude.toFixed(2)
-            new_edge.data.weight = expo((new_edge.data.weight.magnitude), 2)
+            let magnitude = expo((new_edge.data.weight.magnitude), 2).toString()
+            let phase = new_edge.data.weight.phase.toFixed(2).toString()
+            let result = magnitude.concat("∠", phase);
+            //new_edge.data.weight = expo((new_edge.data.weight.magnitude), 2)
+            new_edge.data.weight = result
             sfg_edges.push(new_edge)
         }
     }
@@ -235,7 +239,7 @@ function make_parameter_panel(parameters) {
         parameter.name = key
         parameter.id = key
         parameter.placeholder = key + ": " + parameters[key].toExponential()
-        parameter.step = 0.000001
+        parameter.step = 0.000000000000001
         
         pf.appendChild(parameter)
         pf.appendChild(br.cloneNode())
@@ -542,6 +546,8 @@ function make_transfer_bode_panel() {
     for (key in element_type_dict) {
         var form_child = document.createElement("input")
         form_child.type = element_type_dict[key]
+        if (element_type_dict[key] == "number")
+            form_child.step = 0.000000000000001
         form_child.name = key
         form_child.id = key
         let new_str = key.replace(/_/g, " ");
@@ -789,6 +795,8 @@ function make_loop_gain_bode_panel() {
     for (key in element_type_dict) {
         var form_child = document.createElement("input")
         form_child.type = element_type_dict[key]
+        if (element_type_dict[key] == "number")
+            form_child.step = 0.000000000000001
         form_child.name = key
         form_child.id = key
         let new_str = key.replace(/_/g, " ");

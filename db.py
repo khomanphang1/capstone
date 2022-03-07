@@ -101,7 +101,7 @@ class Circuit(Document):
                 sfg.edges[src, dst]['weight'] = {
                     'symbolic': sympy.latex(symbolic) if isinstance(symbolic, sympy.Expr) else str(symbolic),
                     'magnitude': magnitude,
-                    'phase': phase
+                    'phase': phase*(180/cmath.pi)
                 }
 
             output['sfg'] = nx.cytoscape_data(sfg)

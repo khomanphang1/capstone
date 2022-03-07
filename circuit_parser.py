@@ -641,7 +641,7 @@ class Circuit:
         print("in from_ltspice_netlist!!!")
         for line in netlist.splitlines():
 
-            if line.startswith(('.', '*', ';', '+')):
+            if line.startswith(('.', '*', ';', '+', '#')):
                 # Ignore comments and models.
                 continue
             print("in line loop", line)
