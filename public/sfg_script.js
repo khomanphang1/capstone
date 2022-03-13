@@ -362,11 +362,15 @@ async function sfg_toggle() {
             document.getElementById("frequency-slider").disabled = true;
         }
 
-        let url = new URL(`${baseUrl}/circuits/${circuitId}`)
-        const response = await fetch(url)
-        let data = await response.json()
+        // let url = new URL(`${baseUrl}/circuits/${circuitId}`)
+        // const response = await fetch(url)
+        // let data = await response.json()
 
         //remove existing magnitude labels
+
+        const time1 = new Date()
+    
+
         const symbolic_labels = document.querySelectorAll('.label');
         symbolic_labels.forEach(label => {
             label.remove();
@@ -378,6 +382,11 @@ async function sfg_toggle() {
         else {
             window.cy.style().selector('edge').css({'content': 'data(weight)'}).update();
         }
+
+        const time2 = new Date()
+
+        let time_elapse = (time2 - time1)/1000
+        console.log("SFG loading time (symbolic and magnitude toggle): " + time_elapse + " seconds")
         
         
     } catch {
