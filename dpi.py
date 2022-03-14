@@ -1,3 +1,4 @@
+from importlib.resources import path
 import re
 import networkx as nx
 import circuit_parser as cir
@@ -84,34 +85,74 @@ class SFG():
     def add_all_edges(self, edges):
         self.graph.add_edges_from(edges)
 
-def simplify_loop( sfg: SFG, source_node, target_node ):
-    print("og graph:", sfg.graph.edges)
+def simplify_loop(sfg, source_node, target_node):
+    print("og graph:", sfg.edges)
 
     #verify there is a loop
-    if sfg.graph.has_edge(source_node, target_node) and sfg.graph.has_edge(target_node, source_node):
+    if sfg.has_edge(source_node, target_node) and sfg.has_edge(target_node, source_node):
         
         #get edge values
         # sfg.graph.get_edge_data(*e)['weight']
-        a = sfg.graph.get_edge_data(source_node, target_node)['weight']
-        b = sfg.graph.get_edge_data(target_node, source_node)['weight']
+        a = sfg.get_edge_data(source_node, target_node)['weight']
+        b = sfg.get_edge_data(target_node, source_node)['weight']
 
         c = a/(1-b*c)
         print(a, b, c)
 
         # remove loop
-        sfg.graph.remove_edge(source_node, target_node)
-        sfg.graph.remove_edge(target_node, source_node)
+        sfg.remove_edge(source_node, target_node)
+        sfg.remove_edge(target_node, source_node)
 
         # replace edge
         # check for sign to decide direction of arrow
         # dk if this works bc we're working w symbolic values
         if c > 0:
-            sfg.graph.add_edge(source_node, target_node, c)
+            sfg.add_edge(source_node, target_node, c)
         elif c < 0:
-            sfg.graph.add_edge(target_node, source_node, abs(c))
-        print("new graph:", sfg.graph.edges)
-    return sfg.graph
+            sfg.add_edge(target_node, source_node, abs(c))
+        print("new graph:", sfg.edges)
+    
 
+def shiftEdge(edge, sfg, prev_edge, outward):
+    #calculate edge weight
+    weight = sfg.get_edge_data(*edge)['weight'] * sfg.get_edge_data(*prev_edge)['weight']
+    #if upward make new node source else target
+    if outward:
+        sfg.add_edge(prev_edge[0], edge[1], weight)
+    else:
+        sfg.add_edge(edge[0], prev_edge[0], weight)
+
+    sfg.remove_edge(*edge) 
+
+def simplify(self, source, target):
+    path_nodes = nx.shortest_path(self.graph, source, target)
+
+    if len(path_nodes) != 3:
+        return
+    
+    #get all connected nodes
+    connected_nodes = self.graph__getitem__(path[1])
+
+    for node in connected_nodes:
+        if node == source or node == target:
+            continue
+        
+        #Check if there is a for loop
+        if self.graph.has_edge(node, path[1]) and self.graph.has_edge(path[1], node):
+            simplify_loop(self.graph, path[1], node)
+        
+        #shift inward edge
+        if self.graph.has_edge(node, path[1]):
+            edge = self.graph.get_edge_data(node, path[1])
+            prev_edge = self.graph.get_edge_data(path[1], path[2])
+            shiftEdge(edge, self.graph, prev_edge, False)
+        
+        #shift outward edge
+        else:
+            edge = self.graph.get_edge_data(path[1], node)
+            prev_edge = self.graph.get_edge_data(path[0], path[1])
+            shiftEdge(edge, self.graph, prev_edge, True)
+        
 
 def DPI_algorithm( circuit : cir.Circuit ):
     sfg = SFG()
@@ -285,23 +326,7 @@ def DPI_algorithm( circuit : cir.Circuit ):
     
     return sfg
 
-def simplify(source, target, sfg):
-    path_nodes = nx.shortest_path(sfg.graph,source, target)
 
-    if len(path_nodes) > 3:
-        return
-
-def shiftEdge(edge, sfg, prev_edge, outward):
-    #calculate edge weight
-    weight = sfg.graph.get_edge_data(*edge)['weight'] * sfg.graph.get_edge_data(*prev_edge)['weight']
-    #if upward make new node source else target
-    if outward:
-        sfg.graph.add_edge(prev_edge[0], edge[1], weight)
-    else:
-        sfg.graph.add_edge(edge[0], prev_edge[0], weight)
-
-    sfg.graph.remove_edge(*edge) 
-    
 
 
 class SFGraph(object):
