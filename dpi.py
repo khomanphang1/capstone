@@ -83,7 +83,36 @@ class SFG():
     
     def add_all_edges(self, edges):
         self.graph.add_edges_from(edges)
-    
+
+def simplify_loop( sfg: SFG, source_node, target_node ):
+    print("og graph:", sfg.graph.edges)
+
+    #verify there is a loop
+    if sfg.graph.has_edge(source_node, target_node) and sfg.graph.has_edge(target_node, source_node):
+        
+        #get edge values
+        # sfg.graph.get_edge_data(*e)['weight']
+        a = sfg.graph.get_edge_data(source_node, target_node)['weight']
+        b = sfg.graph.get_edge_data(target_node, source_node)['weight']
+
+        c = a/(1-b*c)
+        print(a, b, c)
+
+        # remove loop
+        sfg.graph.remove_edge(source_node, target_node)
+        sfg.graph.remove_edge(target_node, source_node)
+
+        # replace edge
+        # check for sign to decide direction of arrow
+        # dk if this works bc we're working w symbolic values
+        if c > 0:
+            sfg.graph.add_edge(source_node, target_node, c)
+        elif c < 0:
+            sfg.graph.add_edge(target_node, source_node, abs(c))
+        print("new graph:", sfg.graph.edges)
+    return sfg.graph
+
+
 def DPI_algorithm( circuit : cir.Circuit ):
     sfg = SFG()
     impedance_list = []
