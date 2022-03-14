@@ -275,7 +275,34 @@ def DPI_algorithm( circuit : cir.Circuit ):
     print("nodes:")
     for n in sfg.graph.nodes:
         print(n)
+
+    print('PATHS')
+    breakpoint()
+    print(nx.shortest_path(sfg.graph,'I_in', 'Vout'))
+    print(nx.shortest_path(sfg.graph,'Iscin', 'Vout'))
+    print(nx.shortest_path(sfg.graph,'Vin', 'Vout'))
+    #breakpoint()
+    
     return sfg
+
+def simplify(source, target, sfg):
+    path_nodes = nx.shortest_path(sfg.graph,source, target)
+
+    if len(path_nodes) > 3:
+        return
+
+def shiftEdge(edge, sfg, prev_edge, outward):
+    #calculate edge weight
+    weight = sfg.graph.get_edge_data(*edge)['weight'] * sfg.graph.get_edge_data(*prev_edge)['weight']
+    #if upward make new node source else target
+    if outward:
+        sfg.graph.add_edge(prev_edge[0], edge[1], weight)
+    else:
+        sfg.graph.add_edge(edge[0], prev_edge[0], weight)
+
+    sfg.graph.remove_edge(*edge) 
+    
+
 
 class SFGraph(object):
     
