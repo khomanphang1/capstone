@@ -317,11 +317,11 @@ def DPI_algorithm( circuit : cir.Circuit ):
     for n in sfg.graph.nodes:
         print(n)
 
-    print('PATHS')
-    breakpoint()
-    print(nx.shortest_path(sfg.graph,'I_in', 'Vout'))
-    print(nx.shortest_path(sfg.graph,'Iscin', 'Vout'))
-    print(nx.shortest_path(sfg.graph,'Vin', 'Vout'))
+    # print('PATHS')
+    # breakpoint()
+    # print(nx.shortest_path(sfg.graph,'I_in', 'Vout'))
+    # print(nx.shortest_path(sfg.graph,'Iscin', 'Vout'))
+    # print(nx.shortest_path(sfg.graph,'Vin', 'Vout'))
     #breakpoint()
     
     return sfg
