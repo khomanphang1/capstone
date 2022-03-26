@@ -148,7 +148,7 @@ def simplify(sfg, source, target):
             shiftEdge([path[1], node], sfg, [path[0], path[1]], True)
 
     # now simplify adjacent nodes
-    weight = sfg.get_edge_data(path[0], path[1])['weight'] * sfg.get_edge_data(path[1], path[2])['weight']
+    weight = sy.simplify(sfg.get_edge_data(path[0], path[1])['weight'] * sfg.get_edge_data(path[1], path[2])['weight'])
     sfg.remove_edge(path[0], path[1])
     sfg.remove_edge(path[1], path[2])
     sfg.add_edge(source, target, weight = weight)
@@ -165,7 +165,7 @@ def simplify_loop(sfg, source_node, target_node):
     b = sfg.get_edge_data(target_node, source_node)['weight']
 
     # calculate edge weight
-    c = a/(1-b*c)
+    c = sy.simplify(a/(1-b*a))
     print(a, b, c)
 
     # remove loop
@@ -175,16 +175,16 @@ def simplify_loop(sfg, source_node, target_node):
     # replace edge
     # check for sign to decide direction of arrow
     # dk if this works bc we're working w symbolic values
-    if c > 0:
-        sfg.add_edge(source_node, target_node, weight=c)
-    elif c < 0:
-        sfg.add_edge(target_node, source_node, weight=abs(c))
-    print("new graph:", sfg.edges)
+    # if c > 0:
+    sfg.add_edge(source_node, target_node, weight=c)
+    # elif c < 0:
+    #     sfg.add_edge(target_node, source_node, weight=abs(c))
+    # print("new graph:", sfg.edges)
     
 
 def shiftEdge(edge, sfg, prev_edge, outward):
     #calculate edge weight
-    weight = sfg.get_edge_data(edge[0], edge[1])['weight'] * sfg.get_edge_data(prev_edge[0], prev_edge[1])['weight']
+    weight = sy.simplify(sfg.get_edge_data(edge[0], edge[1])['weight'] * sfg.get_edge_data(prev_edge[0], prev_edge[1])['weight'])
     #if upward make new node source else target
     if outward:
         sfg.add_edge(prev_edge[0], edge[1], weight = weight)

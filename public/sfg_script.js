@@ -156,6 +156,7 @@ function make_sfg(elements) {
         elements: elements
     });
 
+    //make lines straight
     cy.edges().forEach((edge,idx) => {
         if((edge.sourceEndpoint().x === edge.targetEndpoint().x) || (edge.sourceEndpoint().y === edge.targetEndpoint().y)) {
             edge.css({'control-point-distance': '0'})
@@ -973,18 +974,16 @@ function simplify(){
     else if(aStar.path.edges().length > 2){
         alert('Your path is too long. Pick a path with only 2 edges');
     }
-    else if(aStar.path.edges().length < 2){
-        alert('Your path is too short. Pick a path with only 2 edges');
+    // else if(aStar.path.edges().length < 2){
+    //     alert('Your path is too short. Pick a path with only 2 edges');
+    // }
+    else {
+        console.log("requesting simplification")
+        let form_data = {}
+        form_data.source = node1.id()
+        form_data.target = node2.id()
+        sfg_simplify_request(form_data)
     }
-    else (
-        alert('will make API call')
-    )
-
-    // body for API call
-    let form_data = {}
-    form_data.source = node1.id()
-    form_data.target = node2.id()
-
-    sfg_simplify_request(form_data)
+    
 
 }
