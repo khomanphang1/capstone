@@ -85,60 +85,60 @@ class SFG():
     def add_all_edges(self, edges):
         self.graph.add_edges_from(edges)
 
-    # simiplification algorithm: takes in source and target nodes and
-    # simplifies path mathematically; only works by simplifying 1 node in between
-    def simplify(self, source, target):
+# simiplification algorithm: takes in source and target nodes and
+# simplifies path mathematically; only works by simplifying 1 node in between
+def simplify(sfg, source, target):
 
-        # get shortest path between nodes
-        # get all paths and find one with 3 nodes
-        paths = nx.all_simple_paths(self.graph, source, target)
-        path = []
-        for p in paths:
-            if len(p) == 3:
-                path = p
-                break
+    # get shortest path between nodes
+    # get all paths and find one with 3 nodes
+    paths = nx.all_simple_paths(sfg, source, target)
+    path = []
+    for p in paths:
+        if len(p) == 3:
+            path = p
+            break
 
-        # path_nodes = nx.shortest_path(self.graph, source, target)
+    # path_nodes = nx.shortest_path(self.graph, source, target)
 
-        if len(path) != 3:
-            return
-        
-        #get all connected nodes
-        connected_nodes = self.graph__getitem__(path[1])
-
-        # check for any loops and inward/outward edges
-        for node in connected_nodes:
-            
-            #Check if there is a loop, loop can be with the source or target node as well
-            if self.graph.has_edge(node, path[1]) and self.graph.has_edge(path[1], node):
-                simplify_loop(self.graph, path[1], node)
-
-            # for the next set of checks, we do not count the source or target
-            if node == source or node == target:
-                continue
-            
-            #shift inward edge
-            if self.graph.has_edge(node, path[1]):
-                edge = self.graph.get_edge_data(node, path[1])
-                # simplify any loops between nodes
-                if self.graph.has_edge(node, path[2]) and self.graph.has_edge(path[2], node):
-                    simplify_loop(self.graph, path[1], path[2])
-                prev_edge = self.graph.get_edge_data(path[1], path[2])
-                shiftEdge(edge, self.graph, prev_edge, False)
-            
-            #shift outward edge
-            else:
-                edge = self.graph.get_edge_data(path[1], node)
-                if self.graph.has_edge(node, path[0]) and self.graph.has_edge(path[0], node):
-                    simplify_loop(self.graph, path[0], path[1])
-                prev_edge = self.graph.get_edge_data(path[0], path[1])
-                shiftEdge(edge, self.graph, prev_edge, True)
+    if len(path) != 3:
+        return
     
-        # now simplify adjacent nodes
-        weight = self.graph.get_edge_data(path[0], path[1])['weight'] * self.graph.get_edge_data(path[1], path[2])['weight']
-        self.graph.remove_edge(path[0], path[1])
-        self.graph.remove_edge(path[1], path[2])
-        self.graph.add_edge(source, node, weight)
+    #get all connected nodes
+    connected_nodes = sfg.__getitem__(path[1])
+
+    # check for any loops and inward/outward edges
+    for node in connected_nodes:
+        
+        #Check if there is a loop, loop can be with the source or target node as well
+        if sfg.has_edge(node, path[1]) and sfg.has_edge(path[1], node):
+            simplify_loop(sfg, path[1], node)
+
+        # for the next set of checks, we do not count the source or target
+        if node == source or node == target:
+            continue
+        
+        #shift inward edge
+        if sfg.has_edge(node, path[1]):
+            edge = sfg.get_edge_data(node, path[1])
+            # simplify any loops between nodes
+            if sfg.has_edge(node, path[2]) and sfg.has_edge(path[2], node):
+                simplify_loop(sfg, path[1], path[2])
+            prev_edge = sfg.get_edge_data(path[1], path[2])
+            shiftEdge(edge, sfg, prev_edge, False)
+        
+        #shift outward edge
+        else:
+            edge = sfg.get_edge_data(path[1], node)
+            if sfg.has_edge(node, path[0]) and sfg.has_edge(path[0], node):
+                simplify_loop(sfg, path[0], path[1])
+            prev_edge = sfg.get_edge_data(path[0], path[1])
+            shiftEdge(edge, sfg, prev_edge, True)
+
+    # now simplify adjacent nodes
+    weight = sfg.get_edge_data(path[0], path[1])['weight'] * sfg.get_edge_data(path[1], path[2])['weight']
+    sfg.remove_edge(path[0], path[1])
+    sfg.remove_edge(path[1], path[2])
+    sfg.add_edge(source, node, weight)
 
 def simplify_loop(sfg, source_node, target_node):
     print("og graph:", sfg.edges)

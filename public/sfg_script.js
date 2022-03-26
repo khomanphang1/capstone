@@ -979,4 +979,12 @@ function simplify(){
     else (
         alert('will make API call')
     )
+
+    // body for API call
+    let form_data = {}
+    form_data.source = node1.id()
+    form_data.target = node2.id()
+
+    sfg_simplify_request(form_data)
+
 }

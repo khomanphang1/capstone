@@ -11,6 +11,7 @@ import numpy as np
 import dill
 import circuit_parser
 from dpi import DPI_algorithm as DPI
+from dpi import simplify
 import ltspice2svg
 import networkx as nx
 
@@ -499,7 +500,10 @@ class Circuit(Document):
             source: node representing start of path
             target: node representing end of the path
         """
-         # check nodes exist
-        if not self.sfg.graph.has_node(source) or not self.sfg.graph.has_node(target):
+        # De-serialize sfg
+        sfg = dill.loads(self.sfg)
+
+        # check nodes exist
+        if not self.sfg.has_node(source) or not self.sfg.has_node(target):
             raise ValueError('Node does not exist.') 
-        self.sfg.simplify(source, target)
+        simplify(self.sfg, source, target)
