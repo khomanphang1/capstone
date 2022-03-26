@@ -163,7 +163,8 @@ function make_sfg(elements) {
 
     //make lines straight
     cy.edges().forEach((edge,idx) => {
-        if((edge.sourceEndpoint().x === edge.targetEndpoint().x) || (edge.sourceEndpoint().y === edge.targetEndpoint().y)) {
+        
+        if((edge.sourceEndpoint().x === edge.targetEndpoint().x) || (edge.sourceEndpoint().y === edge.targetEndpoint().y) && edge.source().edgesWith(edge.target()).length === 1) {
             edge.css({'control-point-distance': '0'})
         }
     });
@@ -993,10 +994,6 @@ function simplify(){
         form_data.source = node1.id()
         form_data.target = node2.id()
         sfg_simplify_request(form_data)
-        simplify_mode = false;
-        document.getElementById('simplification-toggle').checked = false;
-        document.getElementById('simplify-btn').style.display = 'none';
-
     }
 }
 
