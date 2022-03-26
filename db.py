@@ -504,6 +504,7 @@ class Circuit(Document):
         sfg = dill.loads(self.sfg)
 
         # check nodes exist
-        if not self.sfg.has_node(source) or not self.sfg.has_node(target):
+        if not sfg.has_node(source) or not sfg.has_node(target):
             raise ValueError('Node does not exist.') 
-        simplify(self.sfg, source, target)
+        sfg = simplify(sfg, source, target)
+        self.sfg = dill.dumps(sfg)
