@@ -329,6 +329,30 @@ function sfg_patch_request(params) {
     })
 }
 
+// still need function to collect source and target nodes and send as param to 
+// this function
+function sfg_simplify_request(params) {
+
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/simplify`)
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        }, 
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(params)
+    })
+    .then(response => response.json())
+    .then(data => {
+        update_frontend(data)
+    })
+    .catch(error => {
+        console.log(error)
+    })
+}
+
 
 function load_interface() {
 

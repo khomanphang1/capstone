@@ -85,32 +85,84 @@ class SFG():
     def add_all_edges(self, edges):
         self.graph.add_edges_from(edges)
 
+    # simiplification algorithm: takes in source and target nodes and
+    # simplifies path mathematically; only works by simplifying 1 node in between
+    def simplify(self, source, target):
+
+        # get shortest path between nodes
+        # get all paths and find one with 3 nodes
+        paths = nx.all_simple_paths(self.graph, source, target)
+        path = []
+        for p in paths:
+            if len(p) == 3:
+                path = p
+                break
+
+        # path_nodes = nx.shortest_path(self.graph, source, target)
+
+        if len(path) != 3:
+            return
+        
+        #get all connected nodes
+        connected_nodes = self.graph__getitem__(path[1])
+
+        # check for any loops and inward/outward edges
+        for node in connected_nodes:
+            
+            #Check if there is a loop, loop can be with the source or target node as well
+            if self.graph.has_edge(node, path[1]) and self.graph.has_edge(path[1], node):
+                simplify_loop(self.graph, path[1], node)
+
+            # for the next set of checks, we do not count the source or target
+            if node == source or node == target:
+                continue
+            
+            #shift inward edge
+            if self.graph.has_edge(node, path[1]):
+                edge = self.graph.get_edge_data(node, path[1])
+                # simplify any loops between nodes
+                if self.graph.has_edge(node, path[2]) and self.graph.has_edge(path[2], node):
+                    simplify_loop(self.graph, path[1], path[2])
+                prev_edge = self.graph.get_edge_data(path[1], path[2])
+                shiftEdge(edge, self.graph, prev_edge, False)
+            
+            #shift outward edge
+            else:
+                edge = self.graph.get_edge_data(path[1], node)
+                if self.graph.has_edge(node, path[0]) and self.graph.has_edge(path[0], node):
+                    simplify_loop(self.graph, path[0], path[1])
+                prev_edge = self.graph.get_edge_data(path[0], path[1])
+                shiftEdge(edge, self.graph, prev_edge, True)
+    
+        # now simplify adjacent nodes
+        weight = self.graph.get_edge_data(path[0], path[1])['weight'] * self.graph.get_edge_data(path[1], path[2])['weight']
+        self.graph.remove_edge(path[0], path[1])
+        self.graph.remove_edge(path[1], path[2])
+        self.graph.add_edge(source, node, weight)
+
 def simplify_loop(sfg, source_node, target_node):
     print("og graph:", sfg.edges)
-
-    #verify there is a loop
-    if sfg.has_edge(source_node, target_node) and sfg.has_edge(target_node, source_node):
         
-        #get edge values
-        # sfg.graph.get_edge_data(*e)['weight']
-        a = sfg.get_edge_data(source_node, target_node)['weight']
-        b = sfg.get_edge_data(target_node, source_node)['weight']
+    #get edge values
+    a = sfg.get_edge_data(source_node, target_node)['weight']
+    b = sfg.get_edge_data(target_node, source_node)['weight']
 
-        c = a/(1-b*c)
-        print(a, b, c)
+    # calculate edge weight
+    c = a/(1-b*c)
+    print(a, b, c)
 
-        # remove loop
-        sfg.remove_edge(source_node, target_node)
-        sfg.remove_edge(target_node, source_node)
+    # remove loop
+    sfg.remove_edge(source_node, target_node)
+    sfg.remove_edge(target_node, source_node)
 
-        # replace edge
-        # check for sign to decide direction of arrow
-        # dk if this works bc we're working w symbolic values
-        if c > 0:
-            sfg.add_edge(source_node, target_node, c)
-        elif c < 0:
-            sfg.add_edge(target_node, source_node, abs(c))
-        print("new graph:", sfg.edges)
+    # replace edge
+    # check for sign to decide direction of arrow
+    # dk if this works bc we're working w symbolic values
+    if c > 0:
+        sfg.add_edge(source_node, target_node, c)
+    elif c < 0:
+        sfg.add_edge(target_node, source_node, abs(c))
+    print("new graph:", sfg.edges)
     
 
 def shiftEdge(edge, sfg, prev_edge, outward):
@@ -122,37 +174,7 @@ def shiftEdge(edge, sfg, prev_edge, outward):
     else:
         sfg.add_edge(edge[0], prev_edge[0], weight)
 
-    sfg.remove_edge(*edge) 
-
-def simplify(self, source, target):
-    path_nodes = nx.shortest_path(self.graph, source, target)
-
-    if len(path_nodes) != 3:
-        return
-    
-    #get all connected nodes
-    connected_nodes = self.graph__getitem__(path[1])
-
-    for node in connected_nodes:
-        if node == source or node == target:
-            continue
-        
-        #Check if there is a for loop
-        if self.graph.has_edge(node, path[1]) and self.graph.has_edge(path[1], node):
-            simplify_loop(self.graph, path[1], node)
-        
-        #shift inward edge
-        if self.graph.has_edge(node, path[1]):
-            edge = self.graph.get_edge_data(node, path[1])
-            prev_edge = self.graph.get_edge_data(path[1], path[2])
-            shiftEdge(edge, self.graph, prev_edge, False)
-        
-        #shift outward edge
-        else:
-            edge = self.graph.get_edge_data(path[1], node)
-            prev_edge = self.graph.get_edge_data(path[0], path[1])
-            shiftEdge(edge, self.graph, prev_edge, True)
-        
+    sfg.remove_edge(*edge)        
 
 def DPI_algorithm( circuit : cir.Circuit ):
     sfg = SFG()

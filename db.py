@@ -491,3 +491,15 @@ class Circuit(Document):
 
         # Convert numpy arrays to plain python lists.
         return freq.tolist(), gain.tolist(), phase.tolist()
+    
+    def simplify_sfg(self, source, target ):
+        """Simplify the sfg.
+
+        Args:
+            source: node representing start of path
+            target: node representing end of the path
+        """
+         # check nodes exist
+        if not self.sfg.graph.has_node(source) or not self.sfg.graph.has_node(target):
+            raise ValueError('Node does not exist.') 
+        self.sfg.simplify(source, target)
