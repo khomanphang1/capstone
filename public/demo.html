@@ -6,6 +6,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
 
+    <link rel="stylesheet" href="sfg_style.css">
+    <link rel="stylesheet" href="bode_style.css">
+    
     <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.10/lodash.js"></script>
     <script src="cytoscape-edgehandles.js"></script>
@@ -15,9 +18,6 @@
     <script src="https://unpkg.com/popper.js@1.14.7/dist/umd/popper.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape-popper@1.0.5/cytoscape-popper.min.js"></script>
     <script src="sfg_script.js" defer></script>
-    
-    <link rel="stylesheet" href="sfg_style.css">
-    <link rel="stylesheet" href="bode_style.css">
   </head>
 
   <body>
@@ -61,6 +61,10 @@
             <input type="range" min="1" max="10000" value="5000" class="custom-range" id="frequency-slider" style="width:400px;">
             </div>
             Frequency: <span id="frequency-value"></span> Hz
+          </div>
+          <div style="height: 23px;"> 
+              <input type="checkbox" id="simplification-toggle" onclick="simplify_mode_toggle()"> Simplification Mode
+              <button id="simplify-btn" style="margin-left: 20px; display: none;" onclick="simplify()">Simplify</button>
           </div>
           <div class="sfg-section">
             <h1>SFG Simulation</h1>

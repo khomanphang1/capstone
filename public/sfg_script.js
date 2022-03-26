@@ -2,6 +2,9 @@ const baseUrl = window.location.origin;
 
 const circuitId = sessionStorage.getItem('circuitId');
 
+let [simplify_mode, node1, node2] = [false, null, null];
+
+
 if (!circuitId) {
     window.location.replace('./landing.html');
 }
@@ -141,6 +144,12 @@ function make_sfg(elements) {
             style: {
             'opacity': 0
             }
+        },
+        {
+            selector: ':selected',
+            style: {
+                'background-color': '#0069d9'
+            }
         }
         ],
 
@@ -151,12 +160,37 @@ function make_sfg(elements) {
         if((edge.sourceEndpoint().x === edge.targetEndpoint().x) || (edge.sourceEndpoint().y === edge.targetEndpoint().y)) {
             edge.css({'control-point-distance': '0'})
         }
-    })
+    });
+
+
+    cy.on('tap', 'node', function(evt){
+        if(simplify_mode) {
+            let node = evt.target;
+            console.log( 'tapped ' + node.id() );
+            if (node === node1) {
+                cy.$('#'+node.id()).css({'background-color': ''})
+                node1 = null;
+            }
+            else if(node === node2) {
+                cy.$('#'+node.id()).css({'background-color': ''})
+                node2 = null;
+            }
+            else if(node1 === null){
+                cy.$('#'+node.id()).css({'background-color': '#03af03'})
+                node1 = node;
+            }
+            else if(node2 === null){
+                cy.$('#'+node.id()).css({'background-color': '#f8075a'})
+                node2 = node;
+            }
+        }
     
-    const time2 = new Date()
-    let time_elapse = (time2 - time1)/1000
-    console.log("elements:", elements)
-    console.log("SFG loading time: " + time_elapse + " seconds")
+    });
+    
+    const time2 = new Date();
+    let time_elapse = (time2 - time1)/1000;
+    console.log("elements:", elements);
+    console.log("SFG loading time: " + time_elapse + " seconds");
 }
 
 function display_mag_sfg() {
@@ -874,4 +908,51 @@ function fetch_loop_gain_bode_data(input_params) {
     .then(data => {
         make_bode_plots(data, 'loop-gain-bode-plot')
     })
+}
+
+function simplify_mode_toggle() {
+    simplify_mode = !simplify_mode;
+    simplify_btn = document.getElementById('simplify-btn');
+
+    if(!simplify_mode){
+        
+        if(node1){
+            cy.$('#'+node1.id()).css({'background-color': ''});
+            node1 = null;
+        }
+        if(node2){
+            cy.$('#'+node2.id()).css({'background-color': ''});
+            node2 = null;
+        }
+        cy.style().selector(':selected').css({'background-color': '#0069d9'}).update();
+        simplify_btn.style.display = 'none';
+        
+    }
+    else {
+        cy.style().selector(':selected').css({'background-color': '#999999'}).update();
+        simplify_btn.style.display = 'inline-block';
+    }
+}
+
+function simplify(){
+    if(node1 === null || node2 === null){
+        alert('Please select 2 nodes');
+        return;
+    }
+
+    let aStar = cy.elements().aStar({ root: '#'+node1.id(), goal: '#'+node2.id() , directed: true});
+
+    // check if there is a path
+    if(!aStar.path){
+        alert('There is no path between the selected nodes');
+    }
+    else if(aStar.path.edges().length > 2){
+        alert('Your path is too long. Pick a path with only 2 edges');
+    }
+    else if(aStar.path.edges().length < 2){
+        alert('Your path is too short. Pick a path with only 2 edges');
+    }
+    else (
+        alert('will make API call')
+    )
 }
