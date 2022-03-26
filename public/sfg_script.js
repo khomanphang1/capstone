@@ -4,6 +4,7 @@ const circuitId = sessionStorage.getItem('circuitId');
 
 let [simplify_mode, node1, node2] = [false, null, null];
 
+let stack_len = 0
 
 if (!circuitId) {
     window.location.replace('./landing.html');
@@ -16,6 +17,10 @@ let edge_symbolic_label;
 // Function to convert float to exponential
 function expo(x, f) {
   return Number.parseFloat(x).toExponential(f);
+}
+
+function disable_undo_btn(status){
+    document.getElementById("undo-btn").disabled = status;
 }
 
 function edge_helper(sample_data, flag) {
@@ -347,6 +352,11 @@ function sfg_simplify_request(params) {
     })
     .then(response => response.json())
     .then(data => {
+        if(stack_len==0){
+            disable_undo_btn(false);
+        }
+        stack_len = stack_len < 2 ? stack_len + 1 : 2
+        
         update_frontend(data)
     })
     .catch(error => {
@@ -983,7 +993,44 @@ function simplify(){
         form_data.source = node1.id()
         form_data.target = node2.id()
         sfg_simplify_request(form_data)
-    }
-    
+        simplify_mode = false;
+        document.getElementById('simplification-toggle').checked = false;
+        document.getElementById('simplify-btn').style.display = 'none';
 
+    }
+}
+
+function sfg_undo_request(params) {
+
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/undo`)
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        }, 
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(params)
+    })
+    .then(response => response.json())
+    .then(data => {
+        stack_len--;
+        if (stack_len === 0) {
+            disable_undo_btn(true);
+        }
+        update_frontend(data)
+    })
+    .catch(error => {
+        console.log(error)
+    })
+}
+
+function sfg_undo(){
+    if (stack_len > 0){
+        sfg_undo_request();
+    }
+    else {
+        disable_undo_btn(true);
+    }
 }

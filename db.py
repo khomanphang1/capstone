@@ -62,6 +62,7 @@ class Circuit(Document):
             {'fields': ['created'], 'expireAfterSeconds': 86400}
         ]
     }
+    sfg_stack = []
 
     def to_dict(self, fields: Optional[Iterable[str]] = None) -> Dict:
         """Returns a dictionary representation of the Circuit document.
@@ -500,6 +501,12 @@ class Circuit(Document):
             source: node representing start of path
             target: node representing end of the path
         """
+        #save current sfg
+        self.sfg_stack.append(self.sfg)
+        if len(self.sfg_stack) > 2:
+            self.sfg_stack = self.sfg_stack[-2:]
+
+
         # De-serialize sfg
         sfg = dill.loads(self.sfg)
 
@@ -508,3 +515,8 @@ class Circuit(Document):
             raise ValueError('Node does not exist.') 
         sfg = simplify(sfg, source, target)
         self.sfg = dill.dumps(sfg)
+
+    def undo_sfg(self):
+        if len(self.sfg_stack) > 0:
+            self.sfg = self.sfg_stack.pop()
+
