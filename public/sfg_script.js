@@ -29,26 +29,18 @@ function edge_helper(sample_data, flag) {
     let sfg_edges = []
     edge_symbolic_label = new Array(edge_length)
 
-    if (flag) {
-        return;
-        // for (i = 0; i < edge_length; i++) {
-        //     let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
-        //     new_edge.data.weight = new_edge.data.weight.symbolic
-        //     sfg_edges.push(new_edge)
-        // }
-    } else {
-        for (i = 0; i < edge_length; i++) {
-            let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
-            edge_symbolic_label[i] = new_edge.data.weight.symbolic
-            //new_edge.data.weight = new_edge.data.weight.magnitude.toFixed(2)
-            let magnitude = expo((new_edge.data.weight.magnitude), 2).toString()
-            let phase = new_edge.data.weight.phase.toFixed(2).toString()
-            let result = magnitude.concat("∠", phase);
-            //new_edge.data.weight = expo((new_edge.data.weight.magnitude), 2)
-            new_edge.data.weight = result
-            sfg_edges.push(new_edge)
-        }
+    for (i = 0; i < edge_length; i++) {
+        let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
+        edge_symbolic_label[i] = new_edge.data.weight.symbolic
+        //new_edge.data.weight = new_edge.data.weight.magnitude.toFixed(2)
+        let magnitude = expo((new_edge.data.weight.magnitude), 2).toString()
+        let phase = new_edge.data.weight.phase.toFixed(2).toString()
+        let result = magnitude.concat("∠", phase);
+        //new_edge.data.weight = expo((new_edge.data.weight.magnitude), 2)
+        new_edge.data.weight = result
+        sfg_edges.push(new_edge)
     }
+
     sfg_elements.edges = JSON.parse(JSON.stringify(sfg_edges))
     return sfg_elements
 }
@@ -357,9 +349,9 @@ function sfg_simplify_request(params) {
             disable_undo_btn(false);
         }
         stack_len = stack_len < 2 ? stack_len + 1 : 2
-        
         update_frontend(data)
         simplify_mode_toggle()
+        reset_mag_labels()
     })
     .catch(error => {
         console.log(error)
@@ -979,12 +971,14 @@ function simplify(){
         return;
     }
 
+    //find path between the selected nodes
     let aStar = cy.elements().aStar({ root: '#'+node1.id(), goal: '#'+node2.id() , directed: true});
 
-    // check if there is a path
+    //check if a path exists
     if(!aStar.path){
         alert('There is no path between the selected nodes');
     }
+    //check if the smallest possible path is larger than 2
     else if(aStar.path.edges().length > 2){
         alert('Your path is too long. Pick a path with only 2 edges');
     }
@@ -1029,5 +1023,16 @@ function sfg_undo(){
     }
     else {
         disable_undo_btn(true);
+    }
+}
+
+function reset_mag_labels(){
+    if(symbolic_flag) {
+        const symbolic_labels = document.querySelectorAll('.label');
+        symbolic_labels.forEach(label => {
+            label.remove();
+        });
+
+        display_mag_sfg();
     }
 }
