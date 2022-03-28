@@ -359,6 +359,7 @@ function sfg_simplify_request(params) {
         stack_len = stack_len < 2 ? stack_len + 1 : 2
         
         update_frontend(data)
+        simplify_mode_toggle()
     })
     .catch(error => {
         console.log(error)
@@ -947,8 +948,9 @@ function fetch_loop_gain_bode_data(input_params) {
 }
 
 function simplify_mode_toggle() {
-    simplify_mode = !simplify_mode;
     simplify_btn = document.getElementById('simplify-btn');
+    simplify_mode = !simplify_mode;
+    
 
     if(!simplify_mode){
         
@@ -962,11 +964,12 @@ function simplify_mode_toggle() {
         }
         cy.style().selector(':selected').css({'background-color': '#0069d9'}).update();
         simplify_btn.style.display = 'none';
-        
+        document.getElementById('simplification-toggle').checked = false;
     }
     else {
         cy.style().selector(':selected').css({'background-color': '#999999'}).update();
         simplify_btn.style.display = 'inline-block';
+        document.getElementById('simplification-toggle').checked = true;
     }
 }
 
@@ -985,9 +988,6 @@ function simplify(){
     else if(aStar.path.edges().length > 2){
         alert('Your path is too long. Pick a path with only 2 edges');
     }
-    // else if(aStar.path.edges().length < 2){
-    //     alert('Your path is too short. Pick a path with only 2 edges');
-    // }
     else {
         console.log("requesting simplification")
         let form_data = {}
