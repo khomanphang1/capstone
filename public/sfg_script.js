@@ -1011,6 +1011,7 @@ function sfg_undo_request(params) {
             disable_undo_btn(true);
         }
         update_frontend(data)
+        reset_mag_labels()
     })
     .catch(error => {
         console.log(error)
