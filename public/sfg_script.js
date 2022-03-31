@@ -2,6 +2,10 @@ const baseUrl = window.location.origin;
 
 const circuitId = sessionStorage.getItem('circuitId');
 
+let [simplify_mode, node1, node2] = [false, null, null];
+
+let stack_len = 0
+
 if (!circuitId) {
     window.location.replace('./landing.html');
 }
@@ -15,28 +19,28 @@ function expo(x, f) {
   return Number.parseFloat(x).toExponential(f);
 }
 
+function disable_undo_btn(status){
+    document.getElementById("undo-btn").disabled = status;
+}
+
 function edge_helper(sample_data, flag) {
     let sfg_elements = JSON.parse(JSON.stringify(sample_data.sfg.elements))
     let edge_length = sample_data.sfg.elements.edges.length
     let sfg_edges = []
     edge_symbolic_label = new Array(edge_length)
 
-    if (flag) {
-        return;
-        // for (i = 0; i < edge_length; i++) {
-        //     let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
-        //     new_edge.data.weight = new_edge.data.weight.symbolic
-        //     sfg_edges.push(new_edge)
-        // }
-    } else {
-        for (i = 0; i < edge_length; i++) {
-            let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
-            edge_symbolic_label[i] = new_edge.data.weight.symbolic
-            //new_edge.data.weight = new_edge.data.weight.magnitude.toFixed(2)
-            new_edge.data.weight = expo((new_edge.data.weight.magnitude), 2)
-            sfg_edges.push(new_edge)
-        }
+    for (i = 0; i < edge_length; i++) {
+        let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
+        edge_symbolic_label[i] = new_edge.data.weight.symbolic
+        //new_edge.data.weight = new_edge.data.weight.magnitude.toFixed(2)
+        let magnitude = expo((new_edge.data.weight.magnitude), 2).toString()
+        let phase = new_edge.data.weight.phase.toFixed(2).toString()
+        let result = magnitude.concat("∠", phase);
+        //new_edge.data.weight = expo((new_edge.data.weight.magnitude), 2)
+        new_edge.data.weight = result
+        sfg_edges.push(new_edge)
     }
+
     sfg_elements.edges = JSON.parse(JSON.stringify(sfg_edges))
     return sfg_elements
 }
@@ -77,14 +81,12 @@ function make_sfg(elements) {
             selector: 'edge',
             style: {
             'curve-style': 'unbundled-bezier',
-            'control-point-distance': '-25 20 -25',
+            'control-point-distance': '-40',
             //'curve-style': 'bezier',
             'target-arrow-shape': 'triangle',
             'content': 'data(weight)',
-            'text-margin-y': '20px',
-            'text-margin-x': '20px',
-            // 'source-text-margin-y': '20px',
-            // 'target-text-margin-y': '20px'
+            'text-outline-width': '4',
+            'text-outline-color': '#E8E8E8'
             }
         },
 
@@ -139,17 +141,55 @@ function make_sfg(elements) {
             style: {
             'opacity': 0
             }
+        },
+        {
+            selector: ':selected',
+            style: {
+                'background-color': '#0069d9'
+            }
         }
         ],
 
         elements: elements
     });
-    
 
-    const time2 = new Date()
-    let time_elapse = (time2 - time1)/1000
-    console.log("elements:", elements)
-    console.log("SFG loading time: " + time_elapse + " seconds")
+    //make lines straight
+    cy.edges().forEach((edge,idx) => {
+        
+        if((edge.sourceEndpoint().x === edge.targetEndpoint().x) || (edge.sourceEndpoint().y === edge.targetEndpoint().y) && edge.source().edgesWith(edge.target()).length === 1) {
+            edge.css({'control-point-distance': '0'})
+        }
+    });
+
+
+    cy.on('tap', 'node', function(evt){
+        if(simplify_mode) {
+            let node = evt.target;
+            console.log( 'tapped ' + node.id() );
+            if (node === node1) {
+                cy.$('#'+node.id()).css({'background-color': ''})
+                node1 = null;
+            }
+            else if(node === node2) {
+                cy.$('#'+node.id()).css({'background-color': ''})
+                node2 = null;
+            }
+            else if(node1 === null){
+                cy.$('#'+node.id()).css({'background-color': '#03af03'})
+                node1 = node;
+            }
+            else if(node2 === null){
+                cy.$('#'+node.id()).css({'background-color': '#f8075a'})
+                node2 = node;
+            }
+        }
+    
+    });
+    
+    const time2 = new Date();
+    let time_elapse = (time2 - time1)/1000;
+    console.log("elements:", elements);
+    console.log("SFG loading time: " + time_elapse + " seconds");
 }
 
 function display_mag_sfg() {
@@ -167,6 +207,7 @@ function display_mag_sfg() {
             //div.classList.add('popper-div');
             div.id = 'edge-' + idx;
             div.style.cssText = `font-size:${cy.zoom()*16 + 'px'};font-weight:400;`
+            
             div.classList.add('label')
         
             div.innerHTML = '$$' + edge_symbolic_label[idx] + '$$';
@@ -231,7 +272,7 @@ function make_parameter_panel(parameters) {
         parameter.name = key
         parameter.id = key
         parameter.placeholder = key + ": " + parameters[key].toExponential()
-        parameter.step = 0.000001
+        parameter.step = 0.000000000000001
         
         pf.appendChild(parameter)
         pf.appendChild(br.cloneNode())
@@ -281,6 +322,36 @@ function sfg_patch_request(params) {
     .then(response => response.json())
     .then(data => {
         update_frontend(data)
+    })
+    .catch(error => {
+        console.log(error)
+    })
+}
+
+// still need function to collect source and target nodes and send as param to 
+// this function
+function sfg_simplify_request(params) {
+
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/simplify`)
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        }, 
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(params)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(stack_len==0){
+            disable_undo_btn(false);
+        }
+        stack_len = stack_len < 2 ? stack_len + 1 : 2
+        update_frontend(data)
+        simplify_mode_toggle()
+        reset_mag_labels()
     })
     .catch(error => {
         console.log(error)
@@ -357,11 +428,15 @@ async function sfg_toggle() {
             document.getElementById("frequency-slider").disabled = true;
         }
 
-        let url = new URL(`${baseUrl}/circuits/${circuitId}`)
-        const response = await fetch(url)
-        let data = await response.json()
+        // let url = new URL(`${baseUrl}/circuits/${circuitId}`)
+        // const response = await fetch(url)
+        // let data = await response.json()
 
         //remove existing magnitude labels
+
+        const time1 = new Date()
+    
+
         const symbolic_labels = document.querySelectorAll('.label');
         symbolic_labels.forEach(label => {
             label.remove();
@@ -373,6 +448,11 @@ async function sfg_toggle() {
         else {
             window.cy.style().selector('edge').css({'content': 'data(weight)'}).update();
         }
+
+        const time2 = new Date()
+
+        let time_elapse = (time2 - time1)/1000
+        console.log("SFG loading time (symbolic and magnitude toggle): " + time_elapse + " seconds")
         
         
     } catch {
@@ -577,6 +657,8 @@ function make_transfer_bode_panel() {
     for (key in element_type_dict) {
         var form_child = document.createElement("input")
         form_child.type = element_type_dict[key]
+        if (element_type_dict[key] == "number")
+            form_child.step = 0.000000000000001
         form_child.name = key
         form_child.id = key
         let new_str = key.replace(/_/g, " ");
@@ -824,6 +906,8 @@ function make_loop_gain_bode_panel() {
     for (key in element_type_dict) {
         var form_child = document.createElement("input")
         form_child.type = element_type_dict[key]
+        if (element_type_dict[key] == "number")
+            form_child.step = 0.000000000000001
         form_child.name = key
         form_child.id = key
         let new_str = key.replace(/_/g, " ");
@@ -892,4 +976,103 @@ function fetch_loop_gain_bode_data(input_params) {
     .then(data => {
         make_bode_plots(data, 'loop-gain-bode-plot')
     })
+}
+
+function simplify_mode_toggle() {
+    simplify_btn = document.getElementById('simplify-btn');
+    simplify_mode = !simplify_mode;
+    
+
+    if(!simplify_mode){
+        
+        if(node1){
+            cy.$('#'+node1.id()).css({'background-color': ''});
+            node1 = null;
+        }
+        if(node2){
+            cy.$('#'+node2.id()).css({'background-color': ''});
+            node2 = null;
+        }
+        cy.style().selector(':selected').css({'background-color': '#0069d9'}).update();
+        simplify_btn.style.display = 'none';
+        document.getElementById('simplification-toggle').checked = false;
+    }
+    else {
+        cy.style().selector(':selected').css({'background-color': '#999999'}).update();
+        simplify_btn.style.display = 'inline-block';
+        document.getElementById('simplification-toggle').checked = true;
+    }
+}
+
+function simplify(){
+    if(node1 === null || node2 === null){
+        alert('Please select 2 nodes');
+        return;
+    }
+
+    //find path between the selected nodes
+    let aStar = cy.elements().aStar({ root: '#'+node1.id(), goal: '#'+node2.id() , directed: true});
+
+    //check if a path exists
+    if(!aStar.path){
+        alert('There is no path between the selected nodes');
+    }
+    //check if the smallest possible path is larger than 2
+    else if(aStar.path.edges().length > 2){
+        alert('Your path is too long. Pick a path with only 2 edges');
+    }
+    else {
+        console.log("requesting simplification")
+        let form_data = {}
+        form_data.source = node1.id()
+        form_data.target = node2.id()
+        sfg_simplify_request(form_data)
+    }
+}
+
+function sfg_undo_request(params) {
+
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/undo`)
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        }, 
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(params)
+    })
+    .then(response => response.json())
+    .then(data => {
+        stack_len--;
+        if (stack_len === 0) {
+            disable_undo_btn(true);
+        }
+        update_frontend(data)
+        reset_mag_labels()
+    })
+    .catch(error => {
+        console.log(error)
+    })
+}
+
+function sfg_undo(){
+    if (stack_len > 0){
+        sfg_undo_request();
+    }
+    else {
+        disable_undo_btn(true);
+    }
+}
+
+function reset_mag_labels(){
+    if(symbolic_flag) {
+        const symbolic_labels = document.querySelectorAll('.label');
+        symbolic_labels.forEach(label => {
+            label.remove();
+        });
+
+        display_mag_sfg();
+    }
 }

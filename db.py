@@ -11,6 +11,7 @@ import numpy as np
 import dill
 import circuit_parser
 from dpi import DPI_algorithm as DPI
+from dpi import simplify
 import ltspice2svg
 import networkx as nx
 
@@ -61,6 +62,7 @@ class Circuit(Document):
             {'fields': ['created'], 'expireAfterSeconds': 86400}
         ]
     }
+    sfg_stack = []
 
     def to_dict(self, fields: Optional[Iterable[str]] = None) -> Dict:
         """Returns a dictionary representation of the Circuit document.
@@ -101,7 +103,7 @@ class Circuit(Document):
                 sfg.edges[src, dst]['weight'] = {
                     'symbolic': sympy.latex(symbolic) if isinstance(symbolic, sympy.Expr) else str(symbolic),
                     'magnitude': magnitude,
-                    'phase': phase
+                    'phase': phase*(180/cmath.pi)
                 }
 
             output['sfg'] = nx.cytoscape_data(sfg)
@@ -491,3 +493,30 @@ class Circuit(Document):
 
         # Convert numpy arrays to plain python lists.
         return freq.tolist(), gain.tolist(), phase.tolist()
+    
+    def simplify_sfg(self, source, target ):
+        """Simplify the sfg.
+
+        Args:
+            source: node representing start of path
+            target: node representing end of the path
+        """
+        #save current sfg
+        self.sfg_stack.append(self.sfg)
+        if len(self.sfg_stack) > 2:
+            self.sfg_stack = self.sfg_stack[-2:]
+
+
+        # De-serialize sfg
+        sfg = dill.loads(self.sfg)
+
+        # check nodes exist
+        if not sfg.has_node(source) or not sfg.has_node(target):
+            raise ValueError('Node does not exist.') 
+        sfg = simplify(sfg, source, target)
+        self.sfg = dill.dumps(sfg)
+
+    def undo_sfg(self):
+        if len(self.sfg_stack) > 0:
+            self.sfg = self.sfg_stack.pop()
+
