@@ -618,8 +618,8 @@ function make_frequency_bounds() {
     form.addEventListener("submit", event => {
         event.preventDefault()
 
-        let min = document.querySelector('#min-range').value
-        let max = document.querySelector('#max-range').value
+        let min = Number(document.querySelector('#min-range').value)
+        let max = Number(document.querySelector('#max-range').value)
 
         if (min >= 0 && max >= 0 && min < max){
             document.getElementById("frequency-slider").min = min
