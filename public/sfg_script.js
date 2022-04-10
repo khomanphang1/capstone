@@ -266,12 +266,14 @@ function make_parameter_panel(parameters) {
     pf.id = "input-form"
 
     var br = document.createElement("br");
-
+    var freq = 0
     for (let key in parameters) {
         var parameter = document.createElement("input")
         parameter.type = "number"
         parameter.name = key
         parameter.id = key
+        if(key == 'f')
+            freq = parameters[key]
         parameter.placeholder = key + ": " + parameters[key].toExponential()
         parameter.step = 0.000000000000001
         
@@ -283,6 +285,10 @@ function make_parameter_panel(parameters) {
     s.setAttribute("type", "submit")
     s.setAttribute("value", "Submit Form")
     pf.appendChild(s)
+
+    console.log(freq)
+    output.innerHTML = freq
+    frequency_slider.value = freq
 
     //add event listener
     pf.addEventListener("submit", async function (event) {
