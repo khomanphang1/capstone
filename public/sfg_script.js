@@ -19,10 +19,13 @@ function expo(x, f) {
   return Number.parseFloat(x).toExponential(f);
 }
 
+// Status of undo button for simplification
 function disable_undo_btn(status){
     document.getElementById("undo-btn").disabled = status;
 }
 
+// Function that parses the graph sent as a JSON from the backend
+// into a cytoscape graph
 function edge_helper(sample_data, flag) {
     let sfg_elements = JSON.parse(JSON.stringify(sample_data.sfg.elements))
     let edge_length = sample_data.sfg.elements.edges.length
@@ -32,11 +35,11 @@ function edge_helper(sample_data, flag) {
     for (i = 0; i < edge_length; i++) {
         let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
         edge_symbolic_label[i] = new_edge.data.weight.symbolic
-        //new_edge.data.weight = new_edge.data.weight.magnitude.toFixed(2)
+        // Represent magnitude with 2 decimal points exponent
         let magnitude = expo((new_edge.data.weight.magnitude), 2).toString()
         let phase = new_edge.data.weight.phase.toFixed(2).toString()
+        // Transmittance in polar form
         let result = magnitude.concat("∠", phase);
-        //new_edge.data.weight = expo((new_edge.data.weight.magnitude), 2)
         new_edge.data.weight = result
         sfg_edges.push(new_edge)
     }
@@ -155,7 +158,6 @@ function make_sfg(elements) {
 
     //make lines straight
     cy.edges().forEach((edge,idx) => {
-        
         if((edge.sourceEndpoint().x === edge.targetEndpoint().x) || (edge.sourceEndpoint().y === edge.targetEndpoint().y) && edge.source().edgesWith(edge.target()).length === 1) {
             edge.css({'control-point-distance': '0'})
         }
@@ -183,7 +185,6 @@ function make_sfg(elements) {
                 node2 = node;
             }
         }
-    
     });
     
     const time2 = new Date();
@@ -322,6 +323,45 @@ function sfg_patch_request(params) {
     .then(response => response.json())
     .then(data => {
         update_frontend(data)
+    })
+    .catch(error => {
+        console.log(error)
+    })
+}
+
+// Sends a patch request to the backend and updates edge weights
+// on the graph without re rendering the entire graph
+// same as sfg_patch_request but without update_frontend
+function sfg_patch_request_without_rerender(params) {
+
+    let fields = "id,name,parameters,sfg,svg"
+
+    let url = new URL(`${baseUrl}/circuits/${circuitId}`)
+    url.searchParams.append("fields", fields)
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(params)
+    })
+    .then(response => response.json())
+    .then(data => {
+        let cy = window.cy;
+        let curr_elements = edge_helper(data, symbolic_flag).edges
+        curr_elements.forEach(edge=>{
+            let text = 'edge[source = "'
+            text = text.concat(edge.data.source)
+            text = text.concat('"]')
+            text = text.concat('[target = "')
+            text = text.concat(edge.data.target)
+            text = text.concat('"]')
+            value = edge.data.weight
+            cy.elements(text).data('weight', value)
+        })
     })
     .catch(error => {
         console.log(error)
@@ -489,11 +529,13 @@ var output = document.getElementById("frequency-value");
 output.innerHTML = frequency_slider.value;
 
 frequency_slider.oninput = function() {
-    output.innerHTML = this.value;          // get current value of frequency from frequency slider
+    output.innerHTML = frequency_slider.value;
     let form_data = {}
     form_data['f'] = parseInt(this.value);  // populate form with frequency request
-    sfg_patch_request(form_data);           // send patch request to backend,
-                                            // this function receives new values and redraws sfg
+    sfg_patch_request_without_rerender(form_data);      // send patch request to backend,
+                                                        // this function receives new values
+                                                        // and updates sfg edges
+    document.querySelector('input#f').placeholder = 'f' + ": " + expo(this.value,2)
 }
 
 
@@ -624,6 +666,8 @@ function make_frequency_bounds() {
         if (min >= 0 && max >= 0 && min < max){
             document.getElementById("frequency-slider").min = min
             document.getElementById("frequency-slider").max = max
+            document.getElementById('min-range').placeholder=expo(min,2).toString()
+            document.getElementById('max-range').placeholder=expo(max,2).toString()
         }
         else {
             alert("input invalid")
@@ -632,7 +676,6 @@ function make_frequency_bounds() {
 
     document.getElementById("frequency-form").appendChild(form)
 }
-
 
 
 function make_transfer_bode_panel() {
