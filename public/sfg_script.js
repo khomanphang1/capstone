@@ -3,6 +3,7 @@ const baseUrl = window.location.origin;
 const circuitId = sessionStorage.getItem('circuitId');
 
 let [simplify_mode, node1, node2] = [false, null, null];
+let [highlight_mode, hlt_src, hlt_tgt] = [false, null, null];
 
 let stack_len = 0
 
@@ -151,8 +152,69 @@ function make_sfg(elements) {
                 'background-color': '#0069d9'
             }
         }
-        ],
+        ,
+        {   // Style for the most dominant path
+            selector: '.highlighted',
+              style: {
+                'background-color': 'red',
+                'line-color': 'red',
+                'target-arrow-color': 'red',
+                'transition-property': 'background-color, line-color, target-arrow-color',
+                'transition-duration': '0.1s'
+              }
+        },
 
+        {   // Style for cycles within the path
+            selector: '.cycle',
+              style: {
+                'background-color': 'blue',
+                'line-color': 'blue',
+                'target-arrow-color': 'blue',
+                'transition-property': 'background-color, line-color, target-arrow-color',
+                'transition-duration': '0.1s'
+              }
+        },
+        {   // Style for the weakest path
+            selector: '.weak_path',
+              style: {
+                'background-color': 'yellow',
+                'line-color': 'yellow',
+                'target-arrow-color': 'yellow',
+                'transition-property': 'background-color, line-color, target-arrow-color',
+                'transition-duration': '0.1s'
+              }
+        },
+        {   // Style for the common edges
+            selector: '.common_edge',
+              style: {
+                'background-color': 'purple',
+                'line-color': 'purple',
+                'target-arrow-color': 'purple',
+                'transition-property': 'background-color, line-color, target-arrow-color',
+                'transition-duration': '0.1s'
+              }
+        },
+        {   // Source Node for the Dominant path finder
+            selector: '.pink',
+              style: {
+                'background-color': '#d90069',
+                'line-color': '#d90069',
+                'target-arrow-color': '#d90069',
+                'transition-property': 'background-color, line-color, target-arrow-color',
+                'transition-duration': '0.1s'
+              }
+        },
+        {   // Target node for dominant path finder
+            selector: '.green',
+              style: {
+                'background-color': '#2E8B57',
+                'line-color': '#2E8B57',
+                'target-arrow-color': '#2E8B57',
+                'transition-property': 'background-color, line-color, target-arrow-color',
+                'transition-duration': '0.1s'
+              }
+        }
+        ],
         elements: elements
     });
 
@@ -161,6 +223,7 @@ function make_sfg(elements) {
         if((edge.sourceEndpoint().x === edge.targetEndpoint().x) || (edge.sourceEndpoint().y === edge.targetEndpoint().y) && edge.source().edgesWith(edge.target()).length === 1) {
             edge.css({'control-point-distance': '0'})
         }
+
     });
 
 
@@ -185,12 +248,199 @@ function make_sfg(elements) {
                 node2 = node;
             }
         }
+        if(highlight_mode){
+            let node = evt.target;
+            console.log( 'tapped ' + node.id() );
+            if (node === hlt_src) {
+                cy.$('#'+node.id()).css({'background-color': ''})
+                hlt_src = null;
+            }
+            else if(node === hlt_tgt) {
+                cy.$('#'+node.id()).css({'background-color': ''})
+                hlt_tgt = null;
+            }
+            else if(hlt_src === null){
+                cy.$('#'+node.id()).css({'background-color': '#03af03'})
+                hlt_src = node;
+            }
+            else if(hlt_tgt === null){
+                cy.$('#'+node.id()).css({'background-color': '#f8075a'})
+                hlt_tgt = node;
+            }
+            if(hlt_src != null & hlt_tgt != null){
+                console.log("Time to highlight:)")
+                HighlightPath()
+            }else{
+                removeHighlightPrevious()
+            }
+        }
     });
     
     const time2 = new Date();
     let time_elapse = (time2 - time1)/1000;
     console.log("elements:", elements);
     console.log("SFG loading time: " + time_elapse + " seconds");
+}
+
+function HighlightPath(){
+    var node = hlt_src;
+    var target = hlt_tgt
+    var paths_found = 0;
+    var elementsToSearch = cy.elements;
+    var searchedAlready = [];
+    var MakesPath = [];
+    paths = []
+    cycles = []
+    removeHighlightPrevious()
+
+    // source is a node
+    // destination is a node
+    const findPathsToTarget = function(source, destination, searchedAlready, path){
+          let connected = source.outgoers().edges()
+          searchedAlready.push(source.id())
+          let new_path = [...path];
+          var result = false;
+          if(connected.length != 0){
+            // find direct connections
+            connected.forEach(this_edge => {
+                if(this_edge.target().id() == destination.id()){
+                    // concatenate edge
+                    const found_path = new_path.concat([this_edge]);
+                    paths_found = paths_found + 1
+                    paths.push(found_path)
+                    result = true
+                }
+                else{
+                    // check if node already visited within path
+                    visited = false
+                    new_path.forEach(e => {if(e.target().id() == this_edge.target().id()){visited = true;}})
+
+                    if(visited == true){
+                        cycles.push(this_edge)
+                        return false;
+                    }
+                    else{
+                        const explore_path = new_path.concat([this_edge]);
+                        if(findPathsToTarget(this_edge.target(), destination, searchedAlready, explore_path)){
+                            result = true;
+                            MakesPath.push(this_edge.target().id())
+                        }
+                    }
+                }
+            });
+          }
+          if(result == true){
+            return true;
+          }else{
+            return false;
+          }
+    };
+
+    if(findPathsToTarget(node, target, searchedAlready, [])){
+        let index = 0;
+        let min_index = -1;
+        let max_index = -1;
+        let max_gain = 0;
+        let min_gain = Infinity;
+        console.log("Paths found = " + paths_found)
+        gains = []
+        paths.forEach(path => {
+            let total_gain = 1.0
+            path.forEach(gain=>{
+                let weight = gain.data('weight')
+                weight = weight.split('∠');
+                total_gain = total_gain * Number(weight[0])
+            })
+            gains.push(total_gain)
+            if(total_gain < min_gain){
+                min_index = index;
+                min_gain = total_gain;
+            }
+            if(total_gain > max_gain){
+                max_index = index;
+                max_gain = total_gain;
+            }
+            index = index + 1;
+      })
+        if(min_index != -1){
+            paths[min_index].forEach(gain=>{
+                gain.addClass('weak_path')
+                if(gain.target().id() != target.id() & gain.target().id() != node.id()){
+                    gain.target().addClass('weak_path')
+                }
+                if(gain.source().id() != node.id() & gain.source().id() != target.id()){
+                    gain.source().addClass('weak_path')
+                }
+            })
+        }
+        if(max_index != -1){
+            paths[max_index].forEach(gain=>{
+                gain.addClass('highlighted')
+                if(gain.target().id() != target.id() & gain.target().id() != node.id()){
+                    gain.target().addClass('highlighted')
+                }
+                if(gain.source().id() != node.id() & gain.source().id() != target.id()){
+                    gain.source().addClass('highlighted')
+                }
+          })
+      }
+        if(max_index != -1 & min_index != -1){
+             const filteredArray = paths[max_index].filter(value => paths[min_index].includes(value));
+             filteredArray.forEach(path=>{
+                 path.addClass('common_edge')
+                 if(path.target().id() != target.id())
+                    path.target().addClass('common_edge')
+                 if(path.source().id() != node.id())
+                    path.source().addClass('common_edge')
+             })
+        }
+        cycles.forEach(cycle=>{
+            if(MakesPath.includes(cycle.target().id())){
+                cycle.removeClass('weak_path')
+                cycle.removeClass('common_edge')
+                cycle.removeClass('highlighted')
+                cycle.addClass('cycle')
+            }
+        })
+        console.log('Cycle found: ')
+        console.log(cycles)
+        console.log('Paths found: ')
+        console.log(paths)
+        console.log('Gains: ')
+        console.log(gains)
+      }
+}
+
+function removeHighlightPrevious(){
+    let cy = window.cy;
+    cy.elements().forEach((element,idx) => {
+            element.removeClass('highlighted');
+            element.removeClass('cycle');
+            element.removeClass('weak_path');
+            element.removeClass('pink');
+            element.removeClass('green');
+            element.removeClass('common_edge');
+      })
+}
+
+function removeHighlight(){
+    let cy = window.cy;
+    if(hlt_tgt){
+        cy.$('#'+hlt_tgt.id()).css({'background-color': ''});
+        hlt_tgt = null
+    }
+    if(hlt_src){
+        cy.$('#'+hlt_src.id()).css({'background-color': ''});
+        hlt_src = null
+    }
+    cy.elements().forEach((element,idx) => {
+            element.removeClass('highlighted');
+            element.removeClass('cycle');
+            element.removeClass('weak_path');
+            element.removeClass('pink');
+            element.removeClass('green');
+            element.removeClass('common_edge');
+      })
 }
 
 function display_mag_sfg() {
@@ -328,6 +578,7 @@ function sfg_patch_request(params) {
     })
     .then(response => response.json())
     .then(data => {
+        removeHighlight()
         update_frontend(data)
     })
     .catch(error => {
@@ -356,6 +607,7 @@ function sfg_patch_request_without_rerender(params) {
     })
     .then(response => response.json())
     .then(data => {
+        removeHighlight()
         let cy = window.cy;
         let curr_elements = edge_helper(data, symbolic_flag).edges
         curr_elements.forEach(edge=>{
@@ -627,8 +879,6 @@ function make_transfer_func(input_node, output_node) {
         MathJax.typeset()
     })
 }
-
-
 function make_schematics(data) {
     if (data.svg == null) {
         console.log("no SVG available")
@@ -1027,6 +1277,19 @@ function fetch_loop_gain_bode_data(input_params) {
     })
 }
 
+function path_highlight_toggle() {
+    highlight_mode = !highlight_mode;
+    if(!highlight_mode){
+        removeHighlight()
+        document.getElementById('simplification-toggle').checked = false;
+        document.getElementById('simplification-toggle').disabled = false;
+    }else{
+        node1 = null
+        node2 = null
+        document.getElementById('simplification-toggle').disabled = true;
+    }
+}
+
 function simplify_mode_toggle() {
     simplify_btn = document.getElementById('simplify-btn');
     simplify_mode = !simplify_mode;
@@ -1045,8 +1308,15 @@ function simplify_mode_toggle() {
         cy.style().selector(':selected').css({'background-color': '#0069d9'}).update();
         simplify_btn.style.display = 'none';
         document.getElementById('simplification-toggle').checked = false;
+        document.getElementById('path-highlight-toggle').disabled = false;
+        document.getElementById('rmv-hlt-btn').disabled = false;
     }
     else {
+        removeHighlight()
+        document.getElementById('path-highlight-toggle').checked = false;
+        document.getElementById('path-highlight-toggle').disabled = true;
+        document.getElementById('rmv-hlt-btn').disabled = true;
+
         cy.style().selector(':selected').css({'background-color': '#999999'}).update();
         simplify_btn.style.display = 'inline-block';
         document.getElementById('simplification-toggle').checked = true;
