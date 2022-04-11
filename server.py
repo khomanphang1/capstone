@@ -63,8 +63,6 @@ def create_circuit():
 @app.route('/circuits/<circuit_id>', methods=['PATCH'])
 def patch_circuit(circuit_id):
     circuit = db.Circuit.objects(id=circuit_id).first()
-    breakpoint()
-
     if not circuit:
         abort(404, description='Circuit not found')
 
