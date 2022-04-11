@@ -423,11 +423,15 @@ function HighlightPath(){
         console.log(paths)
         console.log('Gains: ')
         console.log(gains)
+        document.getElementById("dominant").textContent = expo(max_gain,2);
+        document.getElementById("weak").textContent = expo(min_gain,2);
       }
 }
 
 function removeHighlightPrevious(){
     let cy = window.cy;
+    document.getElementById("dominant").textContent = "N/A";
+    document.getElementById("weak").textContent = "N/A";
     cy.elements().forEach((element,idx) => {
             element.removeClass('highlighted');
             element.removeClass('cycle');
@@ -440,6 +444,8 @@ function removeHighlightPrevious(){
 
 function removeHighlight(){
     let cy = window.cy;
+    document.getElementById("dominant").textContent = "N/A";
+    document.getElementById("weak").textContent = "N/A";
     if(hlt_tgt){
         cy.$('#'+hlt_tgt.id()).css({'background-color': ''});
         hlt_tgt = null

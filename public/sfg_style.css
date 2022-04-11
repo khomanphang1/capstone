@@ -138,3 +138,14 @@ $custom-range-thumb-disabled-bg: #adb5bd;
   }
 
 }
+
+
+/* basic positioning */
+.legend { list-style: none; }
+.legend li { float: left; margin-right: 10px; }
+.legend span { border: 1px solid #ccc; float: middle; width: 12px; height: 12px; margin: 2px; }
+/* your colors */
+.legend .superawesome { background-color: red; }
+.legend .awesome { background-color: yellow; }
+.legend .kindaawesome { background-color: purple; }
+.legend .notawesome { background-color: blue; }
