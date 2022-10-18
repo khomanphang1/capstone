@@ -290,7 +290,8 @@ function HighlightPath(){
     var searchedAlready = [];
     var MakesPath = [];
     paths = []
-    cycles = []
+    cycle_edge_in_path = []
+    actual_cycles = []
     removeHighlightPrevious()
 
     // source is a node
@@ -313,13 +314,22 @@ function HighlightPath(){
                 else{
                     // check if node already visited within path
                     visited = false
-                    new_path.forEach(e => {if(e.target().id() == this_edge.target().id()){visited = true;}})
+                    var edge_index = 0
+                    // changed to source and checked if it came back to itself
+                    new_path.forEach(e => {
+                        if(e.source().id() == this_edge.target().id() || this_edge.target().id() == this_edge.source().id()){
+                            visited = true;
+                            let new_cycle = new_path.slice(edge_index)
+                            new_cycle.push(this_edge)
+                            actual_cycles.push(new_cycle)
+                            console.log("In here!")
+                            console.log(new_cycle)
+                            cycle_edge_in_path.push(e)
+                        }
+                        edge_index = edge_index + 1
+                    })
 
-                    if(visited == true){
-                        cycles.push(this_edge)
-                        return false;
-                    }
-                    else{
+                    if(visited == false){
                         const explore_path = new_path.concat([this_edge]);
                         if(findPathsToTarget(this_edge.target(), destination, searchedAlready, explore_path)){
                             result = true;
@@ -337,6 +347,7 @@ function HighlightPath(){
     };
 
     if(findPathsToTarget(node, target, searchedAlready, [])){
+        MakesPath.push(node.id())
         let index = 0;
         let min_index = -1;
         let max_index = -1;
@@ -394,16 +405,20 @@ function HighlightPath(){
                     path.source().addClass('common_edge')
              })
         }
-        cycles.forEach(cycle=>{
-            if(MakesPath.includes(cycle.target().id())){
-                cycle.removeClass('weak_path')
-                cycle.removeClass('common_edge')
-                cycle.removeClass('highlighted')
-                cycle.addClass('cycle')
+        var cycle_index = 0
+        cycle_edge_in_path.forEach(cycle=>{
+            if(MakesPath.includes(cycle.target().id()) && MakesPath.includes(cycle.source().id())){
+                console.log('Cycle found: ')
+                console.log(actual_cycles[cycle_index])
+                actual_cycles[cycle_index].forEach(cycle_edge=>{
+                    cycle_edge.removeClass('weak_path')
+                    cycle_edge.removeClass('common_edge')
+                    cycle_edge.removeClass('highlighted')
+                    cycle_edge.addClass('cycle')
+                })
             }
+            cycle_index = cycle_index + 1
         })
-        console.log('Cycle found: ')
-        console.log(cycles)
         console.log('Paths found: ')
         console.log(paths)
         console.log('Gains: ')
