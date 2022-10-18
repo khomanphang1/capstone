@@ -95,17 +95,23 @@ def simplify(sfg, source, target):
     paths = nx.all_simple_paths(sfg, source, target)
     path = []
     for p in paths:
-        if len(p) == 3:
+        if len(p) == 2:
+            if sfg.has_edge(source, target) and sfg.has_edge(target, source):
+                simplify_loop(sfg, source, target)
+                return sfg
+
+        elif len(p) == 3:
             print("found path that is len 3")
             path = p
             break
+
 
     # path_nodes = nx.shortest_path(self.graph, source, target)
     print(len(path))
 
     # return response: path not found 
     if len(path) != 3:
-        return
+        return "Path is too short"
     
     #get all connected nodes
     in_edges = sfg.in_edges(path[1])
@@ -120,7 +126,10 @@ def simplify(sfg, source, target):
         #Check if there is a loop, loop can be with the source or target node as well
         if sfg.has_edge(node, path[1]) and sfg.has_edge(path[1], node):
             print("path has loop")
-            simplify_loop(sfg, path[1], node)
+            if node == source:
+                simplify_loop(sfg, node, path[1])
+            else:
+                simplify_loop(sfg, path[1], node)
 
         # for the next set of checks, we do not count the source or target
         if node == source or node == target:

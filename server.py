@@ -1,4 +1,5 @@
-from flask import Flask, request, abort, send_from_directory
+from cgitb import text
+from flask import Flask, request, abort, send_from_directory, Response
 from flask_cors import CORS
 from distutils.util import strtobool
 
@@ -62,7 +63,6 @@ def create_circuit():
 @app.route('/circuits/<circuit_id>', methods=['PATCH'])
 def patch_circuit(circuit_id):
     circuit = db.Circuit.objects(id=circuit_id).first()
-
     if not circuit:
         abort(404, description='Circuit not found')
 
@@ -232,10 +232,11 @@ def simplify_circuit(circuit_id):
     source = request.json.get('source')
     target = request.json.get('target')
 
-    circuit.simplify_sfg(source, target)
-    circuit.save()
 
     try:
+        circuit.simplify_sfg(source, target)
+        circuit.save()
+
         fields = request.args.get(
             'fields',
             type=lambda s: s and s.split(',') or None
@@ -244,7 +245,7 @@ def simplify_circuit(circuit_id):
         return circuit.to_dict(fields)
 
     except Exception as e:
-        abort(400, description=str(e))
+        abort(status=400, text=str(e))
 
 @app.route('/circuits/<circuit_id>/undo', methods=['PATCH'])
 def undo_sfg(circuit_id):

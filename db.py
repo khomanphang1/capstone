@@ -506,14 +506,17 @@ class Circuit(Document):
         if len(self.sfg_stack) > 2:
             self.sfg_stack = self.sfg_stack[-2:]
 
-
         # De-serialize sfg
         sfg = dill.loads(self.sfg)
 
         # check nodes exist
-        if not sfg.has_node(source) or not sfg.has_node(target):
-            raise ValueError('Node does not exist.') 
+        if not sfg or not sfg.has_node(source) or not sfg.has_node(target):
+            raise Exception('Node does not exist.') 
+            
         sfg = simplify(sfg, source, target)
+        if not sfg or sfg == "Path is too short":
+            raise Exception('The selected path is too short') 
+
         self.sfg = dill.dumps(sfg)
 
     def undo_sfg(self):
