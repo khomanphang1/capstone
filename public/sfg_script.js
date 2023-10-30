@@ -279,7 +279,7 @@ function make_sfg(elements) {
     const time2 = new Date();
     let time_elapse = (time2 - time1)/1000;
     console.log("elements:", elements);
-    console.log("SFG loading time: " + time_elapse + " seconds");
+    console.log("make_sfg SFG loading time: " + time_elapse + " seconds");
 }
 
 function HighlightPath(){
@@ -524,7 +524,7 @@ function display_mag_sfg() {
     cy.style().selector('edge').css({'content': ''}).update()
     const time2 = new Date()
     let time_elapse = (time2 - time1)/1000
-    console.log("SFG loading time: " + time_elapse + " seconds")
+    console.log("display_mag_sfg SFG loading time: " + time_elapse + " seconds")
 }
 
 
@@ -892,16 +892,30 @@ function make_transfer_func(input_node, output_node) {
     let params = {input_node: input_node, output_node: output_node, latex: latex_toggle,
         factor: factor_toggle, numerical: numerical_toggle}
     var url = new URL(`${baseUrl}/circuits/${circuitId}/transfer_function`)
-    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]))
+    console.log('url: ', url)
+    console.log("URL before appending parameters:", url.href);
+    Object.keys(params).forEach(key => {
+        const value = params[key].toString();
+        url.searchParams.append(key, value);
+    });
+    console.log("Final URL with parameters:", url.href);
     fetch(url)
-    .then(response => response.json())
+    // .then(response => response.json())
+    .then(response => {
+        console.log('Response Type:', response.type);
+        return response.json();
+    })
     .then(data => {
         var trans = document.getElementById("trans-funtion")
         let latex_trans = "\\(" + data.transfer_function + "\\)"
         trans.innerHTML = latex_trans
+        console.log(data)
         //reset MathJax
         MathJax.typeset()
     })
+    .catch(error => {
+        console.error('Error:', error);
+    });
 }
 function make_schematics(data) {
     if (data.svg == null) {

@@ -2,13 +2,29 @@
 	<head>
 		<meta charset="utf-8">
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">
-		<link rel="stylesheet" type="text/css" href="landing.css">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>SigFlow</title>
+        <link rel="stylesheet" type="text/css" href="landing.css">
+        <!-- <script src="landing.js" defer></script> -->
 	</head>
 
 	<body>
 		<div class="absolute-center shadow-lg text-center">
 			<h1>SigFlow</h1><br>
             <p>Analyze and visualize analog circuits using signal-flow graph.</p><br>
+            
+            <!-- Button to open the modal -->
+            <button id="open-modal-button">Open Tutorial</button>
+            
+            <!-- Tutorial message container (initially hidden) -->
+            <div id="tutorial-modal" class="modal">
+                <div class="modal-content">
+                    <h2>Step 1: Circuit File Upload</h2>
+                    <p>Upload your circuit file here.</p>
+                    <button id="next-button">Next</button>
+                </div>
+            </div>
+
             <form id="uploadForm">
                 <div class="form-group">
                     <label for="formControlNetlistFile">Netlist File (.cir)</label>
@@ -24,7 +40,17 @@
                 </div>
                 <button type="submit" class="btn btn-primary">Start Application</button>
             </form>
+            <!-- <div id="tutorial-modal" class="modal">
+                <div class="modal-content">
+                    <h2>Step 1: Circuit File Upload</h2>
+                    <p>Upload your circuit file here.</p>
+                    <button id="next-button">Next</button>
+                </div>
+            </div> -->
+            
+            
         </div>
+        
         <script src="landing.js" defer></script>
 	</body>
 </html>
