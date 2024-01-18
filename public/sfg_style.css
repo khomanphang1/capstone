@@ -26,9 +26,8 @@ body {
       margin-top: 10px;
   }
 
-  .sfg-section {
+  .sfg_section {
     position: relative;
-    /* border: 1px solid black; */
   }
 
   .panels {
