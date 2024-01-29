@@ -1,0 +1,70 @@
+Circuit: * /Users/mark17/Desktop/ /Canada/uoft/yr4_23-24/fall 23/ece496/capstone/test_data/Sedra_Smith_6Ed_Example_10.4_10pF_5pF_1pF.asc
+
+Direct Newton iteration for .op point succeeded.
+Semiconductor Device Operating Points:
+                        --- MOSFET Transistors ---
+Name:          m1          m2
+Model:       nmos0p5     nmos0p5
+Id:          2.01e-03    1.79e-03
+Vgs:         2.00e+00    1.95e+00
+Vds:         1.95e+00    1.94e+00
+Vbs:         0.00e+00    0.00e+00
+Vth:         1.00e+00    1.00e+00
+Vdsat:       1.00e+00    9.46e-01
+Gm:          4.01e-03    3.78e-03
+Gds:         2.01e-08    1.79e-08
+Gmb:         0.00e+00    0.00e+00
+Cbd:         0.00e+00    0.00e+00
+Cbs:         0.00e+00    0.00e+00
+Cgsov:       0.00e+00    0.00e+00
+Cgdov:       0.00e+00    0.00e+00
+Cgbov:       0.00e+00    0.00e+00
+Cgs:         0.00e+00    0.00e+00
+Cgd:         0.00e+00    0.00e+00
+Cgb:         0.00e+00    0.00e+00
+
+
+Operating Bias Point Solution:
+V(vout)            1.93806   voltage
+V(vd1)            1.94622   voltage
+V(vin)                  2   voltage
+V(vs1)         -0.0013338   voltage
+V(n002)                  2   voltage
+V(n001)                 22   voltage
+Id(M1)         0.00200538   device_current
+Ig(M1)                  0   device_current
+Ib(M1)       -1.95756e-12   device_current
+Is(M1)        -0.00200538   device_current
+Id(M2)         0.00179071   device_current
+Ig(M2)                  0   device_current
+Ib(M2)       -1.94806e-12   device_current
+Is(M2)        -0.00179071   device_current
+I(C3)        -1.3338e-27   device_current
+I(C2)        9.69031e-24   device_current
+I(C1)        1.94622e-23   device_current
+I(I1)          0.0022222   device_current
+I(R4)         0.00200619   device_current
+I(R3)         0.00200538   device_current
+I(R2)        0.000215488   device_current
+I(R1)        -1.3338e-06   device_current
+I(V3)                  0   device_current
+I(V2)        -0.00401157   device_current
+I(V1)                  0   device_current
+
+
+Date: Wed Nov 22 21:14:44 2023
+Total elapsed time: 0.045 seconds.
+
+tnom = 27
+temp = 27
+method = trap
+totiter = 15
+traniter = 0
+tranpoints = 0
+accept = 0
+rejected = 0
+matrix size = 9
+fillins = 0
+solver = Normal
+Matrix Compiler1:      21 opcodes
+Matrix Compiler2:      54 opcodes

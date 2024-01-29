@@ -1,0 +1,23 @@
+* /Users/rafyakhan/Downloads/Sedra_Smith_6Ed_Example_10.4_10pF_5pF_1pF.asc
+M2 vout vd1 0 0 NMOS0P5 l=10u w=200u
+M1 vd1 vin vs1 vs1 NMOS0P5 l=10u w=200u
+V1 vin N002 PULSE(0 1m 0 1n 1n 300n 600n 3) AC 1
+R1 vs1 0 1k
+R2 vout vs1 9k
+R3 N001 vd1 10k
+R4 N001 vout 10k
+V2 N001 0 22V
+I1 vs1 0 2.2222m
+V3 N002 0 2V
+C1 vd1 0 10p
+C2 vout 0 5p
+C3 vs1 0 1p
+.model NMOS NMOS
+.model PMOS PMOS
+.lib /Users/rafyakhan/Library/Application Support/LTspice/lib/cmp/standard.mos
+* Sedra & Smith Example 10.4 (6th Edition)
+.model	NMOS0P5	NMOS(Level=1 VTO=1.0 KP=2E-4 LAMBDA=0.00001)
+;.op
+.tran 0 500n
+.backanno
+.end
