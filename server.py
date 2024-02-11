@@ -2,6 +2,9 @@ from cgitb import text
 from flask import Flask, request, abort, send_from_directory, Response
 from flask_cors import CORS
 from distutils.util import strtobool
+import tempfile
+import dill
+import json
 
 import db
 
@@ -268,6 +271,55 @@ def undo_sfg(circuit_id):
     except Exception as e:
         abort(400, description=str(e))
 
+
+# For SFG Export
+@app.route('/circuits/<circuit_id>/export', methods=['GET'])
+def get_sfg(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    sfg = circuit.get_current_sfg()
+    try:
+        '''
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+        '''
+        #return circuit.to_dict(fields)
+        return sfg
+
+    except Exception as e:
+        abort(400, description=str(e))
+
+
+
+# TODO import needs implementation
+@app.route('/circuits/<circuit_id>/import', methods=['PATCH'])
+def import_sfg(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    sfg_obj = request.json.get('sfg')
+    #print(sfg_obj) GOT JSON OBJ
+    # TODO
+    #circuit.import_sfg(sfg_obj)
+    # need circuit.save()?
+
+    try:
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+
+        return circuit.to_dict(fields)
+
+    except Exception as e:
+        abort(400, description=str(e))
 
 if __name__ == '__main__':
     app.run()

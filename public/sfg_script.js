@@ -1433,3 +1433,105 @@ function reset_mag_labels(){
         display_mag_sfg();
     }
 }
+
+function export_sfg(){
+    export_sfg_request();
+}
+
+function export_sfg_request() {
+    // get current deserialized (non binary) sfg, and export as json
+
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/export`)
+
+    fetch(url)
+        .then(response => {
+            return response.json();
+        })
+        .then(data => {
+            console.log("EXported json obj is: ", data);
+            download(JSON.stringify(data), "SFG_deserialized");
+        })
+        .catch(error => {
+            console.log(error)
+        })
+
+}
+
+// Function to download data to a file
+function download(data, filename, type) {
+    var file = new Blob([data], {type: type});
+    if (window.navigator.msSaveOrOpenBlob) // IE10+
+        window.navigator.msSaveOrOpenBlob(file, filename);
+    else { // Others
+        var a = document.createElement("a"),
+                url = URL.createObjectURL(file);
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);   
+        a.click();
+        setTimeout(function() {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);  
+        }, 0); 
+    }
+}
+
+
+function upload_sfg() {
+    // TODO add error checking (i.e. is file in correct json format)
+    var files = document.getElementById('upload_sfg').files;
+    console.log(files);
+    if (files.length <= 0) {
+        return false;
+    }
+
+    var fr = new FileReader();
+    var sfg_obj;
+    fr.onload = function(e) { 
+        console.log(e);
+        sfg_obj = JSON.parse(e.target.result);
+        // TODO alert() here
+        //var res_str = JSON.stringify(result, null, 2);
+        console.log("IMPORTED json obj is: ", sfg_obj)
+        //console.log(JSON.parse(JSON.stringify(sfg_obj.sfg.elements)))
+        // TODO connect to backend to convert sfg JSON to sfg graph and binary field
+        import_sfg_request(sfg_obj)
+    }
+
+    fr.readAsText(files.item(0));
+}
+
+
+function import_sfg_request(sfg_obj) {
+
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/import`)
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        }, 
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(sfg_obj)
+    })
+    .then(response => response.json())
+    .then(data => {
+        // TODO update_frontend(data);
+        //or update_frontend(sfg_obj, true); ?
+       
+        /*
+        data_json = JSON.parse(JSON.stringify(data));
+        data_json.sfg = sfg_obj;
+
+        console.log("modified data is: ");
+        console.log(data_json);
+        update_frontend(data_json); //buggy
+        */
+       
+        update_frontend(sfg_obj, true);
+    })
+    .catch(error => {
+        console.log(error)
+    })
+}
