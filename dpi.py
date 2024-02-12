@@ -246,7 +246,7 @@ def DPI_algorithm( circuit : cir.Circuit ):
                     impedance += " + " + ("(s*"+circuit.multigraph.edges[n,ne,k]['component'].name +")" if isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.Capacitor) else "1/" + circuit.multigraph.edges[n,ne,k]['component'].name)
                 print("here!!!!!!!!!")   
                 if (ne != "0" and ne.lower() != "vcc") or isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentVoltageSource) or isinstance( circuit.multigraph.edges[n,ne,k]['component'], cir.VoltageDependentCurrentSource ):
-                    
+                    # REFACTOR POS_NODE AND NEG_NODE TO BE i_in_node AND i_out_node
                     print("inside!!!")
                     if not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentCurrentSource) and not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageSource) and not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.CurrentSource) and not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentVoltageSource):
                         
@@ -266,16 +266,55 @@ def DPI_algorithm( circuit : cir.Circuit ):
                                 sfg.graph.add_edge(cur_source , cur_target , weight = "+ 1 " )
                     elif isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentCurrentSource):
                         print("found volage dependent current source!!")
-                        cur_target = "Isc" + n[1:].lower() if n.startswith("V") else "Isc" + n.lower()
+                        """
+                        currently, only works for grounded transistor -> doesn't consider the other direction
+                        sol:
+                            - check if one terminal of transistor (VDCS) is grounded
+                            - if yes:
+                                    only need one instance of the vdcs
+                                    ex: gm * vd 
+                            - if no:
+                                    need a two instances, one for each end
+                                    ex: gm * vds => gm * vd and -gm * vs (in opposite direction
+
+                           n -> Vs1
+                        g = VoltageDependentCurrentSource(
+                            f'G_{self.name}',
+                            self.source,
+                            self.drain,
+                            self.gate,
+                            self.source,
+                            g_m
+                        )
+                    class VoltageDependentVoltageSource(Component, TwoTerminal):
+                        _prefix = 'e'
+                        def __init__(self, name: str,
+                                    pos_node: str,
+                                    neg_node: str,
+                                    pos_input_node: str,
+                                    neg_input_node: str,
+                                    gain: Union[str, float]):
+""" 
+            
+                        
+                        cur_target = "Isc" + n[1:].lower() if n.startswith("V") else "Isc" + n.lower() 
                         pos_input_node = circuit.multigraph.edges[n,ne,k]['component'].pos_input_node
-                        neg_input_node = circuit.multigraph.edges[n,ne,k]['component'].neg_node
+                        neg_input_node = circuit.multigraph.edges[n,ne,k]['component'].neg_input_node
                         cur_source_1 = "V" + pos_input_node.lower() if not pos_input_node.startswith("V") else pos_input_node
                         if sfg.graph.has_edge(cur_source_1, cur_target):
                             sfg.graph.edges[cur_source_1, cur_target]['weight'] += (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].neg_node else " + ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name)
                         else:
                             print("adding edge:", cur_source_1, cur_target)
                             sfg.graph.add_edge( cur_source_1, cur_target , weight = (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].neg_node else " + ")  + str(circuit.multigraph.edges[n,ne,k]['component'].name))
-                            
+
+                        # try adding edge from neg_input node to cur_target -> swapping positive node and negative to get the second pass
+                        cur_source_2 =    "V" + + neg_input_node.lower() if not neg_input_node.startswith("V") else neg_input_node
+                        if sfg.graph.has_edge(cur_source_2, cur_target):
+                            sfg.graph.edges[cur_source_2, cur_target]['weight'] += (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " + ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name)
+                        else:
+                            print("adding edge:", cur_source_2, cur_target)
+                            sfg.graph.add_edge( cur_source_2, cur_target , weight = (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " + ")  + str(circuit.multigraph.edges[n,ne,k]['component'].name))
+
                         
                     elif isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentVoltageSource):
                         cur_target = "V" + n[1:].lower() if n.startswith("V") else "V" + n.lower()
