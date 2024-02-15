@@ -1442,17 +1442,26 @@ function export_sfg_request() {
     // get current deserialized (non binary) sfg, and export as json
 
     let url = new URL(`${baseUrl}/circuits/${circuitId}/export`)
+    console.log(url)
+    fetch(url, {
+        method: "get",
+        mode: "no-cors",
 
-    fetch(url)
+    })
         .then(response => {
-            return response.json();
+            return response.blob();
         })
-        .then(data => {
-            console.log("EXported json obj is: ", data);
-            download(JSON.stringify(data), "SFG_deserialized");
+        .then(blob => {
+            console.log("EXported json obj is: ", blob);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${circuitId}-export.pkl`;
+            a.click();
+            URL.revokeObjectURL(url);
         })
         .catch(error => {
-            console.log(error)
+            console.log('File Download Failed', error)
         })
 
 }
@@ -1501,7 +1510,6 @@ function upload_sfg() {
     fr.readAsText(files.item(0));
 }
 
-
 function import_sfg_request(sfg_obj) {
 
     let url = new URL(`${baseUrl}/circuits/${circuitId}/import`)
@@ -1535,3 +1543,54 @@ function import_sfg_request(sfg_obj) {
         console.log(error)
     })
 }
+
+function upload_dill_sfg() {
+    // TODO add error checking (i.e. is file in correct json format)
+    var files = document.getElementById('upload_sfg').files;
+    console.log(files);
+    if (files.length <= 0) {
+        return false;
+    }
+    var dill_sfg = files[0];
+    console.log(dill_sfg);
+    var fr = new FileReader();
+    var sfg_obj;
+    fr.onload = function(e) { 
+        console.log("IMPORTED dill obj is: ", dill_sfg)
+        //console.log(JSON.parse(JSON.stringify(sfg_obj.sfg.elements)))
+        // TODO connect to backend to convert sfg JSON to sfg graph and binary field
+        import_dill_sfg(dill_sfg)
+    }
+
+    fr.readAsText(files.item(0));
+}
+
+function import_dill_sfg(dill_sfg) {
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/import`)
+
+    var formData = new FormData();
+    formData.append("file", dill_sfg);
+
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // TODO update_frontend(data);
+        //or update_frontend(sfg_obj, true); ?
+       
+        
+        data_json = JSON.parse(JSON.stringify(data));
+        // data_json.sfg = sfg_obj;
+        
+        console.log("modified data is: ");
+        console.log(data_json);
+        update_frontend(data_json); //buggy
+        
+    
+        // update_frontend(sfg_obj, true);
+    })
+    .catch(error => {
+        console.log(error)
+    })}
