@@ -603,6 +603,7 @@ function sfg_patch_request(params) {
     .then(response => response.json())
     .then(data => {
         removeHighlight()
+        console.log(data)
         update_frontend(data)
     })
     .catch(error => {
@@ -1580,7 +1581,6 @@ function import_dill_sfg(dill_sfg) {
         // TODO update_frontend(data);
         //or update_frontend(sfg_obj, true); ?
        
-        
         data_json = JSON.parse(JSON.stringify(data));
         // data_json.sfg = sfg_obj;
         
