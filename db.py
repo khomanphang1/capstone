@@ -557,3 +557,19 @@ class Circuit(Document):
         # serialize sfg graph obj to binary field and set to self.sfg
         sfg_serialized = dill.dumps(sfg_graph_obj)
         self.sfg = sfg_serialized
+
+    def import_circuit(self, new_circuit):
+        self.name = new_circuit.name
+        self.svg = new_circuit.svg
+        self.schematic = new_circuit.schematic
+        self.netlist = new_circuit.netlist
+        self.op_point_log = new_circuit.op_point_log
+        self.parameters = new_circuit.parameters
+        self.sfg = new_circuit.sfg
+        self.transfer_functions = new_circuit.transfer_functions
+        self.loop_gain = new_circuit.loop_gain
+        self.created = new_circuit.created
+        self.sfg_stack = new_circuit.sfg_stack
+        self.save()
+
+        return self

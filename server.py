@@ -350,13 +350,14 @@ def import_dill_sfg(circuit_id):
     loaded_sfg = dill.load(request.files['file'])
     print(loaded_sfg)
     print(type(loaded_sfg))
-    imported_circuit = dill.dumps(loaded_sfg)
-    print(imported_circuit)
+    # imported_circuit = dill.dumps(loaded_sfg)
+    circuit.import_circuit(loaded_sfg)
+    # print(imported_circuit)
     #print(sfg_obj) GOT JSON OBJ
     # TODO
     #circuit.import_sfg(sfg_obj)
-    circuit = loaded_sfg
-    circuit.save()
+    # circuit = loaded_sfg
+    # circuit.save()
     # need circuit.save()?
 
     try:
