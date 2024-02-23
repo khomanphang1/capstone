@@ -523,3 +523,53 @@ class Circuit(Document):
         if len(self.sfg_stack) > 0:
             self.sfg = self.sfg_stack.pop()
 
+    def get_current_sfg(self):
+        return self.deserialize_sfg()
+
+    # SFG binary field --> graph (json object)
+    def deserialize_sfg(self):
+        output = {}
+        sfg = dill.loads(self.sfg) # binary to obj (deserialization)
+        freq = 2j * math.pi * sympy.Symbol('f')
+
+        for src, dst in sfg.edges:
+            symbolic = sfg.edges[src, dst]['weight']
+
+            if isinstance(symbolic, sympy.Expr):
+                numeric = symbolic.subs('s', freq).subs(self.parameters)
+            else:
+                numeric = symbolic
+
+            magnitude, phase = cmath.polar(numeric)
+
+            sfg.edges[src, dst]['weight'] = {
+                'symbolic': sympy.latex(symbolic) if isinstance(symbolic, sympy.Expr) else str(symbolic),
+                'magnitude': magnitude,
+                'phase': phase*(180/cmath.pi)
+            }
+
+        output['sfg'] = nx.cytoscape_data(sfg)
+        return output
+
+    def import_sfg(self, sfg_obj):
+        # TODO make sfg_obj (dictionary obj) --> sfg graph obj
+
+        # serialize sfg graph obj to binary field and set to self.sfg
+        sfg_serialized = dill.dumps(sfg_graph_obj)
+        self.sfg = sfg_serialized
+
+    def import_circuit(self, new_circuit):
+        self.name = new_circuit.name
+        self.svg = new_circuit.svg
+        self.schematic = new_circuit.schematic
+        self.netlist = new_circuit.netlist
+        self.op_point_log = new_circuit.op_point_log
+        self.parameters = new_circuit.parameters
+        self.sfg = new_circuit.sfg
+        self.transfer_functions = new_circuit.transfer_functions
+        self.loop_gain = new_circuit.loop_gain
+        self.created = new_circuit.created
+        self.sfg_stack = new_circuit.sfg_stack
+        self.save()
+
+        return self

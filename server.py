@@ -1,7 +1,10 @@
 from cgitb import text
-from flask import Flask, request, abort, send_from_directory, Response, jsonify
+from flask import Flask, request, abort, send_from_directory, Response, send_file, jsonify
 from flask_cors import CORS
 from distutils.util import strtobool
+import tempfile
+import dill
+import json
 
 import db
 
@@ -303,6 +306,105 @@ def undo_sfg(circuit_id):
     except Exception as e:
         abort(400, description=str(e))
 
+
+# For SFG Export
+@app.route('/circuits/<circuit_id>/export', methods=['GET'])
+def get_sfg(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    sfg = circuit.get_current_sfg()
+    parameters = circuit.parameters
+
+    tmp_file = tempfile.NamedTemporaryFile()
+    dill_circuit = dill.dumps(circuit)
+    print(dill_circuit)
+    print(dill.loads(dill_circuit))
+    dill.dump(circuit, tmp_file)
+    tmp_file.seek(0)    
+    try:
+        '''
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+        '''
+        #return circuit.to_dict(fields)
+        #return sfg
+        return send_file(tmp_file, mimetype='pkl')
+
+
+    except Exception as e:
+        abort(400, description=str(e))
+
+
+
+# # TODO import needs implementation
+# @app.route('/circuits/<circuit_id>/import', methods=['PATCH'])
+# def import_sfg(circuit_id):
+#     circuit = db.Circuit.objects(id=circuit_id).first()
+
+#     if not circuit:
+#         abort(404, description='Circuit not found')
+
+#     sfg_obj = request.json.get('sfg')
+#     #print(sfg_obj) GOT JSON OBJ
+#     # TODO
+#     #circuit.import_sfg(sfg_obj)
+#     # need circuit.save()?
+
+#     try:
+#         fields = request.args.get(
+#             'fields',
+#             type=lambda s: s and s.split(',') or None
+#         )
+
+#         return circuit.to_dict(fields)
+
+#     except Exception as e:
+#         abort(400, description=str(e))
+
+# if __name__ == '__main__':
+#     app.run()
+
+# TODO import needs implementation
+@app.route('/circuits/<circuit_id>/import', methods=['POST'])
+def import_dill_sfg(circuit_id):
+    print("NICE")
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        print("circuit DNE")
+        abort(404, description='Circuit not found')
+
+    print(request)
+    print("trying this out!")
+    print(request.files)
+    loaded_sfg = dill.load(request.files['file'])
+    print(loaded_sfg)
+    print(type(loaded_sfg))
+    # imported_circuit = dill.dumps(loaded_sfg)
+    circuit.import_circuit(loaded_sfg)
+    # print(imported_circuit)
+    #print(sfg_obj) GOT JSON OBJ
+    # TODO
+    #circuit.import_sfg(sfg_obj)
+    # circuit = loaded_sfg
+    # circuit.save()
+    # need circuit.save()?
+
+    try:
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+
+        return circuit.to_dict(fields)
+
+    except Exception as e:
+        abort(400, description=str(e))
 
 if __name__ == '__main__':
     app.run(debug=True)

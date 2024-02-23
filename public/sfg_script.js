@@ -1486,3 +1486,164 @@ function reset_mag_labels(){
         display_mag_sfg();
     }
 }
+
+function export_sfg(){
+    export_sfg_request();
+}
+
+function export_sfg_request() {
+    // get current deserialized (non binary) sfg, and export as json
+
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/export`)
+    console.log(url)
+    fetch(url, {
+        method: "get",
+        mode: "no-cors",
+
+    })
+        .then(response => {
+            return response.blob();
+        })
+        .then(blob => {
+            console.log("EXported json obj is: ", blob);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${circuitId}-export.pkl`;
+            a.click();
+            URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+            console.log('File Download Failed', error)
+        })
+
+}
+
+// Function to download data to a file
+function download(data, filename, type) {
+    var file = new Blob([data], {type: type});
+    if (window.navigator.msSaveOrOpenBlob) // IE10+
+        window.navigator.msSaveOrOpenBlob(file, filename);
+    else { // Others
+        var a = document.createElement("a"),
+                url = URL.createObjectURL(file);
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);   
+        a.click();
+        setTimeout(function() {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);  
+        }, 0); 
+    }
+}
+
+
+function upload_sfg() {
+    // TODO add error checking (i.e. is file in correct json format)
+    var files = document.getElementById('upload_sfg').files;
+    console.log(files);
+    if (files.length <= 0) {
+        return false;
+    }
+
+    var fr = new FileReader();
+    var sfg_obj;
+    fr.onload = function(e) { 
+        console.log(e);
+        sfg_obj = JSON.parse(e.target.result);
+        // TODO alert() here
+        //var res_str = JSON.stringify(result, null, 2);
+        console.log("IMPORTED json obj is: ", sfg_obj)
+        //console.log(JSON.parse(JSON.stringify(sfg_obj.sfg.elements)))
+        // TODO connect to backend to convert sfg JSON to sfg graph and binary field
+        import_sfg_request(sfg_obj)
+    }
+
+    fr.readAsText(files.item(0));
+}
+
+function import_sfg_request(sfg_obj) {
+
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/import`)
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        }, 
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(sfg_obj)
+    })
+    .then(response => response.json())
+    .then(data => {
+        // TODO update_frontend(data);
+        //or update_frontend(sfg_obj, true); ?
+       
+        /*
+        data_json = JSON.parse(JSON.stringify(data));
+        data_json.sfg = sfg_obj;
+
+        console.log("modified data is: ");
+        console.log(data_json);
+        update_frontend(data_json); //buggy
+        */
+       
+        update_frontend(sfg_obj, true);
+    })
+    .catch(error => {
+        console.log(error)
+    })
+}
+
+function upload_dill_sfg() {
+    // TODO add error checking (i.e. is file in correct json format)
+    var files = document.getElementById('upload_sfg').files;
+    console.log(files);
+    if (files.length <= 0) {
+        return false;
+    }
+    var dill_sfg = files[0];
+    console.log(dill_sfg);
+    var fr = new FileReader();
+    var sfg_obj;
+    fr.onload = function(e) { 
+        console.log("IMPORTED dill obj is: ", dill_sfg)
+        //console.log(JSON.parse(JSON.stringify(sfg_obj.sfg.elements)))
+        // TODO connect to backend to convert sfg JSON to sfg graph and binary field
+        import_dill_sfg(dill_sfg)
+    }
+
+    fr.readAsText(files.item(0));
+}
+
+function import_dill_sfg(dill_sfg) {
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/import`)
+
+    var formData = new FormData();
+    formData.append("file", dill_sfg);
+
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // TODO update_frontend(data);
+        //or update_frontend(sfg_obj, true); ?
+       
+        
+        data_json = JSON.parse(JSON.stringify(data));
+        // data_json.sfg = sfg_obj;
+        
+        console.log("modified data is: ");
+        console.log(data_json);
+        update_frontend(data_json); //buggy
+        
+    
+        // update_frontend(sfg_obj, true);
+    })
+    .catch(error => {
+        console.log(error)
+    })}
