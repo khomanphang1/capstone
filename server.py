@@ -1,5 +1,5 @@
 from cgitb import text
-from flask import Flask, request, abort, send_from_directory, Response
+from flask import Flask, request, abort, send_from_directory, Response, jsonify
 from flask_cors import CORS
 from distutils.util import strtobool
 
@@ -104,7 +104,7 @@ def get_transfer_function(circuit_id):
             latex=latex,
             factor=factor,
             numerical=numerical,
-            cache_result=True
+            cache_result=False
         )
 
     except Exception as e:
@@ -112,7 +112,23 @@ def get_transfer_function(circuit_id):
 
     circuit.save()
 
-    return {'transfer_function': transfer_function}
+     # Return the loop gain as a JSON response with appropriate Cache-Control header
+    response = jsonify({'transfer_function': transfer_function})
+
+    # Disable caching for the response
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'  # HTTP 1.1
+    response.headers['Pragma'] = 'no-cache'  # HTTP 1.0
+    response.headers['Expires'] = '0'  # Proxies
+
+    # print out the response
+    print("response: " + str(response))
+    # print("response get_data: " + response.get_data())
+    # # print out the response with headers
+    # print("response.headers: " + response.headers)
+
+    return response
+
+    # return {'transfer_function': transfer_function}
 
 
 @app.route('/circuits/<circuit_id>/transfer_function/bode', methods=['GET'])
@@ -175,7 +191,7 @@ def get_loop_gain(circuit_id):
             latex=latex,
             factor=factor,
             numerical=numerical,
-            cache_result=True
+            cache_result=False
         )
 
     except Exception as e:
@@ -183,7 +199,26 @@ def get_loop_gain(circuit_id):
 
     circuit.save()
 
-    return {'loop_gain': loop_gain}
+    # # Return the loop gain as a JSON response
+    # return jsonify({'loop_gain': loop_gain})
+    # # return {'loop_gain': loop_gain}
+
+    # Return the loop gain as a JSON response with appropriate Cache-Control header
+    response = jsonify({'loop_gain': loop_gain})
+    # response.headers['Cache-Control'] = 'no-store'  # Prevent caching
+
+    # Disable caching for the response
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'  # HTTP 1.1
+    response.headers['Pragma'] = 'no-cache'  # HTTP 1.0
+    response.headers['Expires'] = '0'  # Proxies
+
+    # print out the response
+    print("response: " + str(response))
+    # print("response get_data: " + response.get_data())
+    # # print out the response with headers
+    # print("response.headers: " + response.headers)
+
+    return response
 
 
 @app.route('/circuits/<circuit_id>/loop_gain/bode', methods=['GET'])
@@ -270,4 +305,4 @@ def undo_sfg(circuit_id):
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
