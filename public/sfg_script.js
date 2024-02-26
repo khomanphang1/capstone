@@ -893,6 +893,11 @@ function make_transfer_func(input_node, output_node) {
     let params = {input_node: input_node, output_node: output_node, latex: latex_toggle,
         factor: factor_toggle, numerical: numerical_toggle}
     var url = new URL(`${baseUrl}/circuits/${circuitId}/transfer_function`)
+
+    // print the base url
+    console.log('base url: ', baseUrl)
+
+    // print the created url
     console.log('url: ', url)
     console.log("URL before appending parameters:", url.href);
     Object.keys(params).forEach(key => {
@@ -900,13 +905,21 @@ function make_transfer_func(input_node, output_node) {
         url.searchParams.append(key, value);
     });
     console.log("Final URL with parameters:", url.href);
+    
     fetch(url)
-    // .then(response => response.json())
     .then(response => {
-        console.log('Response Type:', response.type);
+        if (!response.ok) {
+            // If response is not ok (i.e., in error status range), reject the promise
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        // If response is ok, return JSON promise
         return response.json();
     })
     .then(data => {
+        console.log("data");
+        console.log(data);
+        console.log("transfer function data:", data.transfer_function);
+        // Handle the JSON data
         var trans = document.getElementById("trans-funtion")
         let latex_trans = "\\(" + data.transfer_function + "\\)"
         trans.innerHTML = latex_trans
@@ -915,8 +928,27 @@ function make_transfer_func(input_node, output_node) {
         MathJax.typeset()
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('make_transfer_func error:', error);
+        console.log('make_transfer_func Full response:', error.response);
     });
+    
+    // fetch(url)
+    // // .then(response => response.json())
+    // .then(response => {
+    //     console.log('Response Type:', response.type);
+    //     return response.json();
+    // })
+    // .then(data => {
+    //     var trans = document.getElementById("trans-funtion")
+    //     let latex_trans = "\\(" + data.transfer_function + "\\)"
+    //     trans.innerHTML = latex_trans
+    //     console.log(data)
+    //     //reset MathJax
+    //     MathJax.typeset()
+    // })
+    // .catch(error => {
+    //     console.error('Error:', error);
+    // });
 }
 function make_schematics(data) {
     if (data.svg == null) {
@@ -1193,15 +1225,36 @@ function make_bode_plots(data, dom_element) {
 
 function make_loop_gain() {
     var url = new URL(`${baseUrl}/circuits/${circuitId}/loop_gain`)
+
+    // print the base url
+    console.log("base url:", baseUrl);
+
+    // print out the created url
+    console.log("url:", url.href)
     fetch(url)
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            // If response is not ok (i.e., in error status range), reject the promise
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        // If response is ok, return the JSON promise
+        return response.json();
+    })
     .then(data => {
+        console.log("data");
+        console.log(data);
+        console.log("loop gain data:", data.loop_gain);
         var loop_gain = document.getElementById("loop-gain")
         let latex_loop_gain = "\\(" + data.loop_gain + "\\)"
         loop_gain.innerHTML = latex_loop_gain
         //reset MathJax
         MathJax.typeset()
     })
+    .catch(error => {
+        // Handle errors
+        console.error('make_loop_gain Fetch error:', error);
+        console.log('make_loop_gain Full response:', error.response);
+    });
 
 }
 
@@ -1581,6 +1634,7 @@ function import_dill_sfg(dill_sfg) {
         // TODO update_frontend(data);
         //or update_frontend(sfg_obj, true); ?
        
+        
         data_json = JSON.parse(JSON.stringify(data));
         // data_json.sfg = sfg_obj;
         
