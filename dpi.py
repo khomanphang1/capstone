@@ -296,7 +296,7 @@ def DPI_algorithm( circuit : cir.Circuit ):
                                     gain: Union[str, float]):
 """ 
             
-                        
+                        # pass A
                         cur_target = "Isc" + n[1:].lower() if n.startswith("V") else "Isc" + n.lower() 
                         pos_input_node = circuit.multigraph.edges[n,ne,k]['component'].pos_input_node
                         neg_input_node = circuit.multigraph.edges[n,ne,k]['component'].neg_input_node
@@ -308,7 +308,8 @@ def DPI_algorithm( circuit : cir.Circuit ):
                             sfg.graph.add_edge( cur_source_1, cur_target , weight = (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].neg_node else " + ")  + str(circuit.multigraph.edges[n,ne,k]['component'].name))
 
                         # try adding edge from neg_input node to cur_target -> swapping positive node and negative to get the second pass
-                        cur_source_2 =    "V" + + neg_input_node.lower() if not neg_input_node.startswith("V") else neg_input_node
+                        # pass B   
+                        cur_source_2 =    "V" + neg_input_node.lower() if not neg_input_node.startswith("V") else neg_input_node
                         if sfg.graph.has_edge(cur_source_2, cur_target):
                             sfg.graph.edges[cur_source_2, cur_target]['weight'] += (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " + ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name)
                         else:
