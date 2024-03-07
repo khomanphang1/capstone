@@ -311,31 +311,19 @@ def undo_sfg(circuit_id):
 @app.route('/circuits/<circuit_id>/export', methods=['GET'])
 def get_sfg(circuit_id):
     circuit = db.Circuit.objects(id=circuit_id).first()
-
     if not circuit:
         abort(404, description='Circuit not found')
 
-    sfg = circuit.get_current_sfg()
-    parameters = circuit.parameters
+    with tempfile.NamedTemporaryFile() as temp:
+        dill.dump(circuit, temp)
 
-    tmp_file = tempfile.NamedTemporaryFile()
-    dill_circuit = dill.dumps(circuit)
-    print(dill_circuit)
-    print(dill.loads(dill_circuit))
+    tmp_file = tempfile.NamedTemporaryFile(delete=True)
+    tmp_file.flush()
     dill.dump(circuit, tmp_file)
     tmp_file.seek(0)    
+
     try:
-        '''
-        fields = request.args.get(
-            'fields',
-            type=lambda s: s and s.split(',') or None
-        )
-        '''
-        #return circuit.to_dict(fields)
-        #return sfg
         return send_file(tmp_file, mimetype='pkl')
-
-
     except Exception as e:
         abort(400, description=str(e))
 
@@ -372,30 +360,29 @@ def get_sfg(circuit_id):
 # TODO import needs implementation
 @app.route('/circuits/<circuit_id>/import', methods=['POST'])
 def import_dill_sfg(circuit_id):
-    print("NICE")
+    print('circuit id is ', circuit_id)
     circuit = db.Circuit.objects(id=circuit_id).first()
 
     if not circuit:
-        print("circuit DNE")
-        abort(404, description='Circuit not found')
-
-    print(request)
-    print("trying this out!")
-    print(request.files)
-    loaded_sfg = dill.load(request.files['file'])
-    print(loaded_sfg)
-    print(type(loaded_sfg))
-    # imported_circuit = dill.dumps(loaded_sfg)
-    circuit.import_circuit(loaded_sfg)
-    # print(imported_circuit)
-    #print(sfg_obj) GOT JSON OBJ
-    # TODO
-    #circuit.import_sfg(sfg_obj)
-    # circuit = loaded_sfg
-    # circuit.save()
-    # need circuit.save()?
+        loaded_sfg = dill.load(request.files['file'])
+        circuit = db.Circuit.create(circuitId=circuit_id,
+                                    name=loaded_sfg.name,
+                                    netlist=loaded_sfg.netlist,
+                                    schematic=loaded_sfg.schematic, 
+                                    op_point_log=loaded_sfg.op_point_log)
+        circuit.import_circuit(loaded_sfg)
+        circuit.id = circuit_id
+        circuit.save()
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+        return circuit.to_dict(fields)
 
     try:
+        loaded_sfg = dill.load(request.files['file'])
+        circuit.import_circuit(loaded_sfg)
+        circuit.save()
         fields = request.args.get(
             'fields',
             type=lambda s: s and s.split(',') or None
