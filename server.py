@@ -1,4 +1,3 @@
-from cgitb import text
 from flask import Flask, request, abort, send_from_directory, Response, send_file, jsonify
 from flask_cors import CORS
 from distutils.util import strtobool

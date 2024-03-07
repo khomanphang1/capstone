@@ -1565,39 +1565,27 @@ function upload_sfg() {
     fr.readAsText(files.item(0));
 }
 
-// function import_sfg_request(sfg_obj) {
+function import_sfg_request(sfg_obj) {
 
-//     let url = new URL(`${baseUrl}/circuits/${circuitId}/import`)
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/import`)
 
-//     fetch(url, {
-//         method: 'PATCH',
-//         headers: {
-//             'Content-Type': 'application/json'
-//         }, 
-//         mode: 'cors',
-//         credentials: 'same-origin',
-//         body: JSON.stringify(sfg_obj)
-//     })
-//     .then(response => response.json())
-//     .then(data => {
-//         // TODO update_frontend(data);
-//         //or update_frontend(sfg_obj, true); ?
-       
-//         /*
-//         data_json = JSON.parse(JSON.stringify(data));
-//         data_json.sfg = sfg_obj;
-
-//         console.log("modified data is: ");
-//         console.log(data_json);
-//         update_frontend(data_json); //buggy
-//         */
-       
-//         update_frontend(sfg_obj, true);
-//     })
-//     .catch(error => {
-//         console.log(error)
-//     })
-// }
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        }, 
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(sfg_obj)
+    })
+    .then(response => response.json())
+    .then(data => {
+        update_frontend(sfg_obj, true);
+    })
+    .catch(error => {
+        console.log(error)
+    })
+}
 
 function upload_dill_sfg() {
     // TODO add error checking (i.e. is file in correct json format)
