@@ -516,8 +516,8 @@ class Circuit(Document):
         """
         #save current sfg
         self.sfg_stack.append(self.sfg)
-        if len(self.sfg_stack) > 2:
-            self.sfg_stack = self.sfg_stack[-2:]
+        if len(self.sfg_stack) > 5:
+            self.sfg_stack = self.sfg_stack[-5:]
 
         # De-serialize sfg
         sfg = dill.loads(self.sfg)
