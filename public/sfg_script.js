@@ -65,7 +65,7 @@ function make_sfg(elements) {
             fit: true,
             minLen: function( edge ){ return 2 } 
         },
-
+        wheelSensitivity: 0.4,
         style: [
         {
             selector: 'node[name]',
@@ -729,6 +729,7 @@ function sfg_patch_request(params) {
     .then(response => response.json())
     .then(data => {
         removeHighlight()
+        console.log(data)
         update_frontend(data)
     })
     .catch(error => {
@@ -1684,6 +1685,7 @@ function upload_sfg() {
         //console.log(JSON.parse(JSON.stringify(sfg_obj.sfg.elements)))
         // TODO connect to backend to convert sfg JSON to sfg graph and binary field
         import_sfg_request(sfg_obj)
+        console.log(sessionStorage.getItem('circuitId'))
     }
 
     fr.readAsText(files.item(0));
@@ -1704,18 +1706,6 @@ function import_sfg_request(sfg_obj) {
     })
     .then(response => response.json())
     .then(data => {
-        // TODO update_frontend(data);
-        //or update_frontend(sfg_obj, true); ?
-       
-        /*
-        data_json = JSON.parse(JSON.stringify(data));
-        data_json.sfg = sfg_obj;
-
-        console.log("modified data is: ");
-        console.log(data_json);
-        update_frontend(data_json); //buggy
-        */
-       
         update_frontend(sfg_obj, true);
     })
     .catch(error => {
@@ -1746,7 +1736,7 @@ function upload_dill_sfg() {
 
 function import_dill_sfg(dill_sfg) {
     let url = new URL(`${baseUrl}/circuits/${circuitId}/import`)
-
+    console.log(circuitId)
     var formData = new FormData();
     formData.append("file", dill_sfg);
 

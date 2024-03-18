@@ -120,7 +120,8 @@ class Circuit(Document):
         name: str,
         netlist: str,
         schematic: Optional[str] = None,
-        op_point_log: Optional[str] = None
+        op_point_log: Optional[str] = None,
+        circuitId: Optional[str] = None
     ) -> 'Circuit':
         """Creates a new circuit.
 
@@ -151,16 +152,28 @@ class Circuit(Document):
         # such, they are not constructed until they are accessed.
 
         # Initialize the underlying document.
-        circuit = Circuit(
-            name=name,
-            netlist=netlist,
-            schematic=schematic,
-            svg=svg,
-            op_point_log=op_point_log,
-            parameters=parameters,
-            sfg=dill.dumps(sfg)
-        )
-
+        circuit = None
+        if circuitId is not None:
+            circuit = Circuit(
+                id=circuitId,
+                name=name,
+                netlist=netlist,
+                schematic=schematic,
+                svg=svg,
+                op_point_log=op_point_log,
+                parameters=parameters,
+                sfg=dill.dumps(sfg)
+            )
+        else:
+            circuit = Circuit(
+                name=name,
+                netlist=netlist,
+                schematic=schematic,
+                svg=svg,
+                op_point_log=op_point_log,
+                parameters=parameters,
+                sfg=dill.dumps(sfg)
+            )
         circuit.save()
 
         return circuit
@@ -551,15 +564,17 @@ class Circuit(Document):
         output['sfg'] = nx.cytoscape_data(sfg)
         return output
 
-    def import_sfg(self, sfg_obj):
-        # TODO make sfg_obj (dictionary obj) --> sfg graph obj
+    # def import_sfg(self, sfg_obj):
+    #     # TODO make sfg_obj (dictionary obj) --> sfg graph obj
 
-        # serialize sfg graph obj to binary field and set to self.sfg
-        sfg_serialized = dill.dumps(sfg_graph_obj)
-        self.sfg = sfg_serialized
+    #     # serialize sfg graph obj to binary field and set to self.sfg
+    #     sfg_serialized = dill.dumps(sfg_graph_obj)
+    #     self.sfg = sfg_serialized
 
     def import_circuit(self, new_circuit):
-        self.name = new_circuit.name
+        print(self.id)
+        print(new_circuit.id)
+        # self.name = new_circuit.name
         self.svg = new_circuit.svg
         self.schematic = new_circuit.schematic
         self.netlist = new_circuit.netlist
@@ -570,6 +585,3 @@ class Circuit(Document):
         self.loop_gain = new_circuit.loop_gain
         self.created = new_circuit.created
         self.sfg_stack = new_circuit.sfg_stack
-        self.save()
-
-        return self
