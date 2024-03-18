@@ -624,7 +624,7 @@ function setHandleFor(node) {
         classes: 'eh-handle',
         position: pos,
         grabbable: false,
-        selectable: false
+        selectable: true
       });
 
       _this.handleNode.style('z-index', 9007199254740991);

@@ -259,11 +259,11 @@ function make_sfg(elements) {
                 cy.$('#'+node.id()).css({'background-color': ''})
                 hlt_tgt = null;
             }
-            else if(hlt_src === null){
+            else if(hlt_src === null){ // sets highlight source node to green
                 cy.$('#'+node.id()).css({'background-color': '#03af03'})
                 hlt_src = node;
             }
-            else if(hlt_tgt === null){
+            else if(hlt_tgt === null){ // sets highlight target node to red
                 cy.$('#'+node.id()).css({'background-color': '#f8075a'})
                 hlt_tgt = node;
             }
@@ -462,6 +462,132 @@ function removeHighlight(){
             element.removeClass('green');
             element.removeClass('common_edge');
       })
+}
+
+// edit the selected branch on the SFG
+function editBranch() {
+    console.log("editBranch is called");
+
+    // Register right-click event listener on edges
+    cy.on('cxttap', 'edge', function(evt) {
+        var edge = evt.target;
+        var edgeData = edge.data(); // Get edge data, which includes the value
+
+        // print the edge
+        console.log('editing Edge:', edge);
+        // print the edge data
+        console.log('editing Original Edge Data:', edgeData);
+        // print the latex data
+        console.log('editing Original Edge Latex:', edgeData.latex);
+
+        // Create a custom HTML prompt
+        // Create a multiline message for the prompt
+        var message = `Original LaTeX:\n${edgeData.latex}\n\nEnter new LaTeX:`;
+
+        // Display prompt with original LaTeX and input field for new LaTeX
+        var newLatex = prompt(message);
+
+        // Check if user entered a new LaTeX content
+        if (newLatex !== null && newLatex.trim() !== '') {
+            // Update edge's data with new LaTeX content
+            edge.data('latex', newLatex);
+            console.log('Edge LaTeX updated:', newLatex);
+        }
+    });
+
+
+    // // Register right-click event listener on edges
+    // cy.on('cxttap', 'edge', function(evt) {
+    //     var edge = evt.target;
+    //     var edgeData = edge.data(); // Get edge data, which includes the value
+        
+    //     // print the edge
+    //     console.log('editing Edge:', edge);
+    //     // print the edge data
+    //     console.log('editing Original Edge Data:', edgeData);
+
+
+    //     // Create a context menu
+    //     var contextMenu = document.createElement('div');
+    //     contextMenu.classList.add('context-menu');
+    //     contextMenu.innerHTML = '<div class="menu-item" id="editValue">Edit Value</div>';
+        
+    //     // Append the context menu to the body
+    //     document.body.appendChild(contextMenu);
+        
+    //     // Position the context menu
+    //     contextMenu.style.left = evt.position.x + 'px';
+    //     contextMenu.style.top = evt.position.y + 'px';
+        
+    //     // Handle click on menu item
+    //     contextMenu.addEventListener('click', function(event) {
+    //         if (event.target.id === 'editValue') {
+    //             // Handle value editing
+    //             var newValue = prompt('Enter new value:', edgeData.value);
+    //             if (newValue !== null) {
+    //                 // Update edge data with the new value
+    //                 edge.data('value', newValue);
+    //                 console.log('Edge value updated:', newValue);
+    //             }
+    //         }
+            
+    //         // Remove the context menu from the DOM
+    //         contextMenu.remove();
+    //     });
+        
+    //     // Prevent default context menu from showing
+    //     evt.preventDefault();
+    // });
+
+
+    // // Register right-click event listener on edges
+    // cy.on('cxttap', 'edge', function(evt) {
+    //     var edge = evt.target;
+    //     var edgeData = edge.data(); // Get edge data, which includes the value
+
+    //     // Display context menu
+    //     cy.contextMenu({
+    //         menuItems: [
+    //             {
+    //                 id: 'editValue',
+    //                 content: 'Edit Value',
+    //                 tooltipText: 'Edit edge value',
+    //                 selector: 'edge',
+    //                 onClickFunction: function(event) {
+    //                     // Handle value editing
+    //                     var newValue = prompt('Enter new value:', edgeData.value);
+    //                     if (newValue !== null) {
+    //                         // Update edge data with the new value
+    //                         edge.data('value', newValue);
+    //                         console.log('Edge value updated:', newValue);
+    //                     }
+    //                 }
+    //             }
+    //         ]
+    //     });
+    // });
+}
+
+// Removes the selected branch from the diagram
+function removeBranch() {
+    // Print that this function is called from
+    console.log("removeBranch is called");
+
+    // Define the event handler to handle tap events on edges
+    function edgeTapHandler(evt) {
+        let tappedEdge = evt.target; // Get the tapped edge
+        console.log('Tapped Edge:', tappedEdge);
+
+        // Remove the tapped edge from the diagram
+        tappedEdge.remove();
+        console.log('Edge removed:', tappedEdge);
+
+        // Turn off the event handler after the first edge has been removed
+        cy.off('tap', 'edge', edgeTapHandler);
+    }
+
+    // Attach the event handler to listen for tap events on edges
+    cy.on('tap', 'edge', edgeTapHandler);
 }
 
 function display_mag_sfg() {
