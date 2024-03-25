@@ -1015,7 +1015,7 @@ function sfg_simplify_request(params) {
         if(stack_len==0){
             disable_undo_btn(false);
         }
-        stack_len = stack_len < 2 ? stack_len + 1 : 2
+        stack_len = stack_len < 5 ? stack_len + 1 : 5
         update_frontend(data)
         simplify_mode_toggle()
         reset_mag_labels()
@@ -1407,6 +1407,9 @@ function make_transfer_bode_panel() {
             }
             else {
                 form_params[form_entry] = input
+                if ((form_entry != 'input_node_bode') && (form_entry != "output_node_bode")) {
+                    form_params[form_entry] = parseFloat(input);
+                }
             }
         }
 
@@ -1719,7 +1722,7 @@ function make_loop_gain_bode_panel() {
 
 function fetch_loop_gain_bode_data(input_params) {
     var url = new URL(`${baseUrl}/circuits/${circuitId}/loop_gain/bode`)
-    Object.keys(input_params).forEach(key => url.searchParams.append(key, input_params[key]))
+    Object.keys(input_params).forEach(key => url.searchParams.append(key, parseFloat(input_params[key])))
 
     // fetch(url)
     // .then(response => response.json())
