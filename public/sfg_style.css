@@ -25,9 +25,53 @@ body {
       display: block;
       margin-top: 10px;
   }
+  
+  /* remove this */
+  .container {
+    display: flex;
+  }
 
-  .sfg_section {
+  .container-top {
+    display: flex;
+    /* flex-direction: column; */
+  }
+  
+  /* remove this */
+  .column {
+    padding: 10px;
+  }
+  
+  .column1 {
+    /* Let the first column take whatever space it needs */
+    /* flex-grow: 0; */
+    /* flex: 1; */
+    /* fix width of half screen resolution */
+    max-width: 65%;
+    /* flex: 0 0 auto;  */
+    /* This allows the column to grow and shrink based on content */
+  }
+  
+  .column2 {
+    /* Let the second column fill the remaining space */
+    /* flex-grow: 1; */
+    /* flex: 1; */
+  /* This will make the second column take up remaining space */
+    /* flex-grow: 1;  */
+    display: flex;
+    max-width: 555px;
+    max-height: 295px;
+    align-items: center;
+    /* justify-content: center; */
+    overflow: hidden; 
+  }
+
+  /* residue code from past team */
+  .sfg_section { 
     position: relative;
+  }
+
+  .sfg-section {
+    border: 1px solid black;
   }
 
   .panels {
@@ -35,7 +79,7 @@ body {
   }
 
   .circuit-panel {
-    margin-top: 5%;
+    margin-top: 1%;
   }
 
   .middle-layer {
@@ -52,6 +96,7 @@ body {
     border: 1px solid black;
     padding: 10px;
     margin: 10px;
+    margin-bottom: 0px;
   }
 
   .label[x-out-of-boundaries] {

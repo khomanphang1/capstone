@@ -114,7 +114,7 @@ def get_transfer_function(circuit_id):
 
     circuit.save()
 
-     # Return the loop gain as a JSON response with appropriate Cache-Control header
+    # Return the loop gain as a JSON response with appropriate Cache-Control header
     response = jsonify({'transfer_function': transfer_function})
 
     # Disable caching for the response
@@ -159,19 +159,28 @@ def get_transfer_function_bode(circuit_id):
             frequency_unit,
             gain_unit,
             phase_unit,
-            cache_result=True
+            cache_result=False
         )
 
     except Exception as e:
         abort(400, description=str(e))
 
     circuit.save()
+    
+    # print response
+    print("freq: " + str(freq))
+    print("gain: " + str(gain))
+    print("phase: " + str(phase))
 
-    return {
-        'frequency': freq,
-        'gain': gain,
-        'phase': phase
-    }
+    response = jsonify({'frequency': freq, 'gain': gain, 'phase': phase})
+
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+
+    print ("response: " + str(response))
+
+    return response
 
 
 @app.route('/circuits/<circuit_id>/loop_gain', methods=['GET'])
@@ -245,7 +254,7 @@ def get_loop_gain_bode(circuit_id):
             frequency_unit,
             gain_unit,
             phase_unit,
-            cache_result=True
+            cache_result=False
         )
 
     except Exception as e:
@@ -253,11 +262,20 @@ def get_loop_gain_bode(circuit_id):
 
     circuit.save()
 
-    return {
-        'frequency': freq,
-        'gain': gain,
-        'phase': phase
-    }
+    # print response
+    print("freq: " + str(freq))
+    print("gain: " + str(gain))
+    print("phase: " + str(phase))
+
+    response = jsonify({'frequency': freq, 'gain': gain, 'phase': phase})
+
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+
+    print ("response: " + str(response))
+    
+    return response
 
 @app.route('/circuits/<circuit_id>/simplify', methods=['PATCH'])
 def simplify_circuit(circuit_id):
