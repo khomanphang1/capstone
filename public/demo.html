@@ -102,6 +102,47 @@
               <div id="circuit-svg-small"></div>
               <!-- <h1>test column2 space</h1> -->
             </div>
+          <div id="sfg-extra">
+            <h1> Select option: </h1> 
+            <input type="checkbox" id="feature-toggle"> Magnitude / Symbolic Toggle
+            <button type="button" id="refresh-button"> Refresh SFG </button>
+            <button type="button" id="return-landing"> Return to landing page </button>
+            <div class="slider">
+              <input class="frequency-range" type="text" placeholder="1Hz" id="min-range">
+              <input type="range" step="any" min="1" max="10000" value="5000" class="custom-range" id="frequency-slider" style="width:400px;">
+              <input class="frequency-range" type="text" placeholder="10000Hz" id="max-range">
+              <span id="frequency-value"> </span> Hz
+              <input type="submit" value="Update Range" id="update-range">
+              <div id="frequency-form">
+                <h1> Frequency Range </h1>
+              </div>
+            </div>
+            <h1> SFG Save/Upload </h1>
+            <div style="height: 23px; margin-top: 10px;"> 
+              <button id="export-btn" style="margin-left: 20px; margin-right: 35px;" onclick="export_sfg()">Save SFG</button>
+              Upload SFG: <input type="file" id="upload_sfg" value="Import" onchange="upload_dill_sfg()"/>
+            </div>
+          </div>
+          <div>
+            <h1> SFG Manipulation </h1>
+          </div>
+          <div style="height: 23px;"> 
+              <input type="checkbox" id="simplification-toggle" onclick="simplify_mode_toggle()"> Simplification Mode
+              <button id="simplify-btn" style="margin-left: 20px; display: none;" onclick="simplify()">Simplify</button>
+              <button id="undo-btn" style="margin-left: 20px;" onclick="sfg_undo()" disabled>Undo</button>
+              <button id="redo-btn" style="margin-left: 20px;" onclick="sfg_redo()" disabled>Redo</button>
+          </div>
+          <div style="height: 23px;">
+              <input type="checkbox" id="path-highlight-toggle" onclick="path_highlight_toggle()"> Highlight Path
+              <button id="rmv-hlt-btn" style="margin-left: 20px;" onclick="removeHighlight()">Remove Highlight</button>
+              <button id="rmv-branch-btn" style="margin-left: 20px;" onclick="removeBranch()">Remove Branch</button>
+              <button id="edit_branch" style="margin-left: 20px;" onclick="editBranch()">Edit Branch</button>
+              <ul class="legend" style="display:inline">
+                <li><span class="superawesome" id="dominant">N/A</span></li>
+                <li><span class="awesome" id="weak">N/A</span></li>
+                <li><span class="kindaawesome">Shared</span></li>
+                <li><span class="notawesome">Cycle</span></li>
+              </ul>
           </div>
           <div class="sfg-section">
             <h1>SFG Simulation</h1>

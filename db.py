@@ -63,6 +63,7 @@ class Circuit(Document):
         ]
     }
     sfg_stack = []
+    redo_stack = []
 
     def to_dict(self, fields: Optional[Iterable[str]] = None) -> Dict:
         """Returns a dictionary representation of the Circuit document.
@@ -516,6 +517,7 @@ class Circuit(Document):
         """
         #save current sfg
         self.sfg_stack.append(self.sfg)
+        self.redo_stack.clear()
         if len(self.sfg_stack) > 5:
             self.sfg_stack = self.sfg_stack[-5:]
 
@@ -534,7 +536,13 @@ class Circuit(Document):
 
     def undo_sfg(self):
         if len(self.sfg_stack) > 0:
+            self.redo_stack.append(self.sfg)
             self.sfg = self.sfg_stack.pop()
+
+    def redo_sfg(self):
+        if len(self.redo_stack) > 0:
+            self.sfg_stack.append(self.sfg)
+            self.sfg = self.redo_stack.pop()
 
     def get_current_sfg(self):
         return self.deserialize_sfg()
@@ -585,3 +593,4 @@ class Circuit(Document):
         self.loop_gain = new_circuit.loop_gain
         self.created = new_circuit.created
         self.sfg_stack = new_circuit.sfg_stack
+        self.redo_stack = new_circuit.redo_stack

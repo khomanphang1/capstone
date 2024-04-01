@@ -323,6 +323,27 @@ def undo_sfg(circuit_id):
     except Exception as e:
         abort(400, description=str(e))
 
+@app.route('/circuits/<circuit_id>/redo', methods=['PATCH'])
+def redo_sfg(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    circuit.redo_sfg()
+    circuit.save()
+
+    try:
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+
+        return circuit.to_dict(fields)
+
+    except Exception as e:
+        abort(400, description=str(e))
+
 
 # For SFG Export
 @app.route('/circuits/<circuit_id>/export', methods=['GET'])
