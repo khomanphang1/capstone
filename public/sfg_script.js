@@ -6,6 +6,7 @@ let [simplify_mode, node1, node2] = [false, null, null];
 let [highlight_mode, hlt_src, hlt_tgt] = [false, null, null];
 
 let stack_len = 0
+let redo_len = 0
 
 if (!circuitId) {
     window.location.replace('./landing.html');
@@ -23,6 +24,11 @@ function expo(x, f) {
 // Status of undo button for simplification
 function disable_undo_btn(status){
     document.getElementById("undo-btn").disabled = status;
+}
+
+// status of redo button for simplification
+function disable_redo_btn(status){
+    document.getElementById("redo-btn").disabled = status;
 }
 
 // Function that parses the graph sent as a JSON from the backend
@@ -1343,6 +1349,10 @@ function sfg_simplify_request(params) {
         if(stack_len==0){
             disable_undo_btn(false);
         }
+        if (redo_len > 0) {
+            redo_len = 0;
+            disable_redo_btn(true);
+        }
         stack_len = stack_len < 5 ? stack_len + 1 : 5
         update_frontend(data)
         simplify_mode_toggle()
@@ -2169,11 +2179,50 @@ function sfg_undo_request(params) {
     .then(response => response.json())
     .then(data => {
         stack_len--;
+        redo_len++;
         if (stack_len === 0) {
             disable_undo_btn(true);
         }
-        update_frontend(data)
-        reset_mag_labels()
+        if (redo_len > 0) {
+            disable_redo_btn(false);
+        }
+        update_frontend(data);
+        reset_mag_labels();
+        console.log(stack_len);
+        console.log(redo_len);
+    })
+    .catch(error => {
+        console.log(error)
+    })
+}
+
+function sfg_redo_request(params) {
+
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/redo`)
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        }, 
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(params)
+    })
+    .then(response => response.json())
+    .then(data => {
+        stack_len++;
+        redo_len--;
+        if (redo_len === 0) {
+            disable_redo_btn(true);
+        }
+        if (stack_len > 0) {
+            disable_undo_btn(false);
+        }
+        update_frontend(data);
+        reset_mag_labels();
+        console.log(stack_len);
+        console.log(redo_len);
     })
     .catch(error => {
         console.log(error)
@@ -2188,6 +2237,16 @@ function sfg_undo(){
         disable_undo_btn(true);
     }
 }
+
+function sfg_redo(){
+    if (redo_len > 0){
+        sfg_redo_request();
+    }
+    else {
+        disable_redo_btn(true);
+    }
+}
+
 
 function reset_mag_labels(){
     if(symbolic_flag) {
