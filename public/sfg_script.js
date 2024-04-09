@@ -33,9 +33,13 @@ function edge_helper(sample_data, flag) {
     let sfg_edges = []
     edge_symbolic_label = new Array(edge_length)
 
+    // TODO MARK
     for (i = 0; i < edge_length; i++) {
-        let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i]))
+        let new_edge = JSON.parse(JSON.stringify(sample_data.sfg.elements.edges[i])) // make sample_data.sfg.elements.edges[i] get the new edited branch from edge_symbolic_label[i] ==> sdf_patch_request_without_rendering to see updates
         edge_symbolic_label[i] = new_edge.data.weight.symbolic
+        // TODO MARK
+        // call sfg_patch_request (with or without rerendering) to send to backend
+        
         // Represent magnitude with 2 decimal points exponent
         let magnitude = expo((new_edge.data.weight.magnitude), 2).toString()
         let phase = new_edge.data.weight.phase.toFixed(2).toString()
@@ -464,12 +468,38 @@ function removeHighlight(){
       })
 }
 
+// Function to validate user input against valid keys
+function validateInput(userInput) {
+    console.log("keys: ", keys);
+    console.log("latex_keys: ", latex_keys);
+    // userInput = userInput.toLowerCase();
+    for (let latex_key of latex_keys) {
+        // return false if userinput does not include a valid key or is not an integer
+        if (userInput.includes(latex_key) || Number.isInteger(parseInt(userInput))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Function to display popup window for editing LaTeX code
-function editLatexCode(latexCode) {
+function editLatexCode(latexCode, idx) {
     // Open a prompt dialog with the current LaTeX code
     let userInput = prompt("Edit LaTeX code:", latexCode);
     console.log("Edited latex code:", userInput);
-    return userInput;
+    // check if any element in global keys appear in userInput
+    if (userInput === null) {
+        console.log("editBranch prompt cancelled");
+        return latexCode;
+    } else if (validateInput(userInput) && userInput !== null && userInput !== '') {
+        console.log('editBranch Input is valid');
+        edge_symbolic_label[idx] = userInput;
+        return userInput;
+    } else {
+        console.log('Input is invalid');
+        alert('Input is invalid\nPlease enter a valid LaTeX code.\nRefer to the list of valid circuit parameters.');
+        return latexCode;
+    }
 }
 
 // Function to edit the selected branch on the SFG
@@ -477,62 +507,228 @@ function editBranch() {
     console.log("editBranch is called");
 
     let cy = window.cy;
-    let updates = new Array(cy.edges().length)
-    let edges = new Array(cy.edges().length)
 
     // Event listener for right-click on edges
-    cy.edges().forEach((edge, idx) => {
-        edge.on('cxttap', function(evt) {
-            // Retrieve the LaTeX code for the selected edge
-            let latexCode = edge_symbolic_label[idx];
-            console.log("LaTeX code for selected edge:", latexCode);
+    function edgeTapHandler(evt) {
+        // console.log("evt target: ", evt.target)
+        // console.log("evt: ", evt)
 
-            // Display popup window for editing LaTeX code
-            let modifiedLatexCode = editLatexCode(latexCode);
+        console.log("1: edge_symbolic_label: ", edge_symbolic_label);
 
-            // Check if the user made any modifications
-            if (modifiedLatexCode !== null) {
-                // Update the LaTeX content of the edge
-                updateEdgeLabel(edge, modifiedLatexCode, idx);
-            }
-        });
-    });
 
-    // Function to update the LaTeX content of the edge
-    function updateEdgeLabel(edge, latexCode, idx) {
-        // Remove the existing popper content
-        edges[idx] = edge.popper('destroy');
+        // Retrieve the LaTeX code for the selected edge
+        let edge = evt.target;
+        let idx = cy.edges().indexOf(edge);
+        let latexCode = edge_symbolic_label[idx];
+        console.log("LaTeX code for selected edge:", latexCode);
+        console.log("Idx:", idx);
 
-        // Create a new popper with the modified LaTeX code
-        edges[idx] = edge.popper({
-            content: () => {
-                let div = document.createElement('div');
-                div.classList.add('label');
-                div.innerHTML = '$$' + latexCode + '$$';
-                return div;
-            },
-            popper: {
-                modifiers: {
-                    preventOverflow: {
-                        enabled: true,
-                        boundariesElement: document.getElementsByClassName('sfg-section')[0],
-                        padding: 5
-                    },
-                    hide: {
-                        enabled: true,
-                    }
-                }
-            }
-        });
+        // Display popup window for editing LaTeX code
+        let modifiedLatexCode = editLatexCode(latexCode, idx);
+        document.getElementById("edit-branch-btn").disabled = false;
+        // print all edge_symbolic_label
+        console.log("2: edge_symbolic_label: ", edge_symbolic_label);
+
+        // Check if the user made any modifications
+        if (modifiedLatexCode !== null) {
+            // Update the LaTeX content of the Edge
+            console.log("Modified LaTeX code:", modifiedLatexCode);
+            
+            // // update the sfg frontend and rerender
+            // edge.data('weight', modifiedLatexCode);
+            // cy.style().selector('edge').css({ 'content': '' }).update();
+            // window.cy.style().selector('edge').css({'content': 'data(weight)'}).update();
+            // display_mag_sfg();
+            reset_mag_labels();
+        }
+
+        // Remove the event listener after it's triggered once
+        cy.off('tap', 'edge', edgeTapHandler);
     }
 
-    MathJax.typeset();
+    // Attach the event listener to edges for click
+    cy.on('tap', 'edge', edgeTapHandler);
+    document.getElementById("edit-branch-btn").disabled = true;
 
+    // get system url
+    // let url = new URL(`${baseUrl}/circuits/${circuitId}`)
+    // fetch(url, {
+    //     method: 'PATCH',
+    //     headers: {
+    //         'Content-Type': 'application/json'
+    //     }, 
+    //     mode: 'cors',
+    //     credentials: 'same-origin',
+    //     body: JSON.stringify(params)
+    // })
+    //     .then(response => response.json())
+    //     .then(data => {
+    //         update_frontend(data)
+    //     })
+    //     .catch((error) => {
+    //         console.error('Error:', error);
+    //     });
+    // render_frontend(current_data)
+    // sfg_patch_request()
+    // update_frontend()
+
+    // Update cy style and log loading time
     cy.style().selector('edge').css({ 'content': '' }).update();
     const time2 = new Date();
     let time_elapse = (time2 - time1) / 1000;
     console.log("editBranch SFG loading time: " + time_elapse + " seconds");
 }
+
+
+
+// function dum2_editBranch() {
+//     console.log("editBranch is called");
+
+//     let cy = window.cy;
+//     // let updates = new Array(cy.edges().length)
+//     // let edges = new Array(cy.edges().length)
+
+//     console.log("printing all edges: ", cy.edges())
+//     // console.log("print edges: ", edges)
+
+//     // Event listener for right-click on edges
+//     cy.edges().forEach((edge, idx) => {
+//         edge.on('cxttap', function(evt) {
+//             console.log("evt target: ", evt.target)
+//             console.log("evt: ", evt)
+
+//             // Retrieve the LaTeX code for the selected edge
+//             let latexCode = edge_symbolic_label[idx];
+//             console.log("LaTeX code for selected edge:", latexCode);
+//             console.log("Idx:", idx);
+
+//             // Display popup window for editing LaTeX code
+//             let modifiedLatexCode = editLatexCode(latexCode, idx);
+
+//             // Check if the user made any modifications
+//             if (modifiedLatexCode !== null) {
+//                 // Update the LaTeX content of the Edge
+//                 console.log("Modified LaTeX code:", modifiedLatexCode);
+//                 // updateEdgeLabel(edge, modifiedLatexCode, idx);
+//             }
+//         });
+        
+//     });
+
+//     // MathJax.typeset();
+
+//     cy.style().selector('edge').css({ 'content': '' }).update();
+//     const time2 = new Date();
+//     let time_elapse = (time2 - time1) / 1000;
+//     console.log("editBranch SFG loading time: " + time_elapse + " seconds");
+// }
+
+
+// function dum_editBranch() {
+//     console.log("editBranch is called");
+
+//     let cy = window.cy;
+//     let updates = new Array(cy.edges().length)
+//     let edges = new Array(cy.edges().length)
+
+//     console.log("printing all edges: ", cy.edges())
+//     console.log("print edges: ", edges)
+
+//     // Event listener for right-click on edges
+//     cy.edges().forEach((edge, idx) => {
+//         edge.on('cxttap', function(evt) {
+//             console.log("evt target: ", evt.target)
+//             console.log("evt: ", evt)
+
+//             // Retrieve the LaTeX code for the selected edge
+//             let latexCode = edge_symbolic_label[idx];
+//             console.log("LaTeX code for selected edge:", latexCode);
+//             console.log("Idx:", idx);
+
+//             // Display popup window for editing LaTeX code
+//             let modifiedLatexCode = editLatexCode(latexCode, idx);
+
+//             // Check if the user made any modifications
+//             if (modifiedLatexCode !== null) {
+//                 // Update the LaTeX content of the Edge
+//                 console.log("Modified LaTeX code:", modifiedLatexCode);
+//                 updateEdgeLabel(edge, modifiedLatexCode, idx);
+//             }
+//         });
+//     });
+
+//     // Function to update the LaTeX content of the edge
+//     function updateEdgeLabel(edge, latexCode) {
+//         console.log("Updating edge label:", edge, latexCode);
+        
+//         // Find the index of the edge in the edges array
+//         let index = edges.findIndex(item => item.edge === edge);
+
+//         // If the edge is found in the edges array
+//         if (index !== -1) {
+//             // Destroy the existing popper
+//             edges[index].popper.destroy();
+
+//             // Create a new popper with the modified LaTeX code
+//             let newPopper = edge.popper({
+//                 content: () => {
+//                     let div = document.createElement('div');
+//                     div.classList.add('label');
+//                     div.innerHTML = '$$' + latexCode + '$$';
+//                     console.log("Inside edge.popper content:()");
+//                     return div;
+//                 },
+//                 popper: {
+//                     modifiers: {
+//                         preventOverflow: {
+//                             enabled: true,
+//                             boundariesElement: document.getElementsByClassName('sfg-section')[0],
+//                             padding: 5
+//                         },
+//                         hide: {
+//                             enabled: true,
+//                         }
+//                     }
+//                 }
+//             });
+
+//             // Update the popper reference in the edges array
+//             edges[index].popper = newPopper;
+//         } else {
+//             // Create a new popper and add it to the edges array
+//             let newPopper = edge.popper({
+//                 content: () => {
+//                     let div = document.createElement('div');
+//                     div.classList.add('label');
+//                     div.innerHTML = '$$' + latexCode + '$$';
+//                     console.log("Inside edge.popper content:()");
+//                     return div;
+//                 },
+//                 popper: {
+//                     modifiers: {
+//                         preventOverflow: {
+//                             enabled: true,
+//                             boundariesElement: document.getElementsByClassName('sfg-section')[0],
+//                             padding: 5
+//                         },
+//                         hide: {
+//                             enabled: true,
+//                         }
+//                     }
+//                 }
+//             });
+
+//             edges.push({ edge: edge, popper: newPopper });
+//         }
+//     }
+
+//     MathJax.typeset();
+
+//     cy.style().selector('edge').css({ 'content': '' }).update();
+//     const time2 = new Date();
+//     let time_elapse = (time2 - time1) / 1000;
+//     console.log("editBranch SFG loading time: " + time_elapse + " seconds");
+// }
 
 
 // ------------------------------------------------------------------------------------------------
@@ -662,7 +858,7 @@ function editBranch() {
 // }
 
 // Removes the selected branch from the diagram
-function removeBranch() {
+function qremoveBranch() {
     console.log("removeBranch is called");
 
     // Define the event handler to handle tap events on edges
@@ -691,9 +887,110 @@ function removeBranch() {
 
 }
 
+function removeLatexCode(latexCode, idx) {
+    edge_symbolic_label[idx] = '';
+}
+
+// TODO MARK: Make sure branch removals are consistent with the editBranch() logic
+// TODO MARK: make sure floating nodes are also removed
+function tremoveBranch() {
+    console.log("removeBranch is called");
+    let cy = window.cy;
+
+    function edgeTapHandler(evt) {
+        let edge = evt.target;
+        let idx = cy.edges().indexOf(edge);
+
+        // Remove the label for the edge being removed
+        edge_symbolic_label.splice(idx, 1);
+
+        document.getElementById("rmv-branch-btn").disabled = false;
+
+        console.log('edge removed:', edge);
+        cy.off('tap', 'edge', edgeTapHandler);
+        edge.remove(); 
+        reset_mag_labels();
+        console.log("edge_symbolic_label:", edge_symbolic_label);
+
+        // Update the indices in edge_symbolic_label to match the new indices of the remaining edges
+        updateIndicesInSymbolicLabels();
+    }
+
+    // Attach the event listener to edges for click
+    cy.on('tap', 'edge', edgeTapHandler);
+    document.getElementById("rmv-branch-btn").disabled = true;
+
+    // Update cy style and log loading time
+    cy.style().selector('edge').css({ 'content': '' }).update();
+    const time2 = new Date();
+    let time_elapse = (time2 - time1) / 1000;
+    console.log("editBranch SFG loading time: " + time_elapse + " seconds");
+
+    // Function to update the indices in edge_symbolic_label array
+    function updateIndicesInSymbolicLabels() {
+        cy.edges().forEach((edge, i) => {
+            let label = edge_symbolic_label[i];
+            if (label !== undefined) {
+                edge_symbolic_label[i] = label;
+            }
+        });
+    }
+}
 
 
-function dum2removeBranch() {
+function removeBranch() {
+    console.log("removeBranch is called");
+    let cy = window.cy;
+    function edgeTapHandler(evt){
+        let edge = evt.target;
+        edge.style('display', 'none');
+        let idx = cy.edges().indexOf(edge);
+        edgeToRemove = cy.getElementById(idx);
+        console.log('idx:', idx);
+        console.log("edgeToRemove:", edgeToRemove);
+        edgeToRemove.remove();
+        // let latexCode = edge_symbolic_label[idx];
+        // console.log("LaTeX code for selected edge:", latexCode);
+        // console.log("Idx:", idx);
+        // console.log("edge_symbolic_label:", edge_symbolic_label);
+        // console.log("1-- edge:", edge);
+        // console.log("idx:", idx);  
+        // // edge_symbolic_label.splice(idx, 1); // can't splice because it edge_symbolic_label shifts the remaining labels
+        edge_symbolic_label[idx] = '';
+        console.log("BEFORE SPLICE edge_symbolic_label:", edge_symbolic_label);
+        // edge_symbolic_label.splice(idx,1); // Remove the latex code for the edge
+        console.log("AFTER SPLICE edge_symbolic_label:", edge_symbolic_label);
+        
+        // // Adjust indices for edges after the removed edge
+        // for (let i = idx + 1; i < cy.edges().length; i++) {
+        //     edge_symbolic_label[i - 1] = edge_symbolic_label[i];
+        // }
+        // edge_symbolic_label.pop(); // Remove the last element
+        
+        document.getElementById("rmv-branch-btn").disabled = false;
+        
+        console.log('edge removed:', edge);
+        cy.off('tap', 'edge', edgeTapHandler);
+        // edge.remove(); 
+        reset_mag_labels();
+        console.log("edge_symbolic_label:", edge_symbolic_label);
+
+    }
+
+    // Attach the event listener to edges for click
+    cy.on('tap', 'edge', edgeTapHandler);
+    document.getElementById("rmv-branch-btn").disabled = true;
+
+    // Update cy style and log loading time
+    cy.style().selector('edge').css({ 'content': '' }).update();
+    const time2 = new Date();
+    let time_elapse = (time2 - time1) / 1000;
+    console.log("editBranch SFG loading time: " + time_elapse + " seconds");
+}
+
+
+
+function qqremoveBranch() {
     // Print that this function is called from
     console.log("removeBranch is called");
 
@@ -756,9 +1053,8 @@ function dum2removeBranch() {
     // cy.on('remove', 'edge', edgeRemoveHandler);
 }
 
-
 // Removes the selected branch from the diagram
-function dum_removeBranch() {
+function primitiveremoveBranch() {
     // Print that this function is called from
     console.log("removeBranch is called");
 
@@ -783,6 +1079,7 @@ function dum_removeBranch() {
 
         // Remove the tapped edge from the diagram
         tappedEdge.remove();
+        reset_mag_labels();
         console.log('Edge removed:', tappedEdge);
         
         // // Remove the popper element associated with the tapped edge
@@ -813,8 +1110,8 @@ function display_mag_sfg() {
     cy.edges().forEach((edge,idx) => {
         
         // print each edge
-        console.log('Edge:', edge);
-        console.log('Edges[idx]: ', edges[idx]);
+        // console.log('Edge:', edge);
+        // console.log('Edges[idx]: ', edges[idx]);
 
         edges[idx] = edge.popper({
             content: () => {
@@ -871,6 +1168,30 @@ function display_mag_sfg() {
     console.log("display_mag_sfg SFG loading time: " + time_elapse + " seconds")
 }
 
+// declare global array of keys
+keys = []
+latex_keys = []
+
+function convertToLatex(sympyCharacters) {
+    console.log("length of sympyCharacters: ", sympyCharacters.length)
+    if(sympyCharacters.length == 2){
+        // check if the first character is a char and the second is a number
+        if(sympyCharacters[0].match(/[a-z]/i) && !isNaN(sympyCharacters[1])){
+            // add underscore between the first and second character
+            sympyCharacters = sympyCharacters[0] + '_{' + sympyCharacters[1] + '}';
+        }
+        return sympyCharacters;
+    }
+    
+    
+    // Regular expression to match underscores
+    const underscoreRegex = /_/g;
+    // Convert each sympy character to its LaTeX representation
+    // const latexCharacters = sympyCharacters.map(char => char.replace(underscoreRegex, '_{'));
+    const latexCharacters = sympyCharacters.replace(underscoreRegex, '_{');
+    console.log("latexCharacters: ", latexCharacters);
+    return latexCharacters;
+}
 
 // input: data.parameters
 function make_parameter_panel(parameters) {
@@ -886,6 +1207,11 @@ function make_parameter_panel(parameters) {
     var br = document.createElement("br");
     var freq = 0
     for (let key in parameters) {
+        // console.log("key: " + key + " value: " + parameters[key])
+        keys.push(key)
+        latex_key = convertToLatex(key)
+        latex_keys.push(latex_key)
+        console.log("keys array: " + keys)
         var parameter = document.createElement("input")
         parameter.type = "number"
         parameter.name = key
@@ -898,13 +1224,15 @@ function make_parameter_panel(parameters) {
         pf.appendChild(parameter)
         pf.appendChild(br.cloneNode())
     }
-
+    console.log("keys: " + keys)
+    console.log("latex_keys: " + latex_keys)
+    
     var s = document.createElement("input")
     s.setAttribute("type", "submit")
     s.setAttribute("value", "Submit Form")
     pf.appendChild(s)
 
-    console.log(freq)
+    console.log("freq: " + freq)
     output.innerHTML = freq
     frequency_slider.value = freq
 
@@ -1090,9 +1418,11 @@ async function sfg_toggle() {
         // Disable frequency slider on symbolic
         if (!symbolic_flag) {
             document.getElementById("frequency-slider").disabled = false;
+            document.getElementById("edit-branch-btn").disabled = true;
         }
         else {
             document.getElementById("frequency-slider").disabled = true;
+            document.getElementById("edit-branch-btn").disabled = false;
         }
 
         // let url = new URL(`${baseUrl}/circuits/${circuitId}`)
