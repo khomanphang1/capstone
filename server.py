@@ -82,6 +82,31 @@ def patch_circuit(circuit_id):
     except Exception as e:
         abort(400, description=str(e))
 
+@app.route('/circuits/circuit_id>/update_edge', methods=['PATCH'])
+def update_edge(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    try: 
+        input_node = request.args.get('input_node')
+        output_node = request.args.get('output_node')
+        symbolic = request.args.get('symbolic')
+
+        circuit.edit_edge(input_node, output_node, symbolic)
+        circuit.save()
+
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+
+        return circuit.to_dict(fields)
+
+    except Exception as e:
+        abort(400, description=str(e))
+
+
 
 @app.route('/circuits/<circuit_id>/transfer_function', methods=['GET'])
 def get_transfer_function(circuit_id):
@@ -366,39 +391,9 @@ def get_sfg(circuit_id):
         abort(400, description=str(e))
 
 
-
-# # TODO import needs implementation
-# @app.route('/circuits/<circuit_id>/import', methods=['PATCH'])
-# def import_sfg(circuit_id):
-#     circuit = db.Circuit.objects(id=circuit_id).first()
-
-#     if not circuit:
-#         abort(404, description='Circuit not found')
-
-#     sfg_obj = request.json.get('sfg')
-#     #print(sfg_obj) GOT JSON OBJ
-#     # TODO
-#     #circuit.import_sfg(sfg_obj)
-#     # need circuit.save()?
-
-#     try:
-#         fields = request.args.get(
-#             'fields',
-#             type=lambda s: s and s.split(',') or None
-#         )
-
-#         return circuit.to_dict(fields)
-
-#     except Exception as e:
-#         abort(400, description=str(e))
-
-# if __name__ == '__main__':
-#     app.run()
-
 # TODO import needs implementation
 @app.route('/circuits/<circuit_id>/import', methods=['POST'])
 def import_dill_sfg(circuit_id):
-    print('circuit id is ', circuit_id)
     circuit = db.Circuit.objects(id=circuit_id).first()
 
     if not circuit:

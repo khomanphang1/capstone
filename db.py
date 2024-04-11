@@ -547,6 +547,22 @@ class Circuit(Document):
     def get_current_sfg(self):
         return self.deserialize_sfg()
 
+    def edit_edge(self, editSrc, editDst, editSymbolic):
+        """Edit the SFG edge
+
+        Args:
+            editSrc: the source vertex of the edge
+            editDst: the destination vertex of the edge
+            editSymbolic: the new symbolic function of the edge.
+        """
+        sfg = dill.loads(self.sfg)
+        for src, dst in sfg.edges:
+            if src == editSrc and dst == editDst:
+                sfg.edges[src][dst]['weight'] = editSymbolic
+                return sfg.edges[src][dst]['weight']
+        raise Exception('The selected edge does not exist!')
+                
+
     # SFG binary field --> graph (json object)
     def deserialize_sfg(self):
         output = {}

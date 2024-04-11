@@ -1570,6 +1570,34 @@ function make_transfer_func_panel() {
     document.getElementById("transfer-form").appendChild(form);
 }
 
+function update_edge(input_node, output_node, symbolic_value) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/update_edge`);
+    params = {input_node: input_node, output_node: output_node, symbolic_value: symbolic_value}
+    console.log("URL before appending parameters:", url.href);
+    Object.keys(params).forEach(key => {
+        const value = params[key].toString();
+        url.searchParams.append(key, value);
+    });
+    console.log("Final URL with parameters:", url.href);
+
+    fetch(url)
+    .then(response => {
+        if (!response.ok) {
+            // If response is not ok (i.e., in error status range), reject the promise
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        // If response is ok, return JSON promise
+        return response.json();
+    })
+    .then(data => {
+        console.log("success!");
+    })
+    .catch(error => {
+        console.error('update_edge error!:', error);
+        console.log('update_edge Full response:', error.response);
+    });
+}
+
 function make_transfer_func(input_node, output_node) {
     let latex_toggle = true
     let factor_toggle = true
