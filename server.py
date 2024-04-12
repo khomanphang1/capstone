@@ -82,7 +82,7 @@ def patch_circuit(circuit_id):
     except Exception as e:
         abort(400, description=str(e))
 
-@app.route('/circuits/circuit_id>/update_edge', methods=['PATCH'])
+@app.route('/circuits/<circuit_id>/update_edge', methods=['PATCH'])
 def update_edge(circuit_id):
     circuit = db.Circuit.objects(id=circuit_id).first()
     if not circuit:
