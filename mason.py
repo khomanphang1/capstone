@@ -139,6 +139,11 @@ def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
     transfer_function = numer / denom
     loop_gain = 1 - denom
 
+    print(cycles)
+    print(cycle_combinations)
+    print(sfg)
+    print("lg")
+    print(loop_gain)
     return transfer_function, loop_gain
 
 
@@ -161,8 +166,13 @@ def loop_gain(sfg: nx.DiGraph) -> sympy.Expr:
 
     # Find overall determinant.
     determ = determinant(sfg, cycle_combinations)
-
-    return 1 - determ
+    print(cycles)
+    print(cycle_combinations)
+    print(sfg)
+    print("lg!!")
+    loop_gain = 1 - determ
+    print(loop_gain)
+    return loop_gain
 
 
 if __name__ == '__main__':
