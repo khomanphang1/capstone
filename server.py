@@ -24,7 +24,7 @@ def get_circuit(circuit_id):
 
     if not circuit:
         abort(404, description='Circuit not found')
-
+testtesttest
     try:
         fields = request.args.get(
             'fields',
