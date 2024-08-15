@@ -85,6 +85,18 @@ class SFG():
     def add_all_edges(self, edges):
         self.graph.add_edges_from(edges)
 
+def removing_branch(sfg, source, target):
+    print("removing branch...")
+    # paths = nx.all_simple_paths(sfg, source, target)
+    # path = []
+    
+    # print source and target
+    print('source: ', source)
+    print('target: ', target)
+    sfg.remove_edge(source, target)
+    return sfg
+
+
 # simiplification algorithm: takes in source and target nodes and
 # simplifies path mathematically; only works by simplifying 1 node in between
 def simplify(sfg, source, target):
@@ -95,6 +107,8 @@ def simplify(sfg, source, target):
     paths = nx.all_simple_paths(sfg, source, target)
     path = []
     for p in paths:
+        # print path
+        print('path: ', p)
         if len(p) == 2:
             if sfg.has_edge(source, target) and sfg.has_edge(target, source):
                 simplify_loop(sfg, source, target)

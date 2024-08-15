@@ -13,8 +13,12 @@ if (!circuitId) {
 }
 
 var symbolic_flag = false //feature toggle
+var tf_flag = false //transfer function toggle
+var lg_flag = false //loop gain toggle
+var tf = {}
 let current_data = null //session data
 let edge_symbolic_label;
+let bode_plot_history = []; // all bode plot history
 
 // Function to convert float to exponential
 function expo(x, f) {
@@ -34,6 +38,10 @@ function disable_redo_btn(status){
 // Function that parses the graph sent as a JSON from the backend
 // into a cytoscape graph
 function edge_helper(sample_data, flag) {
+    if (!sample_data || !sample_data.sfg || !sample_data.sfg.elements) {
+        throw new Error('Invalid sample data');
+    }
+    
     let sfg_elements = JSON.parse(JSON.stringify(sample_data.sfg.elements))
     let edge_length = sample_data.sfg.elements.edges.length
     let sfg_edges = []
@@ -236,6 +244,11 @@ function make_sfg(elements) {
 
     });
 
+    // log all nodes and edges of sfg
+    console.log("nodes:", cy.nodes());
+    // log node ids
+    console.log("node ids:", cy.nodes().map(node => node.id()));
+    console.log("edges:", cy.edges());
 
     cy.on('tap', 'node', function(evt){
         if(simplify_mode) {
@@ -285,6 +298,10 @@ function make_sfg(elements) {
             }
         }
     });
+
+
+    // Initialize edge hover functionality
+    initializeEdgeHover();
     
     const time2 = new Date();
     let time_elapse = (time2 - time1)/1000;
@@ -474,116 +491,7 @@ function removeHighlight(){
       })
 }
 
-// Function to validate user input against valid keys
-function validateInput(userInput) {
-    console.log("keys: ", keys);
-    console.log("latex_keys: ", latex_keys);
-    // userInput = userInput.toLowerCase();
-    for (let latex_key of latex_keys) {
-        // return false if userinput does not include a valid key or is not an integer
-        if (userInput.includes(latex_key) || Number.isInteger(parseInt(userInput))) {
-            return true;
-        }
-    }
-    return false;
-}
 
-// Function to display popup window for editing LaTeX code
-function editLatexCode(latexCode, idx) {
-    // Open a prompt dialog with the current LaTeX code
-    let userInput = prompt("Edit LaTeX code:", latexCode);
-    console.log("Edited latex code:", userInput);
-    // check if any element in global keys appear in userInput
-    if (userInput === null) {
-        console.log("editBranch prompt cancelled");
-        return latexCode;
-    } else if (validateInput(userInput) && userInput !== null && userInput !== '') {
-        console.log('editBranch Input is valid');
-        edge_symbolic_label[idx] = userInput;
-        return userInput;
-    } else {
-        console.log('Input is invalid');
-        alert('Input is invalid\nPlease enter a valid LaTeX code.\nRefer to the list of valid circuit parameters.');
-        return latexCode;
-    }
-}
-
-// Function to edit the selected branch on the SFG
-function editBranch() {
-    console.log("editBranch is called");
-
-    let cy = window.cy;
-
-    // Event listener for right-click on edges
-    function edgeTapHandler(evt) {
-        // console.log("evt target: ", evt.target)
-        // console.log("evt: ", evt)
-
-        console.log("1: edge_symbolic_label: ", edge_symbolic_label);
-
-
-        // Retrieve the LaTeX code for the selected edge
-        let edge = evt.target;
-        let idx = cy.edges().indexOf(edge);
-        let latexCode = edge_symbolic_label[idx];
-        console.log("LaTeX code for selected edge:", latexCode);
-        console.log("Idx:", idx);
-
-        // Display popup window for editing LaTeX code
-        let modifiedLatexCode = editLatexCode(latexCode, idx);
-        document.getElementById("edit-branch-btn").disabled = false;
-        // print all edge_symbolic_label
-        console.log("2: edge_symbolic_label: ", edge_symbolic_label);
-
-        // Check if the user made any modifications
-        if (modifiedLatexCode !== null) {
-            // Update the LaTeX content of the Edge
-            console.log("Modified LaTeX code:", modifiedLatexCode);
-            
-            // // update the sfg frontend and rerender
-            // edge.data('weight', modifiedLatexCode);
-            // cy.style().selector('edge').css({ 'content': '' }).update();
-            // window.cy.style().selector('edge').css({'content': 'data(weight)'}).update();
-            // display_mag_sfg();
-            reset_mag_labels();
-        }
-
-        // Remove the event listener after it's triggered once
-        cy.off('tap', 'edge', edgeTapHandler);
-    }
-
-    // Attach the event listener to edges for click
-    cy.on('tap', 'edge', edgeTapHandler);
-    document.getElementById("edit-branch-btn").disabled = true;
-
-    // get system url
-    // let url = new URL(`${baseUrl}/circuits/${circuitId}`)
-    // fetch(url, {
-    //     method: 'PATCH',
-    //     headers: {
-    //         'Content-Type': 'application/json'
-    //     }, 
-    //     mode: 'cors',
-    //     credentials: 'same-origin',
-    //     body: JSON.stringify(params)
-    // })
-    //     .then(response => response.json())
-    //     .then(data => {
-    //         update_frontend(data)
-    //     })
-    //     .catch((error) => {
-    //         console.error('Error:', error);
-    //     });
-    // render_frontend(current_data)
-    // sfg_patch_request()
-    // update_frontend()
-
-    // Update cy style and log loading time
-    cy.style().selector('edge').css({ 'content': '' }).update();
-    const time2 = new Date();
-    let time_elapse = (time2 - time1) / 1000;
-    console.log("editBranch SFG loading time: " + time_elapse + " seconds");
-}
 
 
 
@@ -943,6 +851,103 @@ function tremoveBranch() {
     }
 }
 
+// Function to initialize event listeners for edges
+function initializeEdgeHover() {
+    console.log("********** initializeEdgeHover is called **********")
+    let cy = window.cy; // Assuming `cy` is your Cytoscape instance
+
+    // Ensure `cy` is initialized
+    if (typeof cy === 'undefined' || cy === null) {
+        console.error('Cytoscape instance is not initialized.');
+        return;
+    }
+
+    // Attach mouseover event listener to edges
+    cy.on('mouseover', 'edge', function(event) {
+        let edge = event.target;
+        let edge_id = edge.id();
+        let edge_index = cy.edges().indexOf(edge);
+        let edgeData = edge.data();
+
+        // Display edge information in a designated HTML element
+        displayEdgeInfo(edgeData, edge_id, edge_index);
+
+        // Show the edge-info box
+        // document.getElementById('edge-info').style.display = 'block';
+
+        // Show the edge-info box
+        let edgeInfoBox = document.getElementById('edge-info');
+        edgeInfoBox.style.display = 'block';
+    });
+
+    // Attach mouseout event listener to clear the information
+    cy.on('mouseout', 'edge', function(event) {
+        clearEdgeInfo();
+
+        // Hide the edge-info box
+        // document.getElementById('edge-info').style.display = 'none';
+
+        //  // Hide the edge-info box
+        //  let edgeInfoBox = document.getElementById('edge-info');
+        //  edgeInfoBox.style.display = 'none';
+    });
+
+    // Attach mousemove event listener to update position of edge-info box
+    cy.on('mousemove', 'edge', function(event) {
+        updateEdgeInfoPosition(event.originalEvent);
+    });
+}
+
+// Function to display edge information in an HTML element
+function displayEdgeInfo(edgeData, edge_id, edge_index) {
+    // console.log("********** displayEdgeInfo is called **********")
+    let edgeInfoElement = document.getElementById('edge-info');
+
+    // // Clear any existing content and force repaint by removing and re-adding the element
+    // edgeInfoElement.style.display = 'none'; // Hide element
+    // edgeInfoElement.innerHTML = ''; // Clear content
+    // void edgeInfoElement.offsetWidth; // Force repaint
+    // edgeInfoElement.style.display = 'block'; // Show element again
+
+    // Clear any existing content and force repaint by removing and re-adding the element
+    edgeInfoElement.innerHTML = ''; // Clear content
+    if (edgeInfoElement.parentNode) {
+        edgeInfoElement.parentNode.removeChild(edgeInfoElement);
+        document.body.appendChild(edgeInfoElement);
+    }
+
+    if (edgeInfoElement) {
+        edgeInfoElement.innerHTML = `
+            <strong>Source:</strong> ${edgeData.source} <br>
+            <strong>Target:</strong> ${edgeData.target} <br>
+            <strong>Weight:</strong> ${edgeData.weight || 'N/A'} <br>
+            <strong>Edge Index:</strong> ${edge_index} <br>
+            <strong>Edge ID:</strong> ${edge_id} <br>
+        `;
+    }
+}
+
+// Function to clear the edge information display
+function clearEdgeInfo() {
+    // console.log("********** clearEdgeInfo is called **********");
+    let edgeInfoElement = document.getElementById('edge-info');
+    // edgeInfoElement.style.display = 'none'; // Hide element
+    edgeInfoElement.innerHTML = ''; // Clear content
+    // void edgeInfoElement.offsetWidth; // Force repaint
+    // edgeInfoElement.style.display = 'block'; // Show element again
+    // Hide the edge-info box
+    let edgeInfoBox = document.getElementById('edge-info');
+    edgeInfoBox.style.display = 'none';
+}
+
+// Function to update the position of the edge-info element based on mouse event
+function updateEdgeInfoPosition(event) {
+    let edgeInfoElement = document.getElementById('edge-info');
+
+    // Set the position of the edge-info element to follow the mouse cursor
+    edgeInfoElement.style.left = (event.clientX + 15) + 'px'; // Offset to avoid cursor overlap
+    edgeInfoElement.style.top = (event.clientY + 15) + 'px';  // Offset to avoid cursor overlap
+}
 
 function removeBranch() {
     console.log("removeBranch is called");
@@ -950,22 +955,17 @@ function removeBranch() {
     function edgeTapHandler(evt){
         let edge = evt.target;
         edge.style('display', 'none');
-        let idx = cy.edges().indexOf(edge);
-        edgeToRemove = cy.getElementById(idx);
-        console.log('idx:', idx);
-        console.log("edgeToRemove:", edgeToRemove);
-        edgeToRemove.remove();
-        // let latexCode = edge_symbolic_label[idx];
-        // console.log("LaTeX code for selected edge:", latexCode);
-        // console.log("Idx:", idx);
-        // console.log("edge_symbolic_label:", edge_symbolic_label);
-        // console.log("1-- edge:", edge);
-        // console.log("idx:", idx);  
-        // // edge_symbolic_label.splice(idx, 1); // can't splice because it edge_symbolic_label shifts the remaining labels
-        edge_symbolic_label[idx] = '';
-        console.log("BEFORE SPLICE edge_symbolic_label:", edge_symbolic_label);
+        // edge.remove();
+
+        // let idx = cy.edges().indexOf(edge);
+        // edgeToRemove = cy.getElementById(idx);
+        // console.log('idx:', idx);
+        // console.log("edgeToRemove:", edgeToRemove);
+        // edgeToRemove.remove();
+        // edge_symbolic_label[idx] = '';
+        
+        console.log("edge_symbolic_label array:", edge_symbolic_label);
         // edge_symbolic_label.splice(idx,1); // Remove the latex code for the edge
-        console.log("AFTER SPLICE edge_symbolic_label:", edge_symbolic_label);
         
         // // Adjust indices for edges after the removed edge
         // for (let i = idx + 1; i < cy.edges().length; i++) {
@@ -973,14 +973,28 @@ function removeBranch() {
         // }
         // edge_symbolic_label.pop(); // Remove the last element
         
+
+        // Construct data for the DELETE request
+        let data = {
+            source: edge.data('source'), // Get source node ID
+            target: edge.data('target')  // Get target node ID
+        };
+
+        console.log("edge id:", edge.id());
+        console.log("edge data:", edge.data());
+
+        // Remove the edge from Cytoscape
+        edge.remove();
+
+        // Update the backend with the removed branch
+        remove_edge_request(data);
+
         document.getElementById("rmv-branch-btn").disabled = false;
         
-        console.log('edge removed:', edge);
+        console.log('edge (edge id) removed:', edge.id());
         cy.off('tap', 'edge', edgeTapHandler);
-        // edge.remove(); 
-        reset_mag_labels();
         console.log("edge_symbolic_label:", edge_symbolic_label);
-
+        reset_mag_labels();
     }
 
     // Attach the event listener to edges for click
@@ -994,120 +1008,544 @@ function removeBranch() {
     console.log("editBranch SFG loading time: " + time_elapse + " seconds");
 }
 
+function remove_edge_request(data) {
+    console.log('DELETE request payload:', data);  // Log the payload
 
 
-function qqremoveBranch() {
-    // Print that this function is called from
-    console.log("removeBranch is called");
 
-    let cy = window.cy;
-    let updates = new Array(cy.edges().length)
-    let edges = new Array(cy.edges().length)
-
-    cy.edges().forEach((edge,idx) => {
-        edge.on('tap', function(evt){
-            // Remove the edge from the diagram
-            edge.remove();
-            console.log('Edge removed:', edge);
-        });
+    let url = `${baseUrl}/circuits/${circuitId}/edges`;
+    console.log("sending DELETE request to:", url);
+    fetch(url, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        console.log("received DELETE response from server");
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        removeHighlight();
+        console.log("remove_edge_request received data: ", data);
+        // update_frontend(data);
+    })
+    .catch(error => {
+        console.error('Error during DELETE request:', error);
+        alert('An error occurred while removing the edge. Please check the server logs.');
     });
+}
+
+function removeBranchLikeSimplify() {
+    console.log("removeBranch is called");
+    let cy = window.cy;
+    function edgeTapHandler(evt){
+        let edge = evt.target;
+        edge.style('display', 'none');
+
+        console.log("requesting branch removal")
+        
+        // ensure matching content format as in the server side
+        // for example: source and target
+        let form_data = {}
+        form_data.source = edge.data('source'); // Get source node ID
+        form_data.target = edge.data('target'); // Get target node ID
+
+        console.log("edge id:", edge.id());
+        console.log("edge data:", edge.data());
+        console.log("form_data:", form_data);
+
+        // Remove the edge from Cytoscape
+        edge.remove();
+
+        // Update the backend with the removed branch
+        removeBranchLikeSimplify_request(form_data)
+
+        document.getElementById("rmv-branch-btn").disabled = false;
+        console.log('edge (edge id) removed:', edge.id());
+        cy.off('tap', 'edge', edgeTapHandler);
+        console.log("edge_symbolic_label:", edge_symbolic_label);
+        reset_mag_labels();
+    }
+
+    // Attach the event listener to edges for click
+    cy.on('tap', 'edge', edgeTapHandler);
+    document.getElementById("rmv-branch-btn").disabled = true;
+
+    // Update cy style and log loading time
+    cy.style().selector('edge').css({ 'content': '' }).update();
+    const time2 = new Date();
+    let time_elapse = (time2 - time1) / 1000;
+    console.log("editBranch SFG loading time: " + time_elapse + " seconds");
+}
+
+function removeBranchLikeSimplify_request(params) {
+    // ensure url matches with the server route
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/remove_branch`)
+    console.log("sending PATCH request to:", url);
+    fetch(url, {
+        // ensure meta instructions match with server
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(params)
+    })
+    .then(response => {
+        // ensure response is in readable JSON format
+        console.log("received PATCH response from server");
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log("data" , data);
+        // console.log("weight", data.sfg.elements.edges[0].data.weight);
+        if(stack_len==0){
+            disable_undo_btn(false);
+        }
+        if (redo_len > 0) {
+            redo_len = 0;
+            disable_redo_btn(true);
+        }
+        stack_len = stack_len < 5 ? stack_len + 1 : 5
+        
+        // removeHighlight();
+        console.log("remove_edge_request received data: ", data);
+        // from old code
+        update_frontend(data);
+        
+        // additional: like the sfg_simplify_request() funciton
+        simplify_mode_toggle()
+        reset_mag_labels()
+    })
+    .catch(error => {
+        console.log(error)
+        // console.error('Error during DELETE request:', error);
+        // alert('An error occurred while removing the edge. Please check the server logs.');
+    });
+}
 
 
-    // Define the event handler to handle tap events on edges
+function getEdgeInfo() {
+    console.log("getEdgeInfo is called");
+    let cy = window.cy;
     function edgeTapHandler(evt) {
-        let tappedEdge = evt.target; // Get the tapped edge
-        console.log('Tapped Edge:', tappedEdge);
+        let edge = evt.target;
+        console.log("requesting edge info")
+        let form_data = {
+            source: edge.data('source'),
+            target: edge.data('target')
+        };
+        console.log("form_data:", form_data);
+        getEdgeInfo_request(form_data);
 
-        // Remove the popper element associated with the tapped edge
-        let edgePopper = tappedEdge.scratch('_popper'); // Retrieve the popper element
-        if (edgePopper) {
-            // print edgepopper content
-            console.log('Edge Popper:', edgePopper);
-            edgePopper.destroy(); // Destroy the popper element
-            console.log('Popper removed:', edgePopper);
+        document.getElementById("edge-info-btn").disabled = false;
+        cy.off('tap', 'edge', edgeTapHandler);
+        console.log("edge_symbolic_label:", edge_symbolic_label);
+        reset_mag_labels();
+    }
+    // Attach the event listener to edges for click
+    cy.on('tap', 'edge', edgeTapHandler);
+    document.getElementById("edge-info-btn").disabled = true;
+
+    // Update cy style and log loading time
+    cy.style().selector('edge').css({ 'content': '' }).update();
+    const time2 = new Date();
+    let time_elapse = (time2 - time1) / 1000;
+    console.log("getEdgeInfo SFG loading time: " + time_elapse + " seconds");
+}
+
+function getEdgeInfo_request(params) {
+    let url = new URL(`${baseUrl}/circuits/${circuitId}/get_edge_info`)
+    url.search = new URLSearchParams(params).toString();
+    console.log("sending GET request to:", url.toString());
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'same-origin',
+        // body: JSON.stringify(params)
+    })
+    .then(response => {
+        console.log("received GET response from server");
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('server\'s response data:', data);
+        openEditModal(data);
+    })
+    .catch(error => {
+        console.error('Error during GET request:', error);
+        // console.error('Error during DELETE request:', error);
+        // alert('An error occurred while removing the edge. Please check the server logs.');
+    });
+}    
+
+function openEditModal(data) {
+    clearEdgeInfo();
+    // Get the modal element
+    var modal = document.getElementById("edge-edit-modal");
+
+    // Get the form and input elements
+    var form = document.getElementById("edge-edit-form");
+    var symbolicInput = document.getElementById("symbolic");
+    //// Not using the magnitude and phase inputs for now
+    // var magnitudeInput = document.getElementById("magnitude");
+    // var phaseInput = document.getElementById("phase");
+    var magnitudeDisplay = document.getElementById("magnitude-value");
+    var phaseDisplay = document.getElementById("phase-value");
+
+    console.log('Data:', data);
+
+    // Populate the input fields with data
+    symbolicInput.value = data.data.weight.symbolic;
+    // magnitudeInput.value = data.data.weight.magnitude;
+    // phaseInput.value = data.data.weight.phase;
+    magnitudeDisplay.textContent = data.data.weight.magnitude;
+    phaseDisplay.textContent = data.data.weight.phase;
+
+    // Show the modal
+    modal.style.display = "block";
+
+    // When the user clicks on <span> (x), close the modal
+    var span = document.getElementsByClassName("close")[0];
+    span.onclick = function() {
+        modal.style.display = "none";
+    }
+
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    // Handle form submission
+    form.onsubmit = function(event) {
+        event.preventDefault();
+        // var updatedData = {
+        //     symbolic: symbolicInput.value,
+        //     magnitude: parseFloat(magnitudeInput.value),
+        //     phase: parseFloat(phaseInput.value)
+        // };
+        // console.log('Updated data:', updatedData);
+
+        data.data.weight.symbolic = symbolicInput.value;
+        // data.data.weight.magnitude = parseFloat(magnitudeInput.value);
+        // data.data.weight.phase = parseFloat(phaseInput.value);
+        console.log('Updated data:', data);
+        
+        // Send updated data to the server or handle it
+        // TODO
+        console.log('----------Next Step: send src, tgt, and new symbolic data to server----------');
+        console.log('src:', data.data.source);
+        console.log('tgt:', data.data.target);
+        console.log('symbolic:', data.data.weight.symbolic);
+
+        new_editBranchLikeSimplify(data.data.source, data.data.target, data.data.weight.symbolic);
+
+        modal.style.display = "none";
+    };
+}
+
+
+// Function to validate user input against valid keys
+function validateInput(userInput) {
+    // console.log("keys: ", keys);
+    // console.log("latex_keys: ", latex_keys);
+    // userInput = userInput.toLowerCase();
+    for (let latex_key of latex_keys) {
+        // return false if userinput does not include a valid key or is not an integer
+        if (userInput.includes(latex_key) || Number.isInteger(parseInt(userInput))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Function to display popup window for editing LaTeX code
+function editLatexCode(latexCode, idx) {
+    // Open a prompt dialog with the current LaTeX code
+    let userInput = prompt("Edit LaTeX code:", latexCode);
+    console.log("Edited latex code:", userInput);
+    // check if any element in global keys appear in userInput
+    if (userInput === null) {
+        console.log("editBranch prompt cancelled");
+        return latexCode;
+    } else if (validateInput(userInput) && userInput !== null && userInput !== '') {
+        console.log('editBranch Input is valid');
+        edge_symbolic_label[idx] = userInput;
+        return userInput;
+    } else {
+        console.log('Input is invalid');
+        alert('Input is invalid\nPlease enter a valid LaTeX code.\nRefer to the list of valid circuit parameters.');
+        return latexCode;
+    }
+}
+
+function editBranchLikeSimplify() {
+    console.log("editBranch is called");
+    let cy = window.cy;
+    function edgeTapHandler(evt){
+        let edge = evt.target;
+
+        console.log("requesting branch edit")
+
+        let form_data = {}
+        form_data.source = edge.data('source');
+        form_data.target = edge.data('target');
+        form_data.symbolic = 1;
+        console.log("edge id:", edge.id());
+        console.log("edge data:", edge.data());
+        console.log("form_data:", form_data);
+
+
+        update_edge_new(form_data);
+
+        document.getElementById("edit-branch-btn").disabled = false;
+        console.log('edge (edge id) removed:', edge.id());
+        cy.off('tap', 'edge', edgeTapHandler);
+        console.log("edge_symbolic_label:", edge_symbolic_label);
+        reset_mag_labels();
+    }
+
+    // Attach the event listener to edges for click
+    cy.on('tap', 'edge', edgeTapHandler);
+    document.getElementById("edit-branch-btn").disabled = true;
+
+    // Update cy style and log loading time
+    cy.style().selector('edge').css({ 'content': '' }).update();
+    const time2 = new Date();
+    let time_elapse = (time2 - time1) / 1000;
+    console.log("editBranch SFG loading time: " + time_elapse + " seconds");
+}
+
+function new_editBranchLikeSimplify(source, target, symbolic) {
+    console.log("---------- new_editBranchLikeSimplify is called");
+
+    let form_data = {}
+    form_data.source = source;
+    form_data.target = target;
+    form_data.symbolic = symbolic;
+    console.log("form_data:", form_data);
+
+    update_edge_new(form_data);
+
+    // reset_mag_labels();
+
+    // Update cy style and log loading time
+    // cy.style().selector('edge').css({ 'content': '' }).update();
+    const time2 = new Date();
+    let time_elapse = (time2 - time1) / 1000;
+    console.log("editBranch SFG loading time: " + time_elapse + " seconds");
+}
+
+// Function to edit the selected branch on the SFG
+function editBranch() {
+    console.log("editBranch is called");
+    let cy = window.cy;
+    function edgeTapHandler(evt) {
+        // console.log("evt target: ", evt.target)
+        // console.log("evt: ", evt)
+
+        console.log("BEFORE EDIT: edge_symbolic_label: ", edge_symbolic_label);
+
+
+        // Retrieve the LaTeX code for the selected edge
+        let edge = evt.target;
+        let idx = cy.edges().indexOf(edge);
+        let latexCode = edge_symbolic_label[idx];
+        console.log("LaTeX code for selected edge:", latexCode);
+        console.log("Idx:", idx);
+
+        // print edge input, output, and weight
+        console.log("edge source: ", edge.data('source'));
+        console.log("edge target: ", edge.data('target'));
+        console.log("edge weight: ", edge.data('weight'));
+        console.log("edge weight symbolic: ", edge.data('weight_symbolic'))
+        console.log("edge id: ", edge.id());
+        // print all edge data
+        console.log("edge data: ", edge.data());
+
+        // Display popup window for editing LaTeX code
+        let modifiedLatexCode = editLatexCode(latexCode, idx);
+        document.getElementById("edit-branch-btn").disabled = false;
+        // print all edge_symbolic_label
+        console.log("AFTER EDIT: edge_symbolic_label: ", edge_symbolic_label);
+
+        // Update the keys on parameters based on the modifiedLatexCode
+        
+
+        // sfg_patch_request(idx, latexCode, edge.data('source'), edge.data('target'));
+
+        // most recent edit
+        // update_edge(edge.data('source'), edge.data('target'), modifiedLatexCode);
+
+        // try using simplify() method
+        let form_data = {}
+        form_data.source = edge.data('source');
+        form_data.target = edge.data('target');
+        update_edge()
+
+
+        // Check if the user made any modifications
+        if (modifiedLatexCode !== null) {
+            // Update the LaTeX content of the Edge
+            console.log("Modified LaTeX code:", modifiedLatexCode);
+            
+            // // update the sfg frontend and rerender
+            // edge.data('weight', modifiedLatexCode);
+            // cy.style().selector('edge').css({ 'content': '' }).update();
+            // window.cy.style().selector('edge').css({'content': 'data(weight)'}).update();
+            // display_mag_sfg();
+            reset_mag_labels();
         }
 
-        // Remove the tapped edge from the diagram
-        tappedEdge.remove();
-        console.log('Edge removed:', tappedEdge);
-
-        //re-render the SFG
-
-
-        // Turn off the event handler after the first edge has been removed
+        // Remove the event listener after it's triggered once
         cy.off('tap', 'edge', edgeTapHandler);
     }
 
-    // Attach the event handler to listen for tap events on edges
+    // Attach the event listener to edges for click
     cy.on('tap', 'edge', edgeTapHandler);
+    document.getElementById("edit-branch-btn").disabled = true;
 
-    // // Define the event handler to handle remove events on edges
-    // function edgeRemoveHandler(evt) {
-    //     let removedEdge = evt.target; // Get the removed edge
-    //     console.log('Removed Edge:', removedEdge);
-
-    //     // Remove the popper element associated with the removed edge
-    //     let edgePopper = removedEdge.scratch('_popper'); // Retrieve the popper element
-    //     if (edgePopper) {
-    //         edgePopper.destroy(); // Destroy the popper element
-    //         console.log('Popper removed:', edgePopper);
-    //     }
-    //     cy.off('remove', 'edge', edgeRemoveHandler);
-    // }
-
-    // // Attach the event handler to listen for remove events on edges
-    // cy.on('remove', 'edge', edgeRemoveHandler);
+    // Update cy style and log loading time
+    cy.style().selector('edge').css({ 'content': '' }).update();
+    const time2 = new Date();
+    let time_elapse = (time2 - time1) / 1000;
+    console.log("editBranch SFG loading time: " + time_elapse + " seconds");
 }
 
-// Removes the selected branch from the diagram
-function primitiveremoveBranch() {
-    // Print that this function is called from
-    console.log("removeBranch is called");
 
-    // Get the edge that is clicked
-    // function edgeTapHandler(evt) {
-    //     cy.edges().forEach((edge, idx) => {
-    //         edge.on('tap', function(evt){
-    //             // Remove the edge from the diagram
-    //             edge.remove();
-    //             console.log('Edge removed:', edge);
-    //         });
-    //     });
-    //     // Turn off the event handler after the first edge has been removed
-    //     cy.off('tap', 'edge', edgeTapHandler);
-    // }
+
+
+// function qqremoveBranch() {
+//     // Print that this function is called from
+//     console.log("removeBranch is called");
+
+//     let cy = window.cy;
+//     let updates = new Array(cy.edges().length)
+//     let edges = new Array(cy.edges().length)
+
+//     cy.edges().forEach((edge,idx) => {
+//         edge.on('tap', function(evt){
+//             // Remove the edge from the diagram
+//             edge.remove();
+//             console.log('Edge removed:', edge);
+//         });
+//     });
+
+
+//     // Define the event handler to handle tap events on edges
+//     function edgeTapHandler(evt) {
+//         let tappedEdge = evt.target; // Get the tapped edge
+//         console.log('Tapped Edge:', tappedEdge);
+
+//         // Remove the popper element associated with the tapped edge
+//         let edgePopper = tappedEdge.scratch('_popper'); // Retrieve the popper element
+//         if (edgePopper) {
+//             // print edgepopper content
+//             console.log('Edge Popper:', edgePopper);
+//             edgePopper.destroy(); // Destroy the popper element
+//             console.log('Popper removed:', edgePopper);
+//         }
+
+//         // Remove the tapped edge from the diagram
+//         tappedEdge.remove();
+//         console.log('Edge removed:', tappedEdge);
+
+//         //re-render the SFG
+
+
+//         // Turn off the event handler after the first edge has been removed
+//         cy.off('tap', 'edge', edgeTapHandler);
+//     }
+
+//     // Attach the event handler to listen for tap events on edges
+//     cy.on('tap', 'edge', edgeTapHandler);
+
+//     // // Define the event handler to handle remove events on edges
+//     // function edgeRemoveHandler(evt) {
+//     //     let removedEdge = evt.target; // Get the removed edge
+//     //     console.log('Removed Edge:', removedEdge);
+
+//     //     // Remove the popper element associated with the removed edge
+//     //     let edgePopper = removedEdge.scratch('_popper'); // Retrieve the popper element
+//     //     if (edgePopper) {
+//     //         edgePopper.destroy(); // Destroy the popper element
+//     //         console.log('Popper removed:', edgePopper);
+//     //     }
+//     //     cy.off('remove', 'edge', edgeRemoveHandler);
+//     // }
+
+//     // // Attach the event handler to listen for remove events on edges
+//     // cy.on('remove', 'edge', edgeRemoveHandler);
+// }
+
+// // Removes the selected branch from the diagram
+// function primitiveremoveBranch() {
+//     // Print that this function is called from
+//     console.log("removeBranch is called");
+
+//     // Get the edge that is clicked
+//     // function edgeTapHandler(evt) {
+//     //     cy.edges().forEach((edge, idx) => {
+//     //         edge.on('tap', function(evt){
+//     //             // Remove the edge from the diagram
+//     //             edge.remove();
+//     //             console.log('Edge removed:', edge);
+//     //         });
+//     //     });
+//     //     // Turn off the event handler after the first edge has been removed
+//     //     cy.off('tap', 'edge', edgeTapHandler);
+//     // }
     
 
-    // Define the event handler to handle tap events on edges
-    function edgeTapHandler(evt) {
-        let tappedEdge = evt.target; // Get the tapped edge
-        console.log('Tapped Edge:', tappedEdge);
+//     // Define the event handler to handle tap events on edges
+//     function edgeTapHandler(evt) {
+//         let tappedEdge = evt.target; // Get the tapped edge
+//         console.log('Tapped Edge:', tappedEdge);
 
-        // Remove the tapped edge from the diagram
-        tappedEdge.remove();
-        reset_mag_labels();
-        console.log('Edge removed:', tappedEdge);
+//         // Remove the tapped edge from the diagram
+//         tappedEdge.remove();
+//         reset_mag_labels();
+//         console.log('Edge removed:', tappedEdge);
         
-        // // Remove the popper element associated with the tapped edge
-        // let edgePopper = tappedEdge.scratch('_popper');
-        //     if (edgePopper) {
-        //     edgePopper.destroy();
-        //     console.log('Popper removed:', edgePopper);
-        // }
+//         // // Remove the popper element associated with the tapped edge
+//         // let edgePopper = tappedEdge.scratch('_popper');
+//         //     if (edgePopper) {
+//         //     edgePopper.destroy();
+//         //     console.log('Popper removed:', edgePopper);
+//         // }
 
-        // // Update the edges
-        // tappedEdge.update();
+//         // // Update the edges
+//         // tappedEdge.update();
 
 
-        // Turn off the event handler after the first edge has been removed
-        cy.off('tap', 'edge', edgeTapHandler);
-    }
+//         // Turn off the event handler after the first edge has been removed
+//         cy.off('tap', 'edge', edgeTapHandler);
+//     }
 
-    // Attach the event handler to listen for tap events on edges
-    cy.on('tap', 'edge', edgeTapHandler);
-}
+//     // Attach the event handler to listen for tap events on edges
+//     cy.on('tap', 'edge', edgeTapHandler);
+// }
 
-function display_mag_sfg() {
+function  display_mag_sfg() {
     let cy = window.cy;
 
     let updates = new Array(cy.edges().length)
@@ -1214,10 +1652,10 @@ function make_parameter_panel(parameters) {
     var freq = 0
     for (let key in parameters) {
         // console.log("key: " + key + " value: " + parameters[key])
-        keys.push(key)
-        latex_key = convertToLatex(key)
-        latex_keys.push(latex_key)
-        console.log("keys array: " + keys)
+        // keys.push(key)
+        // latex_key = convertToLatex(key)
+        // latex_keys.push(latex_key)
+        // console.log("keys array: " + keys) // iterating
         var parameter = document.createElement("input")
         parameter.type = "number"
         parameter.name = key
@@ -1230,7 +1668,7 @@ function make_parameter_panel(parameters) {
         pf.appendChild(parameter)
         pf.appendChild(br.cloneNode())
     }
-    console.log("keys: " + keys)
+    console.log("keys: " + keys) // all final keys
     console.log("latex_keys: " + latex_keys)
     
     var s = document.createElement("input")
@@ -1248,12 +1686,15 @@ function make_parameter_panel(parameters) {
 
         let form_data = {}
         //making input
+        console.log("---------- parameters: ", parameters)
         for (let key in parameters) {
             let i = document.querySelector(`#${key}`).value
+            console.log("---------- key: " + key + " value: " + i)
             if (i != "") {
                 form_data[key] = parseFloat(i)
             }
         }
+        console.log("form_data: ", form_data)
         sfg_patch_request(form_data)
 
     });
@@ -1278,15 +1719,22 @@ function sfg_patch_request(params) {
         credentials: 'same-origin',
         body: JSON.stringify(params)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            // Handle HTTP errors
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         removeHighlight()
         console.log(data)
         update_frontend(data)
     })
     .catch(error => {
-        console.log(error)
-    })
+        console.error('Error during PATCH request:', error);
+        alert('An error occurred while updating the circuit. Please check the server logs.');
+    });
 }
 
 // Sends a patch request to the backend and updates edge weights
@@ -1524,6 +1972,37 @@ function load_latex() {
     head.appendChild(latex_script);
 }
 
+// Auto-fills the transfer function panel when click on desired nodes
+function click_node_make_transfer_func_panel() {
+    // Track the selected nodes
+    let selectedNodes = [];
+
+    // Add click event listener to nodes
+    cy.on('click', 'node', function(event) {
+        let node = event.target;
+        let nodeId = node.id();
+
+        if (selectedNodes.length === 0) {
+            // Set the input node
+            document.getElementById('input_node').value = nodeId;
+            document.getElementById('input_node_bode').value = nodeId;
+            selectedNodes.push(nodeId);
+        } else if (selectedNodes.length === 1) {
+            // Set the output node
+            document.getElementById('output_node').value = nodeId;
+            document.getElementById('output_node_bode').value = nodeId;
+            selectedNodes.push(nodeId);
+        } else {
+            // Reset the selection if both nodes are already selected
+            document.getElementById('input_node').value = '';
+            document.getElementById('output_node').value = '';
+            document.getElementById('input_node_bode').value = '';
+            document.getElementById('output_node_bode').value = '';
+            selectedNodes = [];
+        }
+    });
+}
+
 
 function make_transfer_func_panel() {
     var form = document.createElement("form")
@@ -1548,6 +2027,8 @@ function make_transfer_func_panel() {
     form.appendChild(out_node)
     form.appendChild(br.cloneNode())
 
+    click_node_make_transfer_func_panel()
+
     var s = document.createElement("input")
     s.setAttribute("type", "submit")
     s.setAttribute("value", "Submit Form")
@@ -1570,6 +2051,42 @@ function make_transfer_func_panel() {
     document.getElementById("transfer-form").appendChild(form);
 }
 
+function update_edge_new(params) {
+    console.log("********** running update_edge_new **********")
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/update_edge_new`);
+    // var url = `${baseUrl}/circuits/${circuitId}/update_edge_new`;
+    
+    console.log("Final URL with parameters:", url.href);
+    console.log("sending PATCH request to:", url);
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(params)
+    })
+    .then(response => {
+        if (!response.ok) {
+            // If response is not ok (i.e., in error status range), reject the promise
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        // If response is ok, return JSON promise
+        return response.json();
+    })
+    .then(data => {
+        console.log("success!");
+        update_frontend(data);
+        reset_mag_labels();
+    })
+    .catch(error => {
+        console.error('update_edge error!:', error);
+        console.log('update_edge Full response:', error.response);
+    });
+}
+
 function update_edge(input_node, output_node, symbolic_value) {
     var url = new URL(`${baseUrl}/circuits/${circuitId}/update_edge`);
     params = {input_node: input_node, output_node: output_node, symbolic_value: symbolic_value}
@@ -1580,7 +2097,15 @@ function update_edge(input_node, output_node, symbolic_value) {
     });
     console.log("Final URL with parameters:", url.href);
 
-    fetch(url)
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'same-origin',
+        body: JSON.stringify(params)
+    })
     .then(response => {
         if (!response.ok) {
             // If response is not ok (i.e., in error status range), reject the promise
@@ -1598,16 +2123,102 @@ function update_edge(input_node, output_node, symbolic_value) {
     });
 }
 
+async function tf_toggle() {
+    console.log("********** running tf_toggle **********")
+    console.log("tf_flag: ", tf_flag)
+    console.log("input_node: ", tf.input)
+    console.log("output_node: ", tf.output)
+    if (tf.input && tf.output){
+        tf_flag = !tf_flag
+        try{
+            const time1 = new Date()
+            // TODO Mark
+            // copy make_transfer_func fetch logic
+            let latex_toggle = true
+            let factor_toggle = true
+            let params = {input_node: tf.input, output_node: tf.output, latex: latex_toggle,
+                factor: factor_toggle, numerical: tf_flag}
+            var url = new URL(`${baseUrl}/circuits/${circuitId}/transfer_function`)
+    
+            // print the base url
+            console.log('base url for make_transfer_func: ', baseUrl)
+    
+            // print the created url
+            console.log('url: ', url)
+            console.log("URL before appending parameters:", url.href);
+            Object.keys(params).forEach(key => {
+                const value = params[key].toString();
+                url.searchParams.append(key, value);
+            });
+            console.log("Final URL with parameters:", url.href);
+            
+            fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    // If response is not ok (i.e., in error status range), reject the promise
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                // If response is ok, return JSON promise
+                console.log("make_transfer_func fetch response: ", response)
+                return response.json();
+            })
+            .then(data => {
+                console.log("data");
+                console.log(data);
+                console.log("transfer function data:", data.transfer_function);
+                // Handle the JSON data
+                var trans = document.getElementById("trans-funtion")
+                let latex_trans = "\\(" + data.transfer_function + "\\)"
+                trans.innerHTML = latex_trans
+                // print trans.innerHTML
+                console.log("trans.innerHTML: " + trans.innerHTML)
+                // what does trans.innerHTML do?
+    
+    
+                console.log(data)
+                //reset MathJax
+                MathJax.typeset()
+            })
+            .catch(error => {
+                console.error('make_transfer_func error:', error);
+                console.log('make_transfer_func Full response:', error.response);
+            });
+    
+            const time2 = new Date()
+            let time_elapse = (time2 - time1)/1000
+            console.log("Transfer function tf_toggle time (numeric <-> symbolic): " + time_elapse + " seconds")
+        } catch {
+            alert("error when toggle transfer function numeric <-> symbolic")
+        }
+    } else {
+        //  uncheck the checkbox
+        let tf_toggle_button = document.getElementById("tf-toggle");
+        tf_toggle_button.checked = false
+        alert("input field incomplete")
+    }
+}
+
+let tf_toggle_button = document.getElementById("tf-toggle");
+if (tf_toggle_button) {
+    tf_toggle_button.addEventListener('click', tf_toggle)
+}
+    
 function make_transfer_func(input_node, output_node) {
+    console.log("********** runnning make_transfer_func **********")
     let latex_toggle = true
     let factor_toggle = true
-    let numerical_toggle = true
+    let numerical_toggle = tf_flag
     let params = {input_node: input_node, output_node: output_node, latex: latex_toggle,
         factor: factor_toggle, numerical: numerical_toggle}
     var url = new URL(`${baseUrl}/circuits/${circuitId}/transfer_function`)
+    
+    tf.input = input_node
+    tf.output = output_node
+    console.log("tf.input: ", tf.input)
+    console.log("tf.output: ", tf.output)
 
     // print the base url
-    console.log('base url: ', baseUrl)
+    console.log('base url for make_transfer_func: ', baseUrl)
 
     // print the created url
     console.log('url: ', url)
@@ -1625,6 +2236,7 @@ function make_transfer_func(input_node, output_node) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
         // If response is ok, return JSON promise
+        console.log("make_transfer_func Fetch response: ", response)
         return response.json();
     })
     .then(data => {
@@ -1635,6 +2247,11 @@ function make_transfer_func(input_node, output_node) {
         var trans = document.getElementById("trans-funtion")
         let latex_trans = "\\(" + data.transfer_function + "\\)"
         trans.innerHTML = latex_trans
+        // print trans.innerHTML
+        console.log("trans.innerHTML: " + trans.innerHTML)
+        // what does trans.innerHTML do?
+
+
         console.log(data)
         //reset MathJax
         MathJax.typeset()
@@ -1821,6 +2438,9 @@ function fetch_transfer_bode_data(input_params) {
         return response.json();
     })
     .then(data => {
+        // for user: have a button to save bode plat ("data") ==> in an tuple array or stack somewhere
+        // the user should be able to click save at any time (many versions of the bode plot "data")
+        // also show a new updated bode plot from the most recent "data"
         make_bode_plots(data, 'transfer-bode-plot')
         console.log("data:");
         console.log(data);
@@ -1842,6 +2462,10 @@ function make_bode_plots(data, dom_element) {
     let frequency = data["frequency"]
     let gain = data["gain"]
     let phase = data["phase"]
+
+    // save data to global variable to keep track of history
+    bode_plot_history.push(data)
+    console.log("bode_plot_history: ", bode_plot_history)
 
     let i;
     for (i=0; i < frequency.length; i++) {
@@ -1951,22 +2575,97 @@ function make_bode_plots(data, dom_element) {
     });
 }
 
+async function lg_toggle() {
+    console.log("********** running lg_toggle **********")
+    lg_flag = !lg_flag
+    console.log("lg_flag: ", lg_flag)
+    try {
+        const time1 = new Date()
+        // TODO Mark
+        // copy make_loop_gain fetch logic
+        let latex_toggle = true
+        let factor_toggle = true
+        let params = {latex: latex_toggle, factor: factor_toggle, numerical: lg_flag}
+        var url = new URL(`${baseUrl}/circuits/${circuitId}/loop_gain`)
 
+        // print the base url
+        console.log('base url for make_loop_gain: ', baseUrl)
+
+        // print the created url
+        console.log('url: ', url)
+        console.log("URL before appending parameters:", url.href);
+        Object.keys(params).forEach(key => {
+            const value = params[key].toString();
+            url.searchParams.append(key, value);
+        });
+        console.log("Final URL with parameters:", url.href);
+        
+        fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                // If response is not ok (i.e., in error status range), reject the promise
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            // If response is ok, return JSON promise
+            console.log("make_loop_gain fetch response: ", response)
+            return response.json();
+        })
+        .then(data => {
+            console.log("data");
+            console.log(data);
+            console.log("loop gain data:", data.loop_gain);
+            var loop_gain = document.getElementById("loop-gain")
+            let latex_loop_gain = "\\(" + data.loop_gain + "\\)"
+            loop_gain.innerHTML = latex_loop_gain
+            
+            console.log(data)
+            //reset MathJax
+            MathJax.typeset()
+        })
+        .catch(error => {
+            console.error('make_loop_gain Fetch error:', error);
+            console.log('make_loop_gain Full response:', error.response);
+        });
+
+        const time2 = new Date()
+        let time_elapse = (time2 - time1)/1000
+        console.log("Loop gain lg_toggle time (numeric <-> symbolic): " + time_elapse + " seconds")
+    } catch {
+        alert("error when toggle loop gain numeric <-> symbolic")
+    }
+}
+
+let lg_toggle_button = document.getElementById("lg-toggle");
+if (lg_toggle_button) {
+    lg_toggle_button.addEventListener('click', lg_toggle)
+}
 
 function make_loop_gain() {
+    console.log("********** runnning make_loop_gain **********")
+    let latex_toggle = true
+    let factor_toggle = true
+    let numerical_toggle = lg_flag
+    let params = {latex: latex_toggle, factor: factor_toggle, numerical: numerical_toggle}
     var url = new URL(`${baseUrl}/circuits/${circuitId}/loop_gain`)
 
     // print the base url
-    console.log("base url:", baseUrl);
+    console.log("base url for make_loop_gain:", baseUrl);
 
     // print out the created url
-    console.log("url:", url.href)
+    console.log("url:", url)
+    console.log("URL before appending parameters:", url.href);
+    Object.keys(params).forEach(key => {
+        const value = params[key].toString();
+        url.searchParams.append(key, value);
+    });
+    console.log("Final URL with parameters:", url.href);
     fetch(url)
     .then(response => {
         if (!response.ok) {
             // If response is not ok (i.e., in error status range), reject the promise
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
+        console.log("make_loop_gain Fetch response:", response);
         // If response is ok, return the JSON promise
         return response.json();
     })
@@ -1977,6 +2676,8 @@ function make_loop_gain() {
         var loop_gain = document.getElementById("loop-gain")
         let latex_loop_gain = "\\(" + data.loop_gain + "\\)"
         loop_gain.innerHTML = latex_loop_gain
+        console.log("loop_gain.innerHTML:", loop_gain.innerHTML)
+        console.log(data)
         //reset MathJax
         MathJax.typeset()
     })
@@ -1985,7 +2686,6 @@ function make_loop_gain() {
         console.error('make_loop_gain Fetch error:', error);
         console.log('make_loop_gain Full response:', error.response);
     });
-
 }
 
 

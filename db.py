@@ -4,6 +4,7 @@ import os
 from mongoengine import *
 from datetime import datetime
 import sympy
+from sympy.parsing.latex import parse_latex
 import mason
 import math
 import cmath
@@ -12,6 +13,7 @@ import dill
 import circuit_parser
 from dpi import DPI_algorithm as DPI
 from dpi import simplify
+from dpi import removing_branch
 import ltspice2svg
 import networkx as nx
 
@@ -76,6 +78,8 @@ class Circuit(Document):
         Returns:
             A dictionary.
         """
+        print("to_dict called in db.py")
+        
         fields = set(fields or ('id', 'name', 'parameters', 'sfg'))
 
         output = {
@@ -92,6 +96,11 @@ class Circuit(Document):
             freq = 2j * math.pi * sympy.Symbol('f')
 
             for src, dst in sfg.edges:
+                # print the edge and its weights
+                print("src:", src)
+                print("dst:", dst)
+                print("edge:", sfg.edges[src, dst])
+                print("edge weight:", sfg.edges[src, dst]['weight'])
                 symbolic = sfg.edges[src, dst]['weight']
 
                 if isinstance(symbolic, sympy.Expr):
@@ -508,6 +517,31 @@ class Circuit(Document):
         # Convert numpy arrays to plain python lists.
         return freq.tolist(), gain.tolist(), phase.tolist()
     
+    def remove_branch_sfg(self, source, target):
+        """Remove a branch from the sfg.
+
+        Args:
+            source: node representing start of path
+            target: node representing end of the path
+        """
+        #save current sfg
+        self.sfg_stack.append(self.sfg)
+        self.redo_stack.clear()
+        if len(self.sfg_stack) > 5:
+            self.sfg_stack = self.sfg_stack[-5:]
+
+        # De-serialize sfg
+        sfg = dill.loads(self.sfg)
+
+        # check nodes exist
+        if not sfg or not sfg.has_node(source) or not sfg.has_node(target):
+            raise Exception('Node does not exist.') 
+
+        sfg = removing_branch(sfg, source, target)
+        if not sfg or sfg == "Path is too short":
+            raise Exception('The selected branch does not exist')
+        self.sfg = dill.dumps(sfg)
+
     def simplify_sfg(self, source, target ):
         """Simplify the sfg.
 
@@ -547,6 +581,47 @@ class Circuit(Document):
     def get_current_sfg(self):
         return self.deserialize_sfg()
 
+    def old_edit_edge(self, editSrc, editDst, editSymbolic):
+        """Edit the SFG edge
+
+        Args:
+            editSrc: the source vertex of the edge
+            editDst: the destination vertex of the edge
+            editSymbolic: the new symbolic function of the edge.
+        """
+        print("edit_edge called in db.py")
+        print("self:", self)
+        print("editSrc:", editSrc)
+        print("editDst:", editDst)
+        print("editSymbolic:", editSymbolic)
+        
+        print("loading sfg")
+        sfg = dill.loads(self.sfg)
+        print("sfg loaded")
+        print("sfg:", sfg)
+
+        # print sfg info
+        print("nodes:", sfg.nodes)
+        print("edges:", sfg.edges)
+
+
+        print("iterating through edges")
+        for src, dst in sfg.edges:
+            if src == editSrc and dst == editDst:
+                print("found edge")
+                print("edge:", sfg.edges)
+                symbolic = sfg.edges[src, dst]['weight']
+                print("old symbolic:", symbolic)
+                print("edge data:", sfg.edges[src, dst])
+                sfg.edges[src, dst]['weight'] = editSymbolic
+                print("edge data after edit:", sfg.edges[src, dst])
+                self.sfg = dill.dumps(sfg)
+                # return sfg.edges[src, dst]['weight']
+                break
+        # self.sfg = dill.dumps(sfg)
+        return sfg
+        raise Exception('The selected edge does not exist!')
+    
     def edit_edge(self, editSrc, editDst, editSymbolic):
         """Edit the SFG edge
 
@@ -555,12 +630,60 @@ class Circuit(Document):
             editDst: the destination vertex of the edge
             editSymbolic: the new symbolic function of the edge.
         """
-        sfg = dill.loads(self.sfg)
+        print("edit_edge called in db.py")
+        print("editSrc:", editSrc)
+        print("editDst:", editDst)
+        print("editSymbolic:", editSymbolic)
+        
+        try:
+            # Convert the symbolic string to a SymPy expression
+            print("trying to convert to SymPy expression")
+            editSymbolic = sympy.sympify(editSymbolic)
+            print("successfully converted to SymPy expression")
+        except sympy.SympifyError:
+            # print("failed to convert to SymPy expression")
+            # raise ValueError(f"Invalid symbolic expression: {editSymbolic}")
+            try:
+                # Fallback to parsing as a LaTeX expression
+                editSymbolic = parse_latex(editSymbolic)
+                print("successfully parsed as LaTeX expression")
+            except Exception as e:
+                print("failed to parse as LaTeX expression")
+                raise ValueError(f"Invalid symbolic expression: {editSymbolic}. Error: {e}")
+        # Load the current state of the SFG
+        try:
+            print("Loading SFG...")
+            sfg = dill.loads(self.sfg)
+            print("SFG loaded successfully.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load SFG: {e}")
+
+        # Iterate through edges and find the one to update
+        edge_found = False
+        print("Iterating through edges...")
         for src, dst in sfg.edges:
             if src == editSrc and dst == editDst:
-                sfg.edges[src][dst]['weight'] = editSymbolic
-                return sfg.edges[src][dst]['weight']
-        raise Exception('The selected edge does not exist!')
+                print(f"Found edge from {src} to {dst}. Updating symbolic weight.")
+                # Update the symbolic weight for the found edge
+                sfg.edges[src, dst]['weight'] = editSymbolic
+                edge_found = True
+                break
+
+        # Handle the case where the edge wasn't found
+        if not edge_found:
+            raise ValueError(f"The edge from {editSrc} to {editDst} does not exist!")
+
+        # Serialize the updated SFG back to the database field
+        try:
+            print("Serializing the updated SFG...")
+            self.sfg = dill.dumps(sfg)
+            print("SFG serialized and stored successfully.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to serialize the updated SFG: {e}")
+
+        # Return the updated SFG for further use or confirmation
+        return sfg
+
                 
 
     # SFG binary field --> graph (json object)
