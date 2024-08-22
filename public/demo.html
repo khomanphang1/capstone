@@ -96,9 +96,9 @@
                   <input type="checkbox" id="path-highlight-toggle" onclick="path_highlight_toggle()"> Highlight Path
                   <button id="rmv-hlt-btn" style="margin-left: 20px;" onclick="removeHighlight()">Remove Highlight</button>
                   <!-- <button id="rmv-branch-btn" style="margin-left: 20px;" onclick="removeBranch()">Remove Branch</button> -->
-                  <button id="rmv-branch-btn" style="margin-left: 20px;" onclick="removeBranchLikeSimplify()">Remove Branch</button>
-                  <button id="edit-branch-btn" style="margin-left: 20px;" onclick="editBranchLikeSimplify()" disabled="true">Edit Branch</button>
-                  <button id="edge-info-btn" style="margin-left: 20px;" onclick="getEdgeInfo()">Edge Info</button>
+                  <button id="rmv-branch-btn" style="margin-left: 20px;" onclick="removeBranchLikeSimplify()" disabled="true">Remove Branch</button>
+                  <!-- <button id="edit-branch-btn" style="margin-left: 20px;" onclick="editBranchLikeSimplify()" disabled="true">Edit Branch</button> -->
+                  <button id="edit-branch-btn" style="margin-left: 20px;" onclick="getEdgeInfo()" disabled="true">Edit Branch</button>
                   <ul class="legend" style="display:inline">
                     <li><span class="superawesome" id="dominant">N/A</span></li>
                     <li><span class="awesome" id="weak">N/A</span></li>
@@ -150,10 +150,10 @@
             <div class = "bode-section">
               <h1>Bode plot section</h1>
               <div class="plot-container">
-                  <div class="plot-0">
-                      <canvas id="transfer-bode-plot"></canvas>
+                  <div class="plot-0" id="transfer-bode">
+                    <canvas id="transfer-bode-plot"></canvas>
                   </div>
-                  <div class="plot-1">
+                  <div class="plot-1" id="loop-gain-bode">
                     <canvas id="loop-gain-bode-plot"></canvas>
                 </div>
               </div>
