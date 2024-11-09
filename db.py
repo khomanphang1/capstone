@@ -78,7 +78,7 @@ class Circuit(Document):
         Returns:
             A dictionary.
         """
-        print("to_dict called in db.py")
+
         
         fields = set(fields or ('id', 'name', 'parameters', 'sfg'))
 
@@ -605,7 +605,6 @@ class Circuit(Document):
         # print("edges:", sfg.edges)
 
 
-        print("iterating through edges")
         for src, dst in sfg.edges:
             if src == editSrc and dst == editDst:
                 # print("found edge")
@@ -719,8 +718,6 @@ class Circuit(Document):
     #     self.sfg = sfg_serialized
 
     def import_circuit(self, new_circuit):
-        print(self.id)
-        print(new_circuit.id)
         # self.name = new_circuit.name
         self.svg = new_circuit.svg
         self.schematic = new_circuit.schematic
