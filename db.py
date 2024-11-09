@@ -97,10 +97,10 @@ class Circuit(Document):
 
             for src, dst in sfg.edges:
                 # print the edge and its weights
-                print("src:", src)
-                print("dst:", dst)
-                print("edge:", sfg.edges[src, dst])
-                print("edge weight:", sfg.edges[src, dst]['weight'])
+                # print("src:", src)
+                # print("dst:", dst)
+                # print("edge:", sfg.edges[src, dst])
+                # print("edge weight:", sfg.edges[src, dst]['weight'])
                 symbolic = sfg.edges[src, dst]['weight']
 
                 if isinstance(symbolic, sympy.Expr):
@@ -589,32 +589,32 @@ class Circuit(Document):
             editDst: the destination vertex of the edge
             editSymbolic: the new symbolic function of the edge.
         """
-        print("edit_edge called in db.py")
-        print("self:", self)
-        print("editSrc:", editSrc)
-        print("editDst:", editDst)
-        print("editSymbolic:", editSymbolic)
+        # print("edit_edge called in db.py")
+        # print("self:", self)
+        # print("editSrc:", editSrc)
+        # print("editDst:", editDst)
+        # print("editSymbolic:", editSymbolic)
         
-        print("loading sfg")
+        # print("loading sfg")
         sfg = dill.loads(self.sfg)
-        print("sfg loaded")
-        print("sfg:", sfg)
+        # print("sfg loaded")
+        # print("sfg:", sfg)
 
         # print sfg info
-        print("nodes:", sfg.nodes)
-        print("edges:", sfg.edges)
+        # print("nodes:", sfg.nodes)
+        # print("edges:", sfg.edges)
 
 
         print("iterating through edges")
         for src, dst in sfg.edges:
             if src == editSrc and dst == editDst:
-                print("found edge")
-                print("edge:", sfg.edges)
+                # print("found edge")
+                # print("edge:", sfg.edges)
                 symbolic = sfg.edges[src, dst]['weight']
-                print("old symbolic:", symbolic)
-                print("edge data:", sfg.edges[src, dst])
+                # print("old symbolic:", symbolic)
+                # print("edge data:", sfg.edges[src, dst])
                 sfg.edges[src, dst]['weight'] = editSymbolic
-                print("edge data after edit:", sfg.edges[src, dst])
+                # print("edge data after edit:", sfg.edges[src, dst])
                 self.sfg = dill.dumps(sfg)
                 # return sfg.edges[src, dst]['weight']
                 break
@@ -630,40 +630,40 @@ class Circuit(Document):
             editDst: the destination vertex of the edge
             editSymbolic: the new symbolic function of the edge.
         """
-        print("edit_edge called in db.py")
-        print("editSrc:", editSrc)
-        print("editDst:", editDst)
-        print("editSymbolic:", editSymbolic)
+        # print("edit_edge called in db.py")
+        # print("editSrc:", editSrc)
+        # print("editDst:", editDst)
+        # print("editSymbolic:", editSymbolic)
         
         try:
             # Convert the symbolic string to a SymPy expression
-            print("trying to convert to SymPy expression")
+            # print("trying to convert to SymPy expression")
             editSymbolic = sympy.sympify(editSymbolic)
-            print("successfully converted to SymPy expression")
+            # print("successfully converted to SymPy expression")
         except sympy.SympifyError:
             # print("failed to convert to SymPy expression")
             # raise ValueError(f"Invalid symbolic expression: {editSymbolic}")
             try:
                 # Fallback to parsing as a LaTeX expression
                 editSymbolic = parse_latex(editSymbolic)
-                print("successfully parsed as LaTeX expression")
+                # print("successfully parsed as LaTeX expression")
             except Exception as e:
-                print("failed to parse as LaTeX expression")
+                # print("failed to parse as LaTeX expression")
                 raise ValueError(f"Invalid symbolic expression: {editSymbolic}. Error: {e}")
         # Load the current state of the SFG
         try:
-            print("Loading SFG...")
+            # print("Loading SFG...")
             sfg = dill.loads(self.sfg)
-            print("SFG loaded successfully.")
+            # print("SFG loaded successfully.")
         except Exception as e:
             raise RuntimeError(f"Failed to load SFG: {e}")
 
         # Iterate through edges and find the one to update
         edge_found = False
-        print("Iterating through edges...")
+        # print("Iterating through edges...")
         for src, dst in sfg.edges:
             if src == editSrc and dst == editDst:
-                print(f"Found edge from {src} to {dst}. Updating symbolic weight.")
+                # print(f"Found edge from {src} to {dst}. Updating symbolic weight.")
                 # Update the symbolic weight for the found edge
                 sfg.edges[src, dst]['weight'] = editSymbolic
                 edge_found = True
@@ -675,9 +675,9 @@ class Circuit(Document):
 
         # Serialize the updated SFG back to the database field
         try:
-            print("Serializing the updated SFG...")
+            # print("Serializing the updated SFG...")
             self.sfg = dill.dumps(sfg)
-            print("SFG serialized and stored successfully.")
+            # print("SFG serialized and stored successfully.")
         except Exception as e:
             raise RuntimeError(f"Failed to serialize the updated SFG: {e}")
 

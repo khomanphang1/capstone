@@ -99,6 +99,7 @@ def removing_branch(sfg, source, target):
 
 # simiplification algorithm: takes in source and target nodes and
 # simplifies path mathematically; only works by simplifying 1 node in between
+# TODO: Call this function in the front end and pass all the nodes here 
 def simplify(sfg, source, target):
     print("simplifying...")
 
