@@ -97,6 +97,26 @@ def removing_branch(sfg, source, target):
     return sfg
 
 
+# This function will simplify the entire graph 
+# Inputs: The Signal Flow Graph 
+# Output: A simplified graph where and successful or error message 
+def simplify_whole_graph(sfg):
+    print("Simplifying entire graph...")
+
+    # Iterate over all pairs of nodes in the graph
+    for source in sfg.nodes:
+        for target in sfg.nodes:
+            # Skip if source and target are the same
+            if source == target:
+                continue
+
+            # Call simplify on each node pair
+            sfg = simplify(sfg, source, target)
+
+    # Return the simplified graph
+    return sfg
+
+
 # simiplification algorithm: takes in source and target nodes and
 # simplifies path mathematically; only works by simplifying 1 node in between
 # TODO: Call this function in the front end and pass all the nodes here 
