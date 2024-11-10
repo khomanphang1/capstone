@@ -661,6 +661,7 @@ def get_loop_gain_bode(circuit_id):
     
     return response
 
+# CHECK HERE FOR SIMPLIFICATION OF THE CIRCUIT 
 @app.route('/circuits/<circuit_id>/simplify', methods=['PATCH'])
 def simplify_circuit(circuit_id):
     circuit = db.Circuit.objects(id=circuit_id).first()
@@ -689,6 +690,30 @@ def simplify_circuit(circuit_id):
 
     except Exception as e:
         abort(status=400, text=str(e))
+
+# Simplifying the entire graph 
+@app.route('/circuits/<circuit_id>/simplification', methods=['PATCH'])
+def simplification_automation_sfg(circuit_id):
+    print("INSIDE SIMPLIFICAION FUNCTION...")
+
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    circuit.simplify_entire_sfg()
+    circuit.save()
+
+    try:
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+
+        return circuit.to_dict(fields)
+
+    except Exception as e:
+        abort(400, description=str(e))
 
 @app.route('/circuits/<circuit_id>/undo', methods=['PATCH'])
 def undo_sfg(circuit_id):

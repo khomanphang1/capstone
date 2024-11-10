@@ -97,6 +97,30 @@ def removing_branch(sfg, source, target):
     return sfg
 
 
+def remove_dead_branches(sfg):
+    """Remove nodes and branches that only have one connection (i.e., dead branches)."""
+    print("Starting to remove dead branches...")
+
+    # List of nodes to remove (nodes with a degree of 1)
+    dead_nodes = [node for node, degree in sfg.degree() if degree == 1]
+    
+    print(f"Dead nodes identified: {dead_nodes}")
+
+    # Remove dead nodes from the graph
+    sfg.remove_nodes_from(dead_nodes)
+    
+    # Now, we also need to ensure that any edges connected to these dead nodes are removed.
+    # These edges will automatically be removed when we remove the nodes, 
+    # but let's confirm and print out the edges that were removed
+    dead_edges = [(u, v) for u, v in sfg.edges if u in dead_nodes or v in dead_nodes]
+    
+    print(f"Dead edges removed: {dead_edges}")
+
+    # Return the modified graph
+    return sfg
+
+
+
 # This function will simplify the entire graph 
 # Inputs: The Signal Flow Graph 
 # Output: A simplified graph where and successful or error message 
@@ -140,7 +164,6 @@ def simplify(sfg, source, target):
 
 
     # path_nodes = nx.shortest_path(self.graph, source, target)
-    print(len(path))
 
     # return response: path not found 
     if len(path) != 3:
@@ -154,7 +177,6 @@ def simplify(sfg, source, target):
 
     # check for any loops and inward/outward edges
     for node in connected_nodes:
-        print("in connected nodes:", node)
         
         #Check if there is a loop, loop can be with the source or target node as well
         if sfg.has_edge(node, path[1]) and sfg.has_edge(path[1], node):
@@ -190,8 +212,6 @@ def simplify(sfg, source, target):
     sfg.remove_edge(path[1], path[2])
     sfg.add_edge(source, target, weight = weight)
     sfg.remove_node(path[1])
-    for n in sfg.nodes:
-        print(n)
     return sfg
 
 def simplify_loop(sfg, source_node, target_node):
@@ -233,10 +253,10 @@ def DPI_algorithm( circuit : cir.Circuit ):
     impedance_list = []
     neighbors = defaultdict(list)
 
-    for n in circuit.multigraph.nodes:
-        for ne in circuit.multigraph.neighbors(n):
-            for k in circuit.multigraph.get_edge_data(n , ne):
-                print(k)
+    # for n in circuit.multigraph.nodes:
+    #     for ne in circuit.multigraph.neighbors(n):
+    #         for k in circuit.multigraph.get_edge_data(n , ne):
+    #             print(k)
     for n in circuit.multigraph.nodes:
         if n == "0" or n.lower() == "vcc":
             continue
@@ -360,11 +380,11 @@ def DPI_algorithm( circuit : cir.Circuit ):
             sfg.graph.get_edge_data(*e)['weight'] = sy.sympify( sfg.graph.get_edge_data(*e)['weight'] , locals = {split_[2]: sy.Symbol(split_[2])})
         else:
             sfg.graph.get_edge_data(*e)['weight'] = sy.sympify( sfg.graph.get_edge_data(*e)['weight'] )
-    for e in sfg.graph.edges:
-        print("weight information:",sfg.graph.get_edge_data(*e))
-    print("nodes:")
-    for n in sfg.graph.nodes:
-        print(n)
+    # for e in sfg.graph.edges:
+    #     print("weight information:",sfg.graph.get_edge_data(*e))
+    # print("nodes:")
+    # for n in sfg.graph.nodes:
+    #     print(n)
     
     # reorder edges to have sources in the beginning of list
     ordered_edges = []
@@ -393,14 +413,13 @@ def DPI_algorithm( circuit : cir.Circuit ):
     for oe in ordered_edges:
         sfg.graph.add_edge(oe[0], oe[1], weight = oe[2])
 
-    print("After reordering")
-    for e in sfg.graph.edges:
-        print("edge:(source , target)",e)
-        print("weight information:",sfg.graph.get_edge_data(*e))
-        print("\n")
-    print("nodes:")
-    for n in sfg.graph.nodes:
-        print(n)
+    # for e in sfg.graph.edges:
+    #     print("edge:(source , target)",e)
+    #     print("weight information:",sfg.graph.get_edge_data(*e))
+    #     print("\n")
+    # print("nodes:")
+    # for n in sfg.graph.nodes:
+    #     print(n)
 
     # print('PATHS')
     # breakpoint()
