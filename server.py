@@ -800,6 +800,8 @@ def plot_cap_vs_phase_margin(circuit_id):
     #    return jsonify({"error": "Invalid input parameters"}), 400
     
     # Step 1: Parse query parameters
+    input_node = request.args.get('input_node', type=str)
+    output_node = request.args.get('output_node', type=str)
     selected_capacitor = request.args.get('selected_cap', type=str)
     min_cap = float(request.args.get('min_cap', type=float))
     max_cap = float(request.args.get('max_cap', type=float))
@@ -807,6 +809,8 @@ def plot_cap_vs_phase_margin(circuit_id):
 
     try:
         capacitance, phase_margin = circuit.sweep_capacitance_for_phase_margin(
+            input_node=input_node,
+            output_node=output_node,
             cap_name=selected_capacitor,
             min_capacitance=min_cap,
             max_capacitance=max_cap,

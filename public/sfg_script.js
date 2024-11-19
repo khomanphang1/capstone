@@ -3537,6 +3537,24 @@ function make_cap_vs_pm_plot_parameter_panel() {
     var br = document.createElement("br");
 
     // Input for selected capacitor
+    var inputNode = document.createElement("input");
+    inputNode.type = "text";
+    inputNode.name = "input_node";
+    inputNode.id = "input_node";
+    inputNode.placeholder = "input node";
+    form.appendChild(inputNode);
+    form.appendChild(br.cloneNode());
+
+    // Input for selected capacitor
+    var outputNode = document.createElement("input");
+    outputNode.type = "text";
+    outputNode.name = "output_node";
+    outputNode.id = "output_node";
+    outputNode.placeholder = "output node";
+    form.appendChild(outputNode);
+    form.appendChild(br.cloneNode());
+
+    // Input for selected capacitor
     var selectedCap = document.createElement("input");
     selectedCap.type = "text";
     selectedCap.name = "selected_capacitor";
@@ -3584,13 +3602,15 @@ function make_cap_vs_pm_plot_parameter_panel() {
 
         // Collect form data
         let form_params = {
+            'input_node': inputNode.value,
+            'output_node': outputNode.value,
             'selected_cap': selectedCap.value,
             'min_cap': minCap.value,
             'max_cap': maxCap.value,
             'step_size': stepSize.value
         };
 
-        if (form_params.selected_cap && form_params.min_cap && form_params.max_cap && form_params.step_size) {
+        if (form_params.input_node && form_params.output_node && form_params.selected_cap && form_params.min_cap && form_params.max_cap && form_params.step_size) {
             fetch_cap_vs_pm_plot_data(form_params);
         } else {
             alert("Please fill in all the fields.");

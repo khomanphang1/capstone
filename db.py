@@ -759,6 +759,8 @@ class Circuit(Document):
 
     def sweep_capacitance_for_phase_margin(
         self,
+        input_node: str,
+        output_node: str,
         cap_name: str,  
         min_capacitance: float,
         max_capacitance: float,
@@ -781,8 +783,6 @@ class Circuit(Document):
 
         original_cap = self.parameters[cap_name]
         # Parameters for eval_loop_gain
-        input_node = 'Vvin'
-        output_node = 'Vvout'
         start_freq = 1e3
         end_freq = 1e12
         points_per_decade = 30
