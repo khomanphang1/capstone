@@ -1852,6 +1852,9 @@ function render_frontend(data) {
     make_transfer_bode_panel()
     make_loop_gain_bode_panel()
 
+    // load stability plot
+    make_cap_vs_pm_plot_parameter_panel()
+    
     // Frequency bounds form
     make_frequency_bounds()
 }
