@@ -125,25 +125,82 @@ def remove_dead_branches(sfg):
 # Inputs: The Signal Flow Graph 
 # Output: A simplified graph where and successful or error message 
 def simplify_whole_graph(sfg):
+    """
+    Simplify the entire graph by iterating over all node pairs and simplifying them.
+    Repeated simplifications continue until no further changes can be made.
+    
+    Parameters:
+    sfg (networkx.Graph): The signal-flow graph to be simplified.
+    
+    Returns:
+    networkx.Graph: The simplified graph.
+    """
     print("Simplifying entire graph...")
 
-    # Iterate over all pairs of nodes in the graph
+    # Track if any simplification was done
+    simplified = False
+
+    # List to store node pairs that need simplification
+    simplify_pairs = []
+
+    # First pass: identify all node pairs that can be simplified
     for source in sfg.nodes:
         for target in sfg.nodes:
-            # Skip if source and target are the same
             if source == target:
-                continue
+                continue  # Skip if source and target are the same
 
-            # Call simplify on each node pair
-            sfg = simplify(sfg, source, target)
+            # Simplify the path between source and target, if necessary
+            if nx.has_path(sfg, source, target):
+                path = nx.shortest_path(sfg, source, target)
 
-    # Return the simplified graph
+                if len(path) > 2:  # Only simplify if there are intermediate nodes
+                    print(f"Identified path to simplify between {source} and {target}...")
+
+                    # Store the path to be simplified later
+                    simplify_pairs.append((source, target, path))
+
+    # Second pass: perform the simplification for each identified pair
+    for source, target, path in simplify_pairs:
+        try:
+            # Check if edges exist before accessing their weight
+            if sfg.has_edge(path[0], path[1]) and sfg.has_edge(path[1], path[2]):
+                weight1 = sfg.get_edge_data(path[0], path[1])['weight']
+                weight2 = sfg.get_edge_data(path[1], path[2])['weight']
+                combined_weight = weight1 * weight2
+                print(f"Path: {path}, Weight: {combined_weight}")
+
+                # Simplify the path between source and target using the combined weight
+                sy.simplify(combined_weight)  # Assuming 'sy.simplify' modifies the graph
+
+                # Remove the intermediate edges
+                sfg.remove_edge(path[0], path[1])
+                sfg.remove_edge(path[1], path[2])
+
+                # Add a new edge between the source and target with the combined weight
+                sfg.add_edge(source, target, weight=combined_weight)
+
+                # Remove the intermediate node (path[1])
+                sfg.remove_node(path[1])
+
+                # Mark that the graph has been simplified
+                simplified = True
+            else:
+                print(f"Error: One or more edges not found for path {path}")
+
+        except KeyError as e:
+            print(f"Error: Missing edge data for {e}")
+            continue  # Skip this path if edge data is missing
+
+    # Report the result
+    if not simplified:
+        print("No further simplifications possible.")
+    else:
+        print("Graph simplification complete.")
+
     return sfg
-
 
 # simiplification algorithm: takes in source and target nodes and
 # simplifies path mathematically; only works by simplifying 1 node in between
-# TODO: Call this function in the front end and pass all the nodes here 
 def simplify(sfg, source, target):
     print("simplifying...")
 

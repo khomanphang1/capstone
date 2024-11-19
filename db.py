@@ -15,6 +15,7 @@ from dpi import DPI_algorithm as DPI
 from dpi import simplify
 from dpi import removing_branch
 from dpi import remove_dead_branches
+from dpi import simplify_whole_graph
 import ltspice2svg
 import networkx as nx
 
@@ -607,13 +608,44 @@ class Circuit(Document):
         return self.sfg  # Returning updated SFG
 
 
-    def simplify_whole_graph(self, sfg):
-        """Simplify the entire SFG by iterating over node pairs."""
-        for source in list(sfg.nodes):
-            for target in list(sfg.nodes):
-                if source != target:
-                    sfg = simplify(sfg, source, target)
-        return sfg
+    # def simplify_whole_graph(self, sfg):
+    #     """Simplify the entire SFG by iterating over node pairs."""
+    #     for source in list(sfg.nodes):
+    #         for target in list(sfg.nodes):
+    #             if source != target:
+    #                 sfg = simplify(sfg, source, target)
+    #     return sfg
+    
+    def simplify_whole_graph_trivial(self):
+        print("Simplifying the entire graph...")
+
+        # Save current SFG state for undo functionality
+        self.sfg_stack.append(self.sfg)
+        self.redo_stack.clear()
+        
+        if len(self.sfg_stack) > 5:
+            self.sfg_stack = self.sfg_stack[-5:]
+
+        try:
+            # De-serialize the SFG (make sure it's a valid graph object)
+            sfg = dill.loads(self.sfg)
+
+            # Remove dead branches (or simplify based on the given source/target)
+            print("removing dead branches...")
+            sfg = simplify_whole_graph(sfg)  # Pass 'sfg' to remove_dead_branches
+
+            # Update the SFG state with the simplified graph
+            self.sfg = dill.dumps(sfg)
+
+        except Exception as e:
+            # Handle any errors (like bad deserialization or invalid graph)
+            print(f"Error simplifying SFG: {e}")
+            self.sfg = self.sfg_stack.pop()  # Restore previous state in case of error
+            raise  # Re-raise the exception for further handling if needed
+
+        # Optionally, you could return the simplified SFG or just ensure the state is updated
+        return self.sfg  # Returning updated SFG
+
 
 
     def is_target_node(self, node):
