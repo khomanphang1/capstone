@@ -810,6 +810,7 @@ class Circuit(Document):
             
             # Increment capacitance
             current_capacitance += step
+            current_capacitance = round(current_capacitance,max(0, -int(math.floor(math.log10(abs(step))))))
         
         self.update_parameters({cap_name: original_cap})
         # Plot capacitance vs. phase margin
