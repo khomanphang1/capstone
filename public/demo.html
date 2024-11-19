@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>cytoscape graph drawing algorithm demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+
+    <link rel="stylesheet" href="sfg_style.css">
+    <link rel="stylesheet" href="bode_style.css">
+    
+    <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.10/lodash.js"></script>
+    <script src="cytoscape-edgehandles.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+    <script src="https://cdn.rawgit.com/cpettitt/dagre/v0.7.4/dist/dagre.js"></script>
+    <script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-dagre/1.5.0/cytoscape-dagre.js"></script>
+    <script src="https://unpkg.com/popper.js@1.14.7/dist/umd/popper.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-popper@1.0.5/cytoscape-popper.min.js"></script>
+    <script src="sfg_script.js" defer></script>
+  </head>
+
+  <body>
+    <div class="panels">
+
+      <div class="parameter-panel">
+        <div id="param-form"> 
+          <h1> Circuit Parameters </h1>
+        </div>
+        <div id="transfer-form">
+          <h1> Transfer Function </h1>
+        </div>
+        <div id="transfer-func-bode-form">
+          <h1> Transfer Function Bode Plot </h1>
+        </div>
+        <div id="loop-gain-form">
+          <h1> Loop Gain </h1>
+        </div>
+        <div id="loop-gain-bode-form">
+          <h1> Loop Gain Bode Plot </h1>
+        </div>
+        <div id="cap-pm-form">
+          <h1> Capacitance vs. Phase Margin Plot </h1>
+        </div>
+
+        <!-- <script>
+          function plotInputGuide() {
+            alert("frequency unit: hz (default) or rad/s;\ngain unit: db (default) or None;\nphase unit: degree (default) or rad;\nWhen leaving the unit fields empty, default units will be used\n" );
+          }
+        </script> -->
+      </div>
+
+      <div class="middle-layer">
+        <div class="sfg-panel"> 
+          <div class="container-top">
+            <div class="column1">
+              <div id="sfg-extra">
+                <h1> Select option: </h1> 
+                <input type="checkbox" id="feature-toggle"> Magnitude / Symbolic Toggle
+                <!-- <div class="container1">
+                  <input type="checkbox" class="checkbox1" id="feature-toggle"> Magnitude / Symbolic Toggle>
+                  <label class="switch1" for="feature-toggle">
+                    <span class="slider1"></span>
+                  </label>
+                </div> -->
+                <button type="button" id="refresh-button"> Refresh SFG </button>
+                <button type="button" id="return-landing"> Return to landing page </button>
+                <br>
+                <div class="slider">
+                  <h1> Frequency Range </h1>
+                  <input class="frequency-range" type="text" placeholder="1Hz" id="min-range">
+                  <input type="range" step="any" min="1" max="10000" value="5000" class="custom-range" id="frequency-slider" style="width:400px;">
+                  <input class="frequency-range" type="text" placeholder="10000Hz" id="max-range">
+                  <span id="frequency-value"> </span> Hz
+                  <input type="submit" value="Update Range" id="update-range">
+                  <div id="frequency-form">
+                    <!-- <h1> Frequency Range </h1> -->
+                  </div>
+                </div>
+                <h1> SFG Save/Upload </h1>
+                <div style="height: 23px; margin-top: 10px;"> 
+                  <button id="export-btn" style="margin-left: 20px; margin-right: 35px;" onclick="export_sfg()">Save SFG</button>
+                  Upload SFG: <input type="file" id="upload_sfg" value="Import" onchange="upload_dill_sfg()"/>
+                </div>
+              </div>
+              <div>
+                <h1> SFG Manipulation </h1>
+              </div>
+              <div style="height: 23px; margin-top: 10px;"> 
+                  <input type="checkbox" id="simplification-toggle" onclick="simplify_mode_toggle()"> Simplification Mode
+                  <button id="simplify-btn" style="margin-left: 20px; display: none;" onclick="simplify()">Simplify</button>
+                  <button id="undo-btn" style="margin-left: 20px;" onclick="sfg_undo()" disabled>Undo</button>
+                  <button id="redo-btn" style="margin-left: 20px;" onclick="sfg_redo()" disabled>Redo</button>
+              </div>
+              <div style="height: 23px; margin-top: 10px;">
+                  <input type="checkbox" id="path-highlight-toggle" onclick="path_highlight_toggle()"> Highlight Path
+                  <button id="rmv-hlt-btn" style="margin-left: 20px;" onclick="removeHighlight()">Remove Highlight</button>
+                  <!-- <button id="rmv-branch-btn" style="margin-left: 20px;" onclick="removeBranch()">Remove Branch</button> -->
+                  <button id="rmv-branch-btn" style="margin-left: 20px;" onclick="removeBranchLikeSimplify()" disabled="true">Remove Branch</button>
+                  <!-- <button id="edit-branch-btn" style="margin-left: 20px;" onclick="editBranchLikeSimplify()" disabled="true">Edit Branch</button> -->
+                  <button id="edit-branch-btn" style="margin-left: 20px;" onclick="getEdgeInfo()" disabled="true">Edit Branch</button>
+                  <ul class="legend" style="display:inline">
+                    <li><span class="superawesome" id="dominant">N/A</span></li>
+                    <li><span class="awesome" id="weak">N/A</span></li>
+                    <li><span class="kindaawesome">Shared</span></li>
+                    <li><span class="notawesome">Cycle</span></li>
+                  </ul>
+              </div>
+            </div>
+            <div class="column2">
+              <div id="circuit-svg-small"></div>
+              <!-- <h1>test column2 space</h1> -->
+            </div>
+          </div>
+          <div class="sfg-section">
+            <h1>SFG Simulation</h1>
+            <div id="cy"></div>
+            <div id="edge-info"></div>
+          </div>
+
+          <div class="circuit-panel">
+            <div id="circuit-svg"></div>
+          </div>
+
+          <div class="right-layer"> 
+            <div class="transfer-panel">  
+              <h1> Transfer Funtion: </h1>
+              <input type="checkbox" id="tf-toggle"> Numeric / Symbolic Toggle
+              <!-- <div class="container2">
+                <div class="container1">
+                  <input type="checkbox" class="checkbox1" id="tf-toggle"> 
+                  <label class="switch1" for="tf-toggle">
+                    <span class="slider1"></span>
+                  </label>
+                </div> 
+              Numeric / Symbolic Toggle </div> -->
+              <div class="container-calculation">
+                <div id="trans-funtion"></div>
+              </div>
+            </div>
+    
+            <div class="loop-gain-panel">  
+              <h1> Loop Gain: </h1>
+              <input type="checkbox" id="lg-toggle"> Numeric / Symbolic Toggle
+              <div class="container-calculation">
+                <div id="loop-gain"></div>
+              </div>
+            </div>
+    
+            <div class = "bode-section">
+              <h1>Bode plot section</h1>
+              <div class="plot-container">
+                  <div class="plot-0" id="transfer-bode">
+                    <canvas id="transfer-bode-plot"></canvas>
+                  </div>
+                  <div class="plot-1" id="loop-gain-bode">
+                    <canvas id="loop-gain-bode-plot"></canvas>
+                  </div>
+                  <div class="plot-2" id="cap-vs-phase-margin-plot">
+                    <canvas id="cap-pm-plot"></canvas>
+                  </div>
+              </div>
+            </div>
+          </div>
+
+
+
+        </div>
+
+        
+
+
+
+      </div>
+
+      
+
+    </div> 
+
+    <div id="edge-edit-modal" class="modal">
+      <div class="modal-content">
+          <span class="close">&times;</span>
+          <h2>Edit Edge Information</h2>
+          <form id="edge-edit-form">
+              <label for="symbolic">Symbolic:</label><br>
+              <input type="text" id="symbolic" name="symbolic" style="width: 90%;"><br><br>
+              <label for="magnitude">Magnitude:</label>
+              <div id="magnitude-value"></div><br><br>
+              <!-- <input type="number" id="magnitude" name="magnitude" step="0.0001"><br><br> -->
+              <label for="phase">Phase:</label>
+              <div id="phase-value"></div><br><br>
+              <!-- <input type="number" id="phase" name="phase" step="0.01"><br><br> -->
+              <input type="submit" value="Submit">
+          </form>
+      </div>
+    </div>
+  
+
+    <div id="latex-script">
+
+    </div>
+    <script type="text/javascript" id="MathJax-script" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+    </script>
+
+  </body> 
+  
+</html>
