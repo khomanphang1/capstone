@@ -42,7 +42,9 @@
           <h1> Loop Gain Bode Plot </h1>
           <!-- <button onclick="plotInputGuide()">input guide</button> -->
         </div>
-
+        <div id="cap-pm-form">
+          <h1> Capacitance vs. Phase Margin Plot </h1>
+        </div>
         <!-- <script>
           function plotInputGuide() {
             alert("frequency unit: hz (default) or rad/s;\ngain unit: db (default) or None;\nphase unit: degree (default) or rad;\nWhen leaving the unit fields empty, default units will be used\n" );
@@ -155,24 +157,27 @@
                   </div>
                   <div class="plot-1" id="loop-gain-bode">
                     <canvas id="loop-gain-bode-plot"></canvas>
+                  </div>
+                  <div class="plot-2" id="cap-vs-phase-margin-plot">
+                    <canvas id="cap-pm-plot"></canvas>
+                  </div>
                 </div>
               </div>
             </div>
+
+
+
           </div>
-
-
-
-        </div>
 
         
 
 
 
-      </div>
+        </div>
 
       
 
-    </div> 
+      </div> 
 
     <div id="edge-edit-modal" class="modal">
       <div class="modal-content">
