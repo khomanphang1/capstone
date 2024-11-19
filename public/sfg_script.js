@@ -3643,25 +3643,25 @@ function plot_cap_vs_pm(capacitances, phase_margins) {
         },
         options: {
             responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: `${selectedCap} Capacitance vs. Phase Margin`
-                }
+            hoverMode: 'index',
+            stacked: false,
+            title: {
+                display: true,
+                text: `${selectedCap} Capacitance vs. Phase Margin`
             },
             scales: {
-                x: {
-                    title: {
+                xAxes:[{
+                    scaleLabel: {
                         display: true,
-                        text: 'Capacitance (F)'
+                        labelString: 'Capacitance (F)'
                     }
-                },
-                y: {
-                    title: {
+                }],
+                yAxes: [{
+                    scaleLabel: {
                         display: true,
-                        text: 'Phase Margin (degrees)'
+                        labelString: 'Phase Margin (degrees)'
                     }
-                }
+                }]
             }
         }
     });
