@@ -16,7 +16,7 @@ from dpi import simplify
 from dpi import removing_branch
 import ltspice2svg
 import networkx as nx
-import matplotlib.pyplot as plt # Temporarily adding matplot for direct BOL plotting
+#import matplotlib.pyplot as plt # Temporarily adding matplot for direct BOL plotting
 
 
 if 'DB_URI' in os.environ:
