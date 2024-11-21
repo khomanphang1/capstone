@@ -1852,8 +1852,8 @@ function render_frontend(data) {
     make_transfer_bode_panel()
     make_loop_gain_bode_panel()
 
-    // load stability plot
-    make_cap_vs_pm_plot_parameter_panel()
+    // load stability plots
+    stability_parameter_panel()
     
     // Frequency bounds form
     make_frequency_bounds()
@@ -3535,10 +3535,10 @@ function import_dill_sfg(dill_sfg) {
         console.log(error)
     })}
 
-function make_cap_vs_pm_plot_parameter_panel() {
+function stability_parameter_panel() {
 
     var form = document.createElement("form");
-    form.id = "cap-pm-form-fields";
+    form.id = "stability-param-form-fields";
 
     var br = document.createElement("br");
 
@@ -3560,31 +3560,31 @@ function make_cap_vs_pm_plot_parameter_panel() {
     form.appendChild(outputNode);
     form.appendChild(br.cloneNode());
 
-    // Input for selected capacitor
-    var selectedCap = document.createElement("input");
-    selectedCap.type = "text";
-    selectedCap.name = "selected_capacitor";
-    selectedCap.id = "selected_capacitor";
-    selectedCap.placeholder = "Selected capacitor";
-    form.appendChild(selectedCap);
+    // Input for selected device
+    var selectedDevice = document.createElement("input");
+    selectedDevice.type = "text";
+    selectedDevice.name = "selected_device";
+    selectedDevice.id = "selected_device";
+    selectedDevice.placeholder = "Selected device";
+    form.appendChild(selectedDevice);
     form.appendChild(br.cloneNode());
 
-    // Input for minimum capacitance
-    var minCap = document.createElement("input");
-    minCap.type = "number";
-    minCap.name = "min_capacitance";
-    minCap.id = "min_capacitance";
-    minCap.placeholder = "Min cap";
-    form.appendChild(minCap);
+    // Input for minimum value
+    var minVal = document.createElement("input");
+    minVal.type = "number";
+    minVal.name = "min_value";
+    minVal.id = "min_value";
+    minVal.placeholder = "Min value";
+    form.appendChild(minVal);
     form.appendChild(br.cloneNode());
 
-    // Input for maximum capacitance
-    var maxCap = document.createElement("input");
-    maxCap.type = "number";
-    maxCap.name = "max_capacitance";
-    maxCap.id = "max_capacitance";
-    maxCap.placeholder = "Max cap";
-    form.appendChild(maxCap);
+    // Input for maximum value
+    var maxVal = document.createElement("input");
+    maxVal.type = "number";
+    maxVal.name = "max_value";
+    maxVal.id = "max_value";
+    maxVal.placeholder = "Max value";
+    form.appendChild(maxVal);
     form.appendChild(br.cloneNode());
 
     // Input for step size
@@ -3610,25 +3610,26 @@ function make_cap_vs_pm_plot_parameter_panel() {
         let form_params = {
             'input_node': inputNode.value,
             'output_node': outputNode.value,
-            'selected_cap': selectedCap.value,
-            'min_cap': minCap.value,
-            'max_cap': maxCap.value,
+            'selected_device': selectedDevice.value,
+            'min_val': minVal.value,
+            'max_val': maxVal.value,
             'step_size': stepSize.value
         };
 
-        if (form_params.input_node && form_params.output_node && form_params.selected_cap && form_params.min_cap && form_params.max_cap && form_params.step_size) {
-            fetch_cap_vs_pm_plot_data(form_params);
+        if (form_params.input_node && form_params.output_node && form_params.selected_device && form_params.min_val && form_params.max_val && form_params.step_size) {
+            fetch_phase_margin_plot_data(form_params);
+            fetch_bandwidth_plot_data(form_params);
         } else {
             alert("Please fill in all the fields.");
         }
     });
 
-    // Append form to the div with id "cap-pm-form"
-    document.getElementById("cap-pm-form").appendChild(form);
+    // Append form to the div with id "stability-params-form"
+    document.getElementById("stability-params-form").appendChild(form);
 }
 
-function fetch_cap_vs_pm_plot_data(input_params) {
-    var url = new URL(`${baseUrl}/circuits/${circuitId}/cap_pm/plot`);
+function fetch_phase_margin_plot_data(input_params) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/pm/plot`);
     Object.keys(input_params).forEach(key => url.searchParams.append(key, input_params[key]));
 
     fetch(url)
@@ -3639,26 +3640,26 @@ function fetch_cap_vs_pm_plot_data(input_params) {
             return response.json();
         })
         .then(data => {
-            console.log("Capacitance vs. Phase Margin data received:", data);
-            plot_cap_vs_pm(data.capacitance, data.phase_margin);
+            console.log("Phase Margin data received:", data);
+            plot_phase_margin(data.device_value, data.phase_margin);
         })
         .catch(error => console.error('Error fetching cap vs PM data:', error));
 }
 
-function plot_cap_vs_pm(capacitances, phase_margins) {
-    const ctx = document.getElementById('cap-pm-plot').getContext('2d');
-    const selectedCap = document.getElementById('selected_capacitor').value;
+function plot_phase_margin(parameter_values, phase_margins) {
+    const ctx = document.getElementById('phase-margin-plot').getContext('2d');
+    const selectedDevice = document.getElementById('selected_device').value;
 
     // Clear previous plot if it exists
-    if (window.capVsPmChart) {
-        window.capVsPmChart.destroy();
+    if (window.phaseMarginChart) {
+        window.phaseMarginChart.destroy();
     }
 
     // Create a new chart with axis labels and dynamic title
-    window.capVsPmChart = new Chart(ctx, {
+    window.phaseMarginChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: capacitances,
+            labels: parameter_values,
             datasets: [{
                 label: 'Phase Margin (degrees)',
                 data: phase_margins,
@@ -3673,19 +3674,85 @@ function plot_cap_vs_pm(capacitances, phase_margins) {
             stacked: false,
             title: {
                 display: true,
-                text: `${selectedCap} Capacitance vs. Phase Margin`
+                text: `${selectedDevice} vs. Phase Margin`
             },
             scales: {
                 xAxes:[{
                     scaleLabel: {
                         display: true,
-                        labelString: 'Capacitance (F)'
+                        labelString: `${selectedDevice}`
                     }
                 }],
                 yAxes: [{
                     scaleLabel: {
                         display: true,
                         labelString: 'Phase Margin (degrees)'
+                    }
+                }]
+            }
+        }
+    });
+}
+
+function fetch_bandwidth_plot_data(input_params) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/bandwidth/plot`);
+    Object.keys(input_params).forEach(key => url.searchParams.append(key, input_params[key]));
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Bandwidth plot data received:", data);
+            plot_bandwidth(data.parameter_value, data.bandwidth);
+        })
+        .catch(error => console.error('Error fetching bandwidth data:', error));
+}
+
+function plot_bandwidth(parameter_value, bandwidth) {
+    const ctx = document.getElementById('bandwidth-plot').getContext('2d');
+    const selectedDevice = document.getElementById('selected_device').value;
+
+    // Clear previous plot if it exists
+    if (window.bandwidthChart) {
+        window.bandwidthChart.destroy();
+    }
+
+    // Create a new chart with axis labels and dynamic title
+    window.bandwidthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: parameter_value,
+            datasets: [{
+                label: 'Bandwidth (hz)',
+                data: bandwidth,
+                borderColor: 'rgba(120, 50, 194, 1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            stacked: false,
+            title: {
+                display: true,
+                text: `${selectedDevice} vs. Bandwidth`
+            },
+            scales: {
+                xAxes:[{
+                    scaleLabel: {
+                        display: true,
+                        labelString: `${selectedDevice}` // TO BE CHANGED TO PICK APPROPRIATE UNIT
+                    }
+                }],
+                yAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Bandwidth (hz)'
                     }
                 }]
             }

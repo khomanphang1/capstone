@@ -789,8 +789,8 @@ def import_dill_sfg(circuit_id):
     except Exception as e:
         abort(400, description=str(e))
 
-@app.route('/circuits/<circuit_id>/cap_pm/plot', methods=['GET'])
-def plot_cap_vs_phase_margin(circuit_id):
+@app.route('/circuits/<circuit_id>/pm/plot', methods=['GET'])
+def plot_phase_margin(circuit_id):
     circuit = db.Circuit.objects(id=circuit_id).first()
 
     if not circuit:
@@ -802,18 +802,18 @@ def plot_cap_vs_phase_margin(circuit_id):
     # Step 1: Parse query parameters
     input_node = request.args.get('input_node', type=str)
     output_node = request.args.get('output_node', type=str)
-    selected_capacitor = request.args.get('selected_cap', type=str)
-    min_cap = float(request.args.get('min_cap', type=float))
-    max_cap = float(request.args.get('max_cap', type=float))
+    selected_device = request.args.get('selected_device', type=str)
+    min_val = float(request.args.get('min_val', type=float))
+    max_val = float(request.args.get('max_val', type=float))
     step_size = float(request.args.get('step_size', type=float))
 
     try:
-        capacitance, phase_margin = circuit.sweep_capacitance_for_phase_margin(
+        device_value, phase_margin = circuit.sweep_params_for_phase_margin(
             input_node=input_node,
             output_node=output_node,
-            cap_name=selected_capacitor,
-            min_capacitance=min_cap,
-            max_capacitance=max_cap,
+            param_name=selected_device,
+            min_value=min_val,
+            max_value=max_val,
             step=step_size
         )
 
@@ -823,10 +823,51 @@ def plot_cap_vs_phase_margin(circuit_id):
     circuit.save()
     
     # print response
-    print("cap: " + str(capacitance))
+    print("device value: " + str(device_value))
     print("phase margin: " + str(phase_margin))
 
-    response = jsonify({'capacitance': capacitance, 'phase_margin': phase_margin})
+    response = jsonify({'device_value': device_value, 'phase_margin': phase_margin})
+
+    return response
+
+@app.route('/circuits/<circuit_id>/bandwidth/plot', methods=['GET'])
+def plot_bandwidth(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    #if  min_cap <= 0 or max_cap <= 0 or step_size <= 0 or not selected_cap:
+    #    return jsonify({"error": "Invalid input parameters"}), 400
+    
+    # Step 1: Parse query parameters
+    input_node = request.args.get('input_node', type=str)
+    output_node = request.args.get('output_node', type=str)
+    selected_device = request.args.get('selected_device', type=str)
+    min_val = float(request.args.get('min_val', type=float))
+    max_val = float(request.args.get('max_val', type=float))
+    step_size = float(request.args.get('step_size', type=float))
+
+    try:
+        parameter_value, bandwidth = circuit.sweep_params_for_bandwidth(
+            input_node=input_node,
+            output_node=output_node,
+            param_name=selected_device,
+            min_val=min_val,
+            max_val=max_val,
+            step=step_size
+        )
+
+    except Exception as e:
+        abort(400, description=str(e))
+
+    circuit.save()
+    
+    # print response
+    print("parameter value: " + str(parameter_value))
+    print("bandwidth: " + str(bandwidth))
+
+    response = jsonify({'parameter_value': parameter_value, 'bandwidth': bandwidth})
 
     return response
 
