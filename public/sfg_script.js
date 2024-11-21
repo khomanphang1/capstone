@@ -2552,6 +2552,12 @@ function make_bode_plots(data, dom_element, overlayData = null) {
     }
 
     let ctx = document.getElementById(dom_element).getContext('2d');
+
+    // Clear previous plot if it exists
+    if (window.myLine) {
+        window.myLine.destroy();
+    }
+
     window.myLine = new Chart(ctx, {
         type: 'line',
         data: {
