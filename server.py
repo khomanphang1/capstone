@@ -661,6 +661,7 @@ def get_loop_gain_bode(circuit_id):
     
     return response
 
+# CHECK HERE FOR SIMPLIFICATION OF THE CIRCUIT 
 @app.route('/circuits/<circuit_id>/simplify', methods=['PATCH'])
 def simplify_circuit(circuit_id):
     circuit = db.Circuit.objects(id=circuit_id).first()
@@ -689,6 +690,90 @@ def simplify_circuit(circuit_id):
 
     except Exception as e:
         abort(status=400, text=str(e))
+
+# Simplifying the entire graph 
+@app.route('/circuits/<circuit_id>/simplification', methods=['PATCH'])
+def simplification_automation_sfg(circuit_id):
+    print("INSIDE SIMPLIFICAION FUNCTION...")
+
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    circuit.simplify_entire_sfg()
+    circuit.save()
+
+    try:
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+
+        return circuit.to_dict(fields)
+
+    except Exception as e:
+        abort(400, description=str(e))
+
+
+def find_source_and_target(graph):
+    """
+    Manually determine the source and target nodes of the graph.
+    - Source: Node with no incoming edges.
+    - Target: Node with no outgoing edges.
+    """
+    source = None
+    target = None
+    print("here")
+
+    # Iterate through each node in the graph
+    for node in graph.nodes:
+        in_degree = graph.in_degree(node)
+        out_degree = graph.out_degree(node)
+
+        # Identify the source (no incoming edges)
+        if in_degree == 0:
+            if source is not None:
+                raise ValueError("Graph has multiple source nodes.")
+            source = node
+
+        # Identify the target (no outgoing edges)
+        if out_degree == 0:
+            if target is not None:
+                raise ValueError("Graph has multiple target nodes.")
+            target = node
+
+    if source is None or target is None:
+        raise ValueError("Unable to find a valid source and target in the graph.")
+
+    return source, target
+
+@app.route('/circuits/<circuit_id>/simplificationgraph', methods=['PATCH'])
+def simplification_automation_sfg_entire(circuit_id):
+    """
+    Endpoint to simplify the entire signal-flow graph (SFG) for a given circuit.
+    """
+    print("INSIDE SIMPLIFICATION FUNCTION TRIVIAL...")
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    circuit.simplify_whole_graph_trivial()
+    circuit.save()
+
+    try:
+        fields = request.args.get(
+            'fields',
+            type=lambda s: s and s.split(',') or None
+        )
+
+        return circuit.to_dict(fields)
+
+    except Exception as e:
+        abort(400, description=str(e))
+    
+
 
 @app.route('/circuits/<circuit_id>/undo', methods=['PATCH'])
 def undo_sfg(circuit_id):

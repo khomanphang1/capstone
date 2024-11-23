@@ -97,6 +97,108 @@ def removing_branch(sfg, source, target):
     return sfg
 
 
+def remove_dead_branches(sfg):
+    """Remove nodes and branches that only have one connection (i.e., dead branches)."""
+    print("Starting to remove dead branches...")
+
+    # List of nodes to remove (nodes with a degree of 1)
+    dead_nodes = [node for node, degree in sfg.degree() if degree == 1]
+    
+    print(f"Dead nodes identified: {dead_nodes}")
+
+    # Remove dead nodes from the graph
+    sfg.remove_nodes_from(dead_nodes)
+    
+    # Now, we also need to ensure that any edges connected to these dead nodes are removed.
+    # These edges will automatically be removed when we remove the nodes, 
+    # but let's confirm and print out the edges that were removed
+    dead_edges = [(u, v) for u, v in sfg.edges if u in dead_nodes or v in dead_nodes]
+    
+    print(f"Dead edges removed: {dead_edges}")
+
+    # Return the modified graph
+    return sfg
+
+
+
+# This function will simplify the entire graph 
+# Inputs: The Signal Flow Graph 
+# Output: A simplified graph where and successful or error message 
+def simplify_whole_graph(sfg):
+    """
+    Simplify the entire graph by iterating over all node pairs and simplifying them.
+    Repeated simplifications continue until no further changes can be made.
+    
+    Parameters:
+    sfg (networkx.Graph): The signal-flow graph to be simplified.
+    
+    Returns:
+    networkx.Graph: The simplified graph.
+    """
+    print("Simplifying entire graph...")
+
+    # Track if any simplification was done
+    simplified = False
+
+    # List to store node pairs that need simplification
+    simplify_pairs = []
+
+    # First pass: identify all node pairs that can be simplified
+    for source in sfg.nodes:
+        for target in sfg.nodes:
+            if source == target:
+                continue  # Skip if source and target are the same
+
+            # Simplify the path between source and target, if necessary
+            if nx.has_path(sfg, source, target):
+                path = nx.shortest_path(sfg, source, target)
+
+                if len(path) > 2:  # Only simplify if there are intermediate nodes
+                    print(f"Identified path to simplify between {source} and {target}...")
+
+                    # Store the path to be simplified later
+                    simplify_pairs.append((source, target, path))
+
+    # Second pass: perform the simplification for each identified pair
+    for source, target, path in simplify_pairs:
+        try:
+            # Check if edges exist before accessing their weight
+            if sfg.has_edge(path[0], path[1]) and sfg.has_edge(path[1], path[2]):
+                weight1 = sfg.get_edge_data(path[0], path[1])['weight']
+                weight2 = sfg.get_edge_data(path[1], path[2])['weight']
+                combined_weight = weight1 * weight2
+                print(f"Path: {path}, Weight: {combined_weight}")
+
+                # Simplify the path between source and target using the combined weight
+                sy.simplify(combined_weight)  # Assuming 'sy.simplify' modifies the graph
+
+                # Remove the intermediate edges
+                sfg.remove_edge(path[0], path[1])
+                sfg.remove_edge(path[1], path[2])
+
+                # Add a new edge between the source and target with the combined weight
+                sfg.add_edge(source, target, weight=combined_weight)
+
+                # Remove the intermediate node (path[1])
+                sfg.remove_node(path[1])
+
+                # Mark that the graph has been simplified
+                simplified = True
+            else:
+                print(f"Error: One or more edges not found for path {path}")
+
+        except KeyError as e:
+            print(f"Error: Missing edge data for {e}")
+            continue  # Skip this path if edge data is missing
+
+    # Report the result
+    if not simplified:
+        print("No further simplifications possible.")
+    else:
+        print("Graph simplification complete.")
+
+    return sfg
+
 # simiplification algorithm: takes in source and target nodes and
 # simplifies path mathematically; only works by simplifying 1 node in between
 def simplify(sfg, source, target):
@@ -108,20 +210,17 @@ def simplify(sfg, source, target):
     path = []
     for p in paths:
         # print path
-        print('path: ', p)
         if len(p) == 2:
             if sfg.has_edge(source, target) and sfg.has_edge(target, source):
                 simplify_loop(sfg, source, target)
                 return sfg
 
         elif len(p) == 3:
-            print("found path that is len 3")
             path = p
             break
 
 
     # path_nodes = nx.shortest_path(self.graph, source, target)
-    print(len(path))
 
     # return response: path not found 
     if len(path) != 3:
@@ -135,11 +234,9 @@ def simplify(sfg, source, target):
 
     # check for any loops and inward/outward edges
     for node in connected_nodes:
-        print("in connected nodes:", node)
         
         #Check if there is a loop, loop can be with the source or target node as well
         if sfg.has_edge(node, path[1]) and sfg.has_edge(path[1], node):
-            print("path has loop")
             if node == source:
                 simplify_loop(sfg, node, path[1])
             else:
@@ -151,21 +248,17 @@ def simplify(sfg, source, target):
         
         #shift inward edge
         if sfg.has_edge(node, path[1]):
-            print("is inward edge")
             # edge = sfg.get_edge_data(node, path[1])
             # simplify any loops between nodes
             if sfg.has_edge(node, path[2]) and sfg.has_edge(path[2], node):
                 simplify_loop(sfg, path[1], path[2])
-                print("edge has loop")
             # prev_edge = sfg.get_edge_data(path[1], path[2])
             shiftEdge([node, path[1]], sfg, [path[1], path[2]], False)
         
         #shift outward edge
         else:
-            print("is outward edge")
             # edge = sfg.get_edge_data(path[1], node)
             if sfg.has_edge(node, path[0]) and sfg.has_edge(path[0], node):
-                print("edge had loop")
                 simplify_loop(sfg, path[0], path[1])
             # prev_edge = sfg.get_edge_data(path[0], path[1])
             shiftEdge([path[1], node], sfg, [path[0], path[1]], True)
@@ -176,12 +269,9 @@ def simplify(sfg, source, target):
     sfg.remove_edge(path[1], path[2])
     sfg.add_edge(source, target, weight = weight)
     sfg.remove_node(path[1])
-    for n in sfg.nodes:
-        print(n)
     return sfg
 
 def simplify_loop(sfg, source_node, target_node):
-    print("og graph:", sfg.edges)
         
     #get edge values
     a = sfg.get_edge_data(source_node, target_node)['weight']
@@ -189,7 +279,6 @@ def simplify_loop(sfg, source_node, target_node):
 
     # calculate edge weight
     c = sy.simplify(a/(1-b*a))
-    print(a, b, c)
 
     # remove loop
     sfg.remove_edge(source_node, target_node)
@@ -213,21 +302,18 @@ def shiftEdge(edge, sfg, prev_edge, outward):
         sfg.add_edge(prev_edge[0], edge[1], weight = weight)
     else:
         sfg.add_edge(edge[0], prev_edge[1], weight = weight)
-        print(sfg.has_edge(edge[0], prev_edge[1]))
 
     sfg.remove_edge(edge[0], edge[1]) 
-    print(sfg.has_edge(edge[0], prev_edge[0]))       
 
 def DPI_algorithm( circuit : cir.Circuit ):
     sfg = SFG()
     impedance_list = []
     neighbors = defaultdict(list)
 
-    for n in circuit.multigraph.nodes:
-        print("node:",n)
-        for ne in circuit.multigraph.neighbors(n):
-            for k in circuit.multigraph.get_edge_data(n , ne):
-                print(k)
+    # for n in circuit.multigraph.nodes:
+    #     for ne in circuit.multigraph.neighbors(n):
+    #         for k in circuit.multigraph.get_edge_data(n , ne):
+    #             print(k)
     for n in circuit.multigraph.nodes:
         if n == "0" or n.lower() == "vcc":
             continue
@@ -236,21 +322,11 @@ def DPI_algorithm( circuit : cir.Circuit ):
         for ne in circuit.multigraph.neighbors(n):
             neighbors[n].append(ne)
             for k in circuit.multigraph.get_edge_data(n , ne):
-                print("in DPI:",circuit.multigraph.edges[n,ne,k]['component'].name, ":", circuit.multigraph.edges[n,ne,k]['component'] )
-                print(circuit.multigraph.edges[n,ne,k]['component'].name.find("PI"))
-                print(neighbors[n])
                 if circuit.multigraph.edges[n,ne,k]['component'].name.find("PI") != -1:
-                    print("!!!!!!!!!!!!!!!!!! excluding R_PI!!!!!!!!!!!!!")
-                    print(circuit.multigraph.edges[n,ne,k]['component'].pos_node)
-                    print(circuit.multigraph.edges[n,ne,k]['component'].neg_node)
-                    print("length:",len(neighbors[n]))
-                    
                     continue
-                print("here!!!!!!!!!")
                 if (isinstance(circuit.multigraph.edges[n,ne,k]['component'], cir.CurrentSource)):
                     cur_target = "Isc" + n[1:].lower() if n.startswith("V") else "Isc" + n.lower()
                     cur_source = circuit.multigraph.edges[n,ne,k]['component'].name
-                    print("adding edge:", cur_source, cur_target)
                     sfg.graph.add_edge( cur_source , cur_target , weight = "1" )
                 if (isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageSource) and ne == "0") or isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentVoltageSource) and ne == "0":
                     
@@ -258,10 +334,8 @@ def DPI_algorithm( circuit : cir.Circuit ):
                     complete = True
                 elif not complete and not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentCurrentSource) and not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageSource) and not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.CurrentSource):
                     impedance += " + " + ("(s*"+circuit.multigraph.edges[n,ne,k]['component'].name +")" if isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.Capacitor) else "1/" + circuit.multigraph.edges[n,ne,k]['component'].name)
-                print("here!!!!!!!!!")   
                 if (ne != "0" and ne.lower() != "vcc") or isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentVoltageSource) or isinstance( circuit.multigraph.edges[n,ne,k]['component'], cir.VoltageDependentCurrentSource ):
                     # REFACTOR POS_NODE AND NEG_NODE TO BE i_in_node AND i_out_node
-                    print("inside!!!")
                     if not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentCurrentSource) and not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageSource) and not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.CurrentSource) and not isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentVoltageSource):
                         
                         cur_target = "Isc" + ne[1:].lower() if ne.startswith("V") else "Isc" + ne.lower()
@@ -270,16 +344,13 @@ def DPI_algorithm( circuit : cir.Circuit ):
                             if sfg.graph.has_edge(cur_source, cur_target):
                                 sfg.graph.edges[cur_source , cur_target]['weight'] += " + " + ("(s*"+circuit.multigraph.edges[n,ne,k]['component'].name +")" if isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.Capacitor) else "1/" + circuit.multigraph.edges[n,ne,k]['component'].name)
                             else:
-                                print("adding edge:", cur_source, cur_target)
                                 sfg.graph.add_edge(cur_source , cur_target , weight = "+" + ("(s*"+circuit.multigraph.edges[n,ne,k]['component'].name +")" if isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.Capacitor) else "1/" + circuit.multigraph.edges[n,ne,k]['component'].name))
                         else:
                             if sfg.graph.has_edge(cur_source, cur_target):
                                 sfg.graph.edges[cur_source , cur_target]['weight'] += " + 1 " 
                             else:
-                                print("adding edge:", cur_source, cur_target)
                                 sfg.graph.add_edge(cur_source , cur_target , weight = "+ 1 " )
                     elif isinstance(circuit.multigraph.edges[n,ne,k]['component'] , cir.VoltageDependentCurrentSource):
-                        print("found volage dependent current source!!")
                         """
                         currently, only works for grounded transistor -> doesn't consider the other direction
                         sol:
@@ -318,7 +389,6 @@ def DPI_algorithm( circuit : cir.Circuit ):
                         if sfg.graph.has_edge(cur_source_1, cur_target):
                             sfg.graph.edges[cur_source_1, cur_target]['weight'] += (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].neg_node else " + ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name)
                         else:
-                            print("adding edge:", cur_source_1, cur_target)
                             sfg.graph.add_edge( cur_source_1, cur_target , weight = (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].neg_node else " + ")  + str(circuit.multigraph.edges[n,ne,k]['component'].name))
 
                         # try adding edge from neg_input node to cur_target -> swapping positive node and negative to get the second pass
@@ -327,7 +397,6 @@ def DPI_algorithm( circuit : cir.Circuit ):
                         if sfg.graph.has_edge(cur_source_2, cur_target):
                             sfg.graph.edges[cur_source_2, cur_target]['weight'] += (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " + ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name)
                         else:
-                            print("adding edge:", cur_source_2, cur_target)
                             sfg.graph.add_edge( cur_source_2, cur_target , weight = (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " + ")  + str(circuit.multigraph.edges[n,ne,k]['component'].name))
 
                         
@@ -341,18 +410,15 @@ def DPI_algorithm( circuit : cir.Circuit ):
                             if sfg.graph.has_edge(cur_source_1, cur_target):
                                 sfg.graph.edges[cur_source_1, cur_target]['weight'] += (" + " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " - ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name)
                             else:
-                                print("adding edge:", cur_source_1, cur_target)
                                 sfg.graph.add_edge( cur_source_1, cur_target , weight = (" + " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " - ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name))
                         if neg_input_node != "0":
                             cur_source_2 = "V" + neg_input_node.lower() if not neg_input_node.startswith("V") else neg_input_node
                             if sfg.graph.has_edge(cur_source_2, cur_target):
                                 sfg.graph.edges[cur_source_2, cur_target]['weight'] += ((" - " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " + ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name))
                             else:
-                                print("adding edge:", cur_source_2, cur_target)
                                 sfg.graph.add_edge( cur_source_2, cur_target , weight = (" - " if n == circuit.multigraph.edges[n,ne,k]['component'].pos_node else " + ") +  str(circuit.multigraph.edges[n,ne,k]['component'].name))
 
 
-        print("after analysis")
         if impedance == 0:
             continue
         if impedance != "1/(":
@@ -363,26 +429,19 @@ def DPI_algorithm( circuit : cir.Circuit ):
         impedance_list.append(impedance)
         source = "Isc" + n[1:].lower() if n.startswith("V") else "Isc" + n.lower()
         target = "V" + n.lower() if not n.startswith("V") else n
-        print("adding edge:", source, target)
         sfg.graph.add_edge(  source , target , weight = impedance )         
         
-    print("graph information")
     for e in sfg.graph.edges:
-        print(e)
-        print(sfg.graph.get_edge_data(*e))
         split_ = sfg.graph.get_edge_data(*e)['weight'].split(" ")
         if len(split_) > 2 and split_[2].startswith("E"):
             sfg.graph.get_edge_data(*e)['weight'] = sy.sympify( sfg.graph.get_edge_data(*e)['weight'] , locals = {split_[2]: sy.Symbol(split_[2])})
         else:
             sfg.graph.get_edge_data(*e)['weight'] = sy.sympify( sfg.graph.get_edge_data(*e)['weight'] )
-    print("After transferring data to sympy")
-    for e in sfg.graph.edges:
-        print("edge:(source , target)",e)
-        print("weight information:",sfg.graph.get_edge_data(*e))
-        print("\n")
-    print("nodes:")
-    for n in sfg.graph.nodes:
-        print(n)
+    # for e in sfg.graph.edges:
+    #     print("weight information:",sfg.graph.get_edge_data(*e))
+    # print("nodes:")
+    # for n in sfg.graph.nodes:
+    #     print(n)
     
     # reorder edges to have sources in the beginning of list
     ordered_edges = []
@@ -395,7 +454,6 @@ def DPI_algorithm( circuit : cir.Circuit ):
     other_nodes = []
     output_nodes = []
     for n in sfg.graph.nodes:
-        print("node:", n)
         if n.endswith("s") or n.endswith("g") or n.endswith("in") or n.endswith("i"):
             input_nodes.append(n)
         elif n.endswith("o") or n.endswith("out"):
@@ -412,14 +470,13 @@ def DPI_algorithm( circuit : cir.Circuit ):
     for oe in ordered_edges:
         sfg.graph.add_edge(oe[0], oe[1], weight = oe[2])
 
-    print("After reordering")
-    for e in sfg.graph.edges:
-        print("edge:(source , target)",e)
-        print("weight information:",sfg.graph.get_edge_data(*e))
-        print("\n")
-    print("nodes:")
-    for n in sfg.graph.nodes:
-        print(n)
+    # for e in sfg.graph.edges:
+    #     print("edge:(source , target)",e)
+    #     print("weight information:",sfg.graph.get_edge_data(*e))
+    #     print("\n")
+    # print("nodes:")
+    # for n in sfg.graph.nodes:
+    #     print(n)
 
     # print('PATHS')
     # breakpoint()

@@ -3254,7 +3254,8 @@ function simplify_mode_toggle() {
     }
 }
 
-function simplify(){
+function simplify()
+{
     if(node1 === null || node2 === null){
         alert('Please select 2 nodes');
         return;
@@ -3279,6 +3280,108 @@ function simplify(){
         sfg_simplify_request(form_data)
     }
 }
+
+// This function simplifies the entire graph 
+// Removing dead branches and removing unecessary branches if needed 
+function sfg_simplification_entire_graph(params) {
+    const url = new URL(`${baseUrl}/circuits/${circuitId}/simplification`);
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(params)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (stack_len === 0) {
+            disable_undo_btn(false);
+        }
+        if (redo_len > 0) {
+            redo_len = 0;
+            disable_redo_btn(true);
+        }
+        stack_len = Math.min(stack_len + 1, 5);
+        update_frontend(data);
+        simplify_mode_toggle();
+        reset_mag_labels();
+    })
+    .catch(error => {
+        console.error('Error during SFG simplification:', error);
+        alert('There was an error simplifying the graph. Please try again.');
+    });
+}
+
+
+
+function simplify_entire_graph() 
+{
+    console.log("Requesting entire graph simplification");
+    
+    // Optional: Set up any parameters you want to pass.
+    let params = {}; // Add any needed parameters here
+    
+    // Call the simplification request function
+    sfg_simplification_entire_graph(params);
+}
+
+
+// This function simplifies the entire graph 
+// Removing dead branches and removing unecessary branches if needed 
+function sfg_simplification_entire_graph_trivial(params) {
+    const url = new URL(`${baseUrl}/circuits/${circuitId}/simplificationgraph`);
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(params)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (stack_len === 0) {
+            disable_undo_btn(false);
+        }
+        if (redo_len > 0) {
+            redo_len = 0;
+            disable_redo_btn(true);
+        }
+        stack_len = Math.min(stack_len + 1, 5);
+        update_frontend(data);
+        simplify_mode_toggle();
+        reset_mag_labels();
+    })
+    .catch(error => {
+        console.error('Error during SFG simplification:', error);
+        alert('There was an error simplifying the graph. Please try again.');
+    });
+}
+
+
+
+function simplify_entire_graph_trivial() 
+{
+    console.log("Requesting entire graph simplification");
+    
+    // Optional: Set up any parameters you want to pass.
+    let params = {}; // Add any needed parameters here
+    
+    // Call the simplification request function
+    sfg_simplification_entire_graph_trivial(params);
+}
+
 
 function sfg_undo_request(params) {
 

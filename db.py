@@ -14,6 +14,8 @@ import circuit_parser
 from dpi import DPI_algorithm as DPI
 from dpi import simplify
 from dpi import removing_branch
+from dpi import remove_dead_branches
+from dpi import simplify_whole_graph
 import ltspice2svg
 import networkx as nx
 
@@ -78,7 +80,7 @@ class Circuit(Document):
         Returns:
             A dictionary.
         """
-        print("to_dict called in db.py")
+
         
         fields = set(fields or ('id', 'name', 'parameters', 'sfg'))
 
@@ -97,10 +99,10 @@ class Circuit(Document):
 
             for src, dst in sfg.edges:
                 # print the edge and its weights
-                print("src:", src)
-                print("dst:", dst)
-                print("edge:", sfg.edges[src, dst])
-                print("edge weight:", sfg.edges[src, dst]['weight'])
+                # print("src:", src)
+                # print("dst:", dst)
+                # print("edge:", sfg.edges[src, dst])
+                # print("edge weight:", sfg.edges[src, dst]['weight'])
                 symbolic = sfg.edges[src, dst]['weight']
 
                 if isinstance(symbolic, sympy.Expr):
@@ -568,6 +570,90 @@ class Circuit(Document):
 
         self.sfg = dill.dumps(sfg)
 
+
+    # STARTED HERE 
+    def simplify_entire_sfg(self, source=None, target=None):
+        """Simplify the SFG. If source and target are provided, simplify only that path;
+        otherwise, simplify the whole graph.
+
+        Args:
+            source: node representing start of path (optional)
+            target: node representing end of path (optional)
+        """
+        # Save current SFG state for undo functionality
+        self.sfg_stack.append(self.sfg)
+        self.redo_stack.clear()
+        
+        if len(self.sfg_stack) > 5:
+            self.sfg_stack = self.sfg_stack[-5:]
+
+        try:
+            # De-serialize the SFG (make sure it's a valid graph object)
+            sfg = dill.loads(self.sfg)
+
+            # Remove dead branches (or simplify based on the given source/target)
+            print("removing dead branches...")
+            sfg = remove_dead_branches(sfg)  # Pass 'sfg' to remove_dead_branches
+
+            # Update the SFG state with the simplified graph
+            self.sfg = dill.dumps(sfg)
+
+        except Exception as e:
+            # Handle any errors (like bad deserialization or invalid graph)
+            print(f"Error simplifying SFG: {e}")
+            self.sfg = self.sfg_stack.pop()  # Restore previous state in case of error
+            raise  # Re-raise the exception for further handling if needed
+
+        # Optionally, you could return the simplified SFG or just ensure the state is updated
+        return self.sfg  # Returning updated SFG
+
+
+    # def simplify_whole_graph(self, sfg):
+    #     """Simplify the entire SFG by iterating over node pairs."""
+    #     for source in list(sfg.nodes):
+    #         for target in list(sfg.nodes):
+    #             if source != target:
+    #                 sfg = simplify(sfg, source, target)
+    #     return sfg
+    
+    def simplify_whole_graph_trivial(self):
+        print("Simplifying the entire graph...")
+
+        # Save current SFG state for undo functionality
+        self.sfg_stack.append(self.sfg)
+        self.redo_stack.clear()
+        
+        if len(self.sfg_stack) > 5:
+            self.sfg_stack = self.sfg_stack[-5:]
+
+        try:
+            # De-serialize the SFG (make sure it's a valid graph object)
+            sfg = dill.loads(self.sfg)
+
+            # Remove dead branches (or simplify based on the given source/target)
+            print("removing dead branches...")
+            sfg = simplify_whole_graph(sfg)  # Pass 'sfg' to remove_dead_branches
+
+            # Update the SFG state with the simplified graph
+            self.sfg = dill.dumps(sfg)
+
+        except Exception as e:
+            # Handle any errors (like bad deserialization or invalid graph)
+            print(f"Error simplifying SFG: {e}")
+            self.sfg = self.sfg_stack.pop()  # Restore previous state in case of error
+            raise  # Re-raise the exception for further handling if needed
+
+        # Optionally, you could return the simplified SFG or just ensure the state is updated
+        return self.sfg  # Returning updated SFG
+
+
+
+    def is_target_node(self, node):
+        """Check if a node is a primary output or target in the SFG."""
+        # Define target nodes based on specific criteria for your application
+        # For example, nodes with no successors could be targets
+        return len(list(self.sfg.successors(node))) == 0
+
     def undo_sfg(self):
         if len(self.sfg_stack) > 0:
             self.redo_stack.append(self.sfg)
@@ -589,32 +675,31 @@ class Circuit(Document):
             editDst: the destination vertex of the edge
             editSymbolic: the new symbolic function of the edge.
         """
-        print("edit_edge called in db.py")
-        print("self:", self)
-        print("editSrc:", editSrc)
-        print("editDst:", editDst)
-        print("editSymbolic:", editSymbolic)
+        # print("edit_edge called in db.py")
+        # print("self:", self)
+        # print("editSrc:", editSrc)
+        # print("editDst:", editDst)
+        # print("editSymbolic:", editSymbolic)
         
-        print("loading sfg")
+        # print("loading sfg")
         sfg = dill.loads(self.sfg)
-        print("sfg loaded")
-        print("sfg:", sfg)
+        # print("sfg loaded")
+        # print("sfg:", sfg)
 
         # print sfg info
-        print("nodes:", sfg.nodes)
-        print("edges:", sfg.edges)
+        # print("nodes:", sfg.nodes)
+        # print("edges:", sfg.edges)
 
 
-        print("iterating through edges")
         for src, dst in sfg.edges:
             if src == editSrc and dst == editDst:
-                print("found edge")
-                print("edge:", sfg.edges)
+                # print("found edge")
+                # print("edge:", sfg.edges)
                 symbolic = sfg.edges[src, dst]['weight']
-                print("old symbolic:", symbolic)
-                print("edge data:", sfg.edges[src, dst])
+                # print("old symbolic:", symbolic)
+                # print("edge data:", sfg.edges[src, dst])
                 sfg.edges[src, dst]['weight'] = editSymbolic
-                print("edge data after edit:", sfg.edges[src, dst])
+                # print("edge data after edit:", sfg.edges[src, dst])
                 self.sfg = dill.dumps(sfg)
                 # return sfg.edges[src, dst]['weight']
                 break
@@ -630,40 +715,40 @@ class Circuit(Document):
             editDst: the destination vertex of the edge
             editSymbolic: the new symbolic function of the edge.
         """
-        print("edit_edge called in db.py")
-        print("editSrc:", editSrc)
-        print("editDst:", editDst)
-        print("editSymbolic:", editSymbolic)
+        # print("edit_edge called in db.py")
+        # print("editSrc:", editSrc)
+        # print("editDst:", editDst)
+        # print("editSymbolic:", editSymbolic)
         
         try:
             # Convert the symbolic string to a SymPy expression
-            print("trying to convert to SymPy expression")
+            # print("trying to convert to SymPy expression")
             editSymbolic = sympy.sympify(editSymbolic)
-            print("successfully converted to SymPy expression")
+            # print("successfully converted to SymPy expression")
         except sympy.SympifyError:
             # print("failed to convert to SymPy expression")
             # raise ValueError(f"Invalid symbolic expression: {editSymbolic}")
             try:
                 # Fallback to parsing as a LaTeX expression
                 editSymbolic = parse_latex(editSymbolic)
-                print("successfully parsed as LaTeX expression")
+                # print("successfully parsed as LaTeX expression")
             except Exception as e:
-                print("failed to parse as LaTeX expression")
+                # print("failed to parse as LaTeX expression")
                 raise ValueError(f"Invalid symbolic expression: {editSymbolic}. Error: {e}")
         # Load the current state of the SFG
         try:
-            print("Loading SFG...")
+            # print("Loading SFG...")
             sfg = dill.loads(self.sfg)
-            print("SFG loaded successfully.")
+            # print("SFG loaded successfully.")
         except Exception as e:
             raise RuntimeError(f"Failed to load SFG: {e}")
 
         # Iterate through edges and find the one to update
         edge_found = False
-        print("Iterating through edges...")
+        # print("Iterating through edges...")
         for src, dst in sfg.edges:
             if src == editSrc and dst == editDst:
-                print(f"Found edge from {src} to {dst}. Updating symbolic weight.")
+                # print(f"Found edge from {src} to {dst}. Updating symbolic weight.")
                 # Update the symbolic weight for the found edge
                 sfg.edges[src, dst]['weight'] = editSymbolic
                 edge_found = True
@@ -675,9 +760,9 @@ class Circuit(Document):
 
         # Serialize the updated SFG back to the database field
         try:
-            print("Serializing the updated SFG...")
+            # print("Serializing the updated SFG...")
             self.sfg = dill.dumps(sfg)
-            print("SFG serialized and stored successfully.")
+            # print("SFG serialized and stored successfully.")
         except Exception as e:
             raise RuntimeError(f"Failed to serialize the updated SFG: {e}")
 
@@ -719,8 +804,6 @@ class Circuit(Document):
     #     self.sfg = sfg_serialized
 
     def import_circuit(self, new_circuit):
-        print(self.id)
-        print(new_circuit.id)
         # self.name = new_circuit.name
         self.svg = new_circuit.svg
         self.schematic = new_circuit.schematic

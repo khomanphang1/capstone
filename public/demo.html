@@ -25,30 +25,21 @@
 
       <div class="parameter-panel">
         <div id="param-form"> 
-          <h1> Circuit Parameters </h1>
+            <h1> Circuit Parameters </h1>
         </div>
         <div id="transfer-form">
-          <h1> Transfer Function </h1>
+            <h1> Transfer Function </h1>
         </div>
         <div id="transfer-func-bode-form">
-          <h1> Transfer Function Bode Plot </h1>
-          <!-- <button onclick="plotInputGuide()">input guide</button> -->
+            <h1> Transfer Function Bode Plot </h1>
         </div>
-
         <div id="loop-gain-form">
-          <h1> Loop Gain </h1>
+            <h1> Loop Gain </h1>
         </div>
         <div id="loop-gain-bode-form">
-          <h1> Loop Gain Bode Plot </h1>
-          <!-- <button onclick="plotInputGuide()">input guide</button> -->
+            <h1> Loop Gain Bode Plot </h1>
         </div>
-
-        <!-- <script>
-          function plotInputGuide() {
-            alert("frequency unit: hz (default) or rad/s;\ngain unit: db (default) or None;\nphase unit: degree (default) or rad;\nWhen leaving the unit fields empty, default units will be used\n" );
-          }
-        </script> -->
-      </div>
+    </div>
 
       <div class="middle-layer">
         <div class="sfg-panel"> 
@@ -88,6 +79,8 @@
               </div>
               <div style="height: 23px; margin-top: 10px;"> 
                   <input type="checkbox" id="simplification-toggle" onclick="simplify_mode_toggle()"> Simplification Mode
+                  <button onclick="simplify_entire_graph()">Simplify Entire Graph</button>
+                  <button onclick="simplify_entire_graph_trivial()">Simplify Entire Graph (Trivial)</button>
                   <button id="simplify-btn" style="margin-left: 20px; display: none;" onclick="simplify()">Simplify</button>
                   <button id="undo-btn" style="margin-left: 20px;" onclick="sfg_undo()" disabled>Undo</button>
                   <button id="redo-btn" style="margin-left: 20px;" onclick="sfg_redo()" disabled>Redo</button>
