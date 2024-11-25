@@ -2268,32 +2268,23 @@ function make_transfer_func(input_node, output_node) {
 
 function make_schematics(data) {
     if (data.svg == null) {
-        console.log("no SVG available")
-    }
-    else {
-        var svg_html = document.getElementById("circuit-svg")
-        var svg_html_small = document.getElementById("circuit-svg-small")
+        console.log("no SVG available");
+    } else {
+        var svg_html = document.getElementById("circuit-svg");
+        var svg_html_small = document.getElementById("circuit-svg-small");
 
-        svg_html.innerHTML = data.svg
-        svg_html_small.innerHTML = data.svg
-        const svg = document.querySelector("#circuit-svg > svg")
-        const svg_small = document.querySelector("#circuit-svg-small > svg")
-        
-        // Get the bounding box of all sub-elements inside the <svg>.
+        svg_html.innerHTML = data.svg;
+        svg_html_small.innerHTML = data.svg;
+
+        const svg = document.querySelector("#circuit-svg > svg");
+
+        //Hiding the smaller one that was not rendering correctly
+        //Was also not really needed
+        svg_html_small.style.display = "none";
+
         const bbox = svg.getBBox();
-        const bbox_small = svg_small.getBBox();
-        // Set the viewBox attribute of the SVG such that it is slightly bigger than the bounding box.
-        svg.setAttribute("viewBox", (bbox.x-10)+" "+(bbox.y-10)+" "+(bbox.width+20)+" "+(bbox.height+20));
-        svg.setAttribute("width", (bbox.width+20)  + "px");
-        svg.setAttribute("height",(bbox.height+20) + "px");
-        svg_small.setAttribute("viewBox", (bbox_small.x-10)+" "+(bbox_small.y-10)+" "+(bbox_small.width+20)+" "+(bbox_small.height+20));
-        svg_small.setAttribute("width", (bbox_small.width)  + "px");
-        svg_small.setAttribute("height",(bbox_small.height) + "px");
-        // Add a black border to the SVG so it's easier to visualize it.
-        svg.setAttribute("style", "border:1px solid black");
-        svg.setAttribute("height", "600px");
-        svg.setAttribute("width", "1200px");
-        // svg_small.setAttribute("style", "border:1px solid black");
+        svg.setAttribute("viewBox", (bbox.x - 10) + " " + (bbox.y - 10) + " " + (bbox.width + 20) + " " + (bbox.height + 20));
+        svg.setAttribute("style", "border:1px solid black; width: 1000px; height: 500px;"); 
     }
 }
 
@@ -2404,6 +2395,7 @@ function make_transfer_bode_panel() {
         //*** need to add a validness check on required fields and values - chech_form_param()
         if (form_params){
             fetch_transfer_bode_data(form_params)
+            document.getElementById('bode-plot-section').scrollIntoView({ behavior: 'smooth' });
         }
         else {
             alert("input field incomplete")
@@ -3166,6 +3158,7 @@ function make_loop_gain_bode_panel() {
         //*** need to add a validness check on required fields and values - chech_form_param()
         if (form_params){
             fetch_loop_gain_bode_data(form_params)
+            document.getElementById('loop-gain-bode-plot').scrollIntoView({ behavior: 'smooth' });
         }
         else {
             alert("input field incomplete")
