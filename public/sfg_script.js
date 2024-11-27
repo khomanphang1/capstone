@@ -1852,6 +1852,9 @@ function render_frontend(data) {
     make_transfer_bode_panel()
     make_loop_gain_bode_panel()
 
+    // load stability plots
+    stability_parameter_panel()
+
     // Frequency bounds form
     make_frequency_bounds()
 }
@@ -2541,6 +2544,12 @@ function make_bode_plots(data, dom_element, overlayData = null) {
     }
 
     let ctx = document.getElementById(dom_element).getContext('2d');
+
+    // Clear previous plot if it exists
+    if (window.myLine) {
+        window.myLine.destroy();
+    }
+
     window.myLine = new Chart(ctx, {
         type: 'line',
         data: {
@@ -3621,3 +3630,243 @@ function import_dill_sfg(dill_sfg) {
     .catch(error => {
         console.log(error)
     })}
+
+function stability_parameter_panel() {
+
+    var form = document.createElement("form");
+    form.id = "stability-param-form-fields";
+
+    var br = document.createElement("br");
+
+    // Input for selected capacitor
+    var inputNode = document.createElement("input");
+    inputNode.type = "text";
+    inputNode.name = "input_node";
+    inputNode.id = "input_node";
+    inputNode.placeholder = "input node";
+    form.appendChild(inputNode);
+    form.appendChild(br.cloneNode());
+
+    // Input for selected capacitor
+    var outputNode = document.createElement("input");
+    outputNode.type = "text";
+    outputNode.name = "output_node";
+    outputNode.id = "output_node";
+    outputNode.placeholder = "output node";
+    form.appendChild(outputNode);
+    form.appendChild(br.cloneNode());
+
+    // Input for selected device
+    var selectedDevice = document.createElement("input");
+    selectedDevice.type = "text";
+    selectedDevice.name = "selected_device";
+    selectedDevice.id = "selected_device";
+    selectedDevice.placeholder = "Selected device";
+    form.appendChild(selectedDevice);
+    form.appendChild(br.cloneNode());
+
+    // Input for minimum value
+    var minVal = document.createElement("input");
+    minVal.type = "number";
+    minVal.name = "min_value";
+    minVal.id = "min_value";
+    minVal.placeholder = "Min value";
+    form.appendChild(minVal);
+    form.appendChild(br.cloneNode());
+
+    // Input for maximum value
+    var maxVal = document.createElement("input");
+    maxVal.type = "number";
+    maxVal.name = "max_value";
+    maxVal.id = "max_value";
+    maxVal.placeholder = "Max value";
+    form.appendChild(maxVal);
+    form.appendChild(br.cloneNode());
+
+    // Input for step size
+    var stepSize = document.createElement("input");
+    stepSize.type = "number";
+    stepSize.name = "step_size";
+    stepSize.id = "step_size";
+    stepSize.placeholder = "Step size";
+    form.appendChild(stepSize);
+    form.appendChild(br.cloneNode());
+
+    // Submit button
+    var submitButton = document.createElement("input");
+    submitButton.type = "submit";
+    submitButton.value = "Submit Form";
+    form.appendChild(submitButton);
+
+    // Event listener for the form submission
+    form.addEventListener("submit", event => {
+        event.preventDefault();
+
+        // Collect form data
+        let form_params = {
+            'input_node': inputNode.value,
+            'output_node': outputNode.value,
+            'selected_device': selectedDevice.value,
+            'min_val': Number(minVal.value),
+            'max_val': Number(maxVal.value),
+            'step_size': Number(stepSize.value)
+        };
+
+        // Check for empty fields
+        if (!form_params.input_node || !form_params.output_node || !form_params.selected_device || isNaN(form_params.min_val) || isNaN(form_params.max_val) || isNaN(form_params.step_size)) {
+            alert("Please fill in all the fields.");
+            return;
+        }
+
+        // Check if min_val is less than max_val
+        if (form_params.min_val >= form_params.max_val) {
+            alert("Minimum value must be less than maximum value.");
+            return;
+        }
+
+        // Check if step_size is less than (max_val - min_val)
+        if (form_params.step_size >= (form_params.max_val - form_params.min_val)) {
+            alert("Step size must be less than the difference between maximum and minimum values.");
+            return;
+        }
+
+        // Proceed if all checks pass
+        fetch_phase_margin_plot_data(form_params);
+        fetch_bandwidth_plot_data(form_params);
+    });
+
+    // Append form to the div with id "stability-params-form"
+    document.getElementById("stability-params-form").appendChild(form);
+}
+
+function fetch_phase_margin_plot_data(input_params) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/pm/plot`);
+    Object.keys(input_params).forEach(key => url.searchParams.append(key, input_params[key]));
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Phase Margin data received:", data);
+            plot_phase_margin(data.device_value, data.phase_margin);
+        })
+        .catch(error => console.error('Error fetching cap vs PM data:', error));
+}
+
+function plot_phase_margin(parameter_values, phase_margins) {
+    const ctx = document.getElementById('phase-margin-plot').getContext('2d');
+    const selectedDevice = document.getElementById('selected_device').value;
+
+    // Clear previous plot if it exists
+    if (window.phaseMarginChart) {
+        window.phaseMarginChart.destroy();
+    }
+
+    // Create a new chart with axis labels and dynamic title
+    window.phaseMarginChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: parameter_values,
+            datasets: [{
+                label: 'Phase Margin (degrees)',
+                data: phase_margins,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            stacked: false,
+            title: {
+                display: true,
+                text: `${selectedDevice} vs. Phase Margin`
+            },
+            scales: {
+                xAxes:[{
+                    scaleLabel: {
+                        display: true,
+                        labelString: `${selectedDevice}`
+                    }
+                }],
+                yAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Phase Margin (degrees)'
+                    }
+                }]
+            }
+        }
+    });
+}
+
+function fetch_bandwidth_plot_data(input_params) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/bandwidth/plot`);
+    Object.keys(input_params).forEach(key => url.searchParams.append(key, input_params[key]));
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Bandwidth plot data received:", data);
+            plot_bandwidth(data.parameter_value, data.bandwidth);
+        })
+        .catch(error => console.error('Error fetching bandwidth data:', error));
+}
+
+function plot_bandwidth(parameter_value, bandwidth) {
+    const ctx = document.getElementById('bandwidth-plot').getContext('2d');
+    const selectedDevice = document.getElementById('selected_device').value;
+
+    // Clear previous plot if it exists
+    if (window.bandwidthChart) {
+        window.bandwidthChart.destroy();
+    }
+
+    // Create a new chart with axis labels and dynamic title
+    window.bandwidthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: parameter_value,
+            datasets: [{
+                label: 'Bandwidth (hz)',
+                data: bandwidth,
+                borderColor: 'rgba(120, 50, 194, 1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            stacked: false,
+            title: {
+                display: true,
+                text: `${selectedDevice} vs. Bandwidth`
+            },
+            scales: {
+                xAxes:[{
+                    scaleLabel: {
+                        display: true,
+                        labelString: `${selectedDevice}` // TO BE CHANGED TO PICK APPROPRIATE UNIT
+                    }
+                }],
+                yAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Bandwidth (hz)'
+                    }
+                }]
+            }
+        }
+    });
+}
