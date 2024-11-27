@@ -3718,6 +3718,16 @@ function stability_parameter_panel() {
             return;
         }
 
+        const invalidNodes = [form_params.input_node, form_params.output_node].filter(node => !validateNode(node));
+
+        if (invalidNodes.length === 1) {
+            alert(`The selected node ${invalidNodes[0]} is not valid.`);
+            return;
+        } else if (invalidNodes.length === 2) {
+            alert(`The selected nodes ${invalidNodes[0]} and ${invalidNodes[1]} are not valid.`);
+            return;
+        }
+
         // Check if min_val is less than max_val
         if (form_params.min_val >= form_params.max_val) {
             alert("Minimum value must be less than maximum value.");
@@ -3869,4 +3879,10 @@ function plot_bandwidth(parameter_value, bandwidth) {
             }
         }
     });
+}
+
+function validateNode(nodeId) {
+    const cy = window.cy; // Cytoscape instance
+    const existingNodes = cy.nodes().map(node => node.id()); // Get all node IDs
+    return existingNodes.includes(nodeId); // Check if the node exists
 }
