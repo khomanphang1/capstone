@@ -5,6 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>SigFlow</title>
         <link rel="stylesheet" type="text/css" href="landing.css">
+        <link rel="icon" href="../favicon.ico">
         <!-- <script src="landing.js" defer></script> -->
 	</head>
 
@@ -13,15 +14,15 @@
 			<h1>SigFlow</h1><br>
             <p>Analyze and visualize analog circuits using signal-flow graph.</p><br>
             
-            <!-- Button to open the modal -->
-            <button id="open-modal-button">Open Tutorial</button>
+            
             
             <!-- Tutorial message container (initially hidden) -->
             <div id="tutorial-modal" class="modal">
                 <div class="modal-content">
-                    <h2>Step 1: Circuit File Upload</h2>
+                    <button id="close-button" class="close-button">&times;</button>
+                    <!-- <h2>Step 1: Circuit File Upload</h2>
                     <p>Upload your circuit file here.</p>
-                    <button id="next-button">Next</button>
+                    <button id="next-button">Next</button> -->
                 </div>
             </div>
 
@@ -38,7 +39,10 @@
                     <label for="formControlOpLogFile">Operating Point Analysis Log File (.log)</label>
                     <input type="file" class="form-control-file" id="formControlOpLogFile">
                 </div>
-                <button type="submit" class="btn btn-primary">Start Application</button>
+                <div class="action-section">
+                    <button type="submit" class="btn btn-primary">Start Application</button>
+                    <img src="img/infoIcon.png" id="tutorial-icon" class="tutorial-icon" alt="Tutorial Info">
+                </div>
             </form>
             <!-- <div id="tutorial-modal" class="modal">
                 <div class="modal-content">
