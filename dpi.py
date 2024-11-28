@@ -4,6 +4,7 @@ import networkx as nx
 import circuit_parser as cir
 from collections import defaultdict
 import sympy as sy
+from sympy import symbols
 
 class test:
     def __init__(self):
@@ -148,8 +149,27 @@ def simplify_whole_graph(sfg):
     # Dictionary to store transmittance for all paths
     path_transmittance = {}
 
+    # Dictionary for Path, Transmittance Source, Target 
 
-    # Iterate through the target pairs
+    # Substitute numerical values
+    numerical_values = {
+        'G_M1': 10,  # Gain of M1
+        'R_O_M1': 1000,  # Resistance of M1
+        'C1': 1e-6,  # Capacitance
+        'RD1': 500,  # Resistance RD1
+        'G_M2': 20,  # Gain of M2
+        'C2': 2e-6,  # Capacitance
+        'R_O_M2': 2000,  # Resistance of M2
+        'RD2': 1000,  # Resistance RD2
+        'R2': 100,  # Resistance R2
+        's': 1e3,  # Frequency-domain variable (e.g., for s=jω, substitute a frequency)
+        'C3': 1e2,
+        'R1': 1e2, 
+        'R2': 1e2
+    }
+
+    largest_transmittance_list = []
+
     for source, target in target_pairs:
         if nx.has_path(sfg, source, target):
             # Find all paths between the source and target
@@ -160,22 +180,46 @@ def simplify_whole_graph(sfg):
 
             # Calculate transmittance for each path
             for path in paths:
-                transmittance = 1  # Start with a multiplier of 1
+                symbolic_transmittance = 1  # Start with a multiplier of 1 for symbolic calculation
                 for i in range(len(path) - 1):
                     edge = (path[i], path[i + 1])
                     if sfg.has_edge(*edge):
                         weight = sfg.edges[edge].get('weight', 1)  # Default weight is 1 if not specified
-                        transmittance *= weight  # Multiply edge weights
+                        symbolic_transmittance *= weight  # Multiply edge weights
                     else:
                         print(f"Warning: Edge {edge} not found in the graph!")
-                path_transmittance[(source, target)].append((path, transmittance))
+
+                # Substitute numerical values into the symbolic transmittance
+                numerical_transmittance = symbolic_transmittance.subs(numerical_values)
+
+                # Store both symbolic and numerical results
+                path_transmittance[(source, target)].append(
+                    (path, symbolic_transmittance, numerical_transmittance)
+                )
 
             # Print results for the pair
+            maxTransmittance = 0
+            largest_path = None  
+
             print(f"Transmittance for paths between {source} and {target}:")
-            for path, t in path_transmittance[(source, target)]:
-                print(f"  Path: {path}, Transmittance: {t}")
+            for path, symbolic, numerical in path_transmittance[(source, target)]:
+                print(f"  Path: {path}")
+                print(f"    Symbolic Transmittance: {symbolic}")
+                print(f"    Numerical Transmittance: {numerical}")
+                # Check if this path has the largest transmittance
+                if numerical > maxTransmittance:
+                    maxTransmittance = numerical
+                    largest_path = path  # Update the largest path
+
+            if largest_path is not None:
+                largest_transmittance_list.append((source, target, largest_path, maxTransmittance))        
+
         else:
             print(f"No path found between {source} and {target}")
+        print("Largest is: ", largest_transmittance_list)
+
+
+
 
 
     # Second pass: perform the simplification for each identified pair
