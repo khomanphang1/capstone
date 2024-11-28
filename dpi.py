@@ -143,21 +143,40 @@ def simplify_whole_graph(sfg):
     # List to store node pairs that need simplification
     simplify_pairs = []
 
-    # First pass: identify all node pairs that can be simplified
-    for source in sfg.nodes:
-        for target in sfg.nodes:
-            if source == target:
-                continue  # Skip if source and target are the same
+    target_pairs = [("Vvin", "Vvout"), ("Vvs1", "Vvout")]
 
-            # Simplify the path between source and target, if necessary
-            if nx.has_path(sfg, source, target):
-                path = nx.shortest_path(sfg, source, target)
+    # Dictionary to store transmittance for all paths
+    path_transmittance = {}
 
-                if len(path) > 2:  # Only simplify if there are intermediate nodes
-                    print(f"Identified path to simplify between {source} and {target}...")
 
-                    # Store the path to be simplified later
-                    simplify_pairs.append((source, target, path))
+    # Iterate through the target pairs
+    for source, target in target_pairs:
+        if nx.has_path(sfg, source, target):
+            # Find all paths between the source and target
+            paths = list(nx.all_simple_paths(sfg, source, target))
+
+            # Initialize transmittance for this pair
+            path_transmittance[(source, target)] = []
+
+            # Calculate transmittance for each path
+            for path in paths:
+                transmittance = 1  # Start with a multiplier of 1
+                for i in range(len(path) - 1):
+                    edge = (path[i], path[i + 1])
+                    if sfg.has_edge(*edge):
+                        weight = sfg.edges[edge].get('weight', 1)  # Default weight is 1 if not specified
+                        transmittance *= weight  # Multiply edge weights
+                    else:
+                        print(f"Warning: Edge {edge} not found in the graph!")
+                path_transmittance[(source, target)].append((path, transmittance))
+
+            # Print results for the pair
+            print(f"Transmittance for paths between {source} and {target}:")
+            for path, t in path_transmittance[(source, target)]:
+                print(f"  Path: {path}, Transmittance: {t}")
+        else:
+            print(f"No path found between {source} and {target}")
+
 
     # Second pass: perform the simplification for each identified pair
     for source, target, path in simplify_pairs:
