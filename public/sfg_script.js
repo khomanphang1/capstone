@@ -2045,13 +2045,23 @@ function make_transfer_func_panel() {
 
         let input = document.querySelector('#input_node').value
         let output = document.querySelector('#output_node').value
-        
-        if (input && output){
-            make_transfer_func(input, output)
+
+        if (!input || !output) {
+            alert("Please fill in all the fields.");
+            return;
         }
-        else {
-            alert("input field incomplete")
+
+        const invalidNodes = [input, output].filter(node => !validateNode(node));
+
+        if (invalidNodes.length === 1) {
+            alert(`The selected node ${invalidNodes[0]} is not valid.`);
+            return;
+        } else if (invalidNodes.length === 2) {
+            alert(`The selected nodes ${invalidNodes[0]} and ${invalidNodes[1]} are not valid.`);
+            return;
         }
+    
+        make_transfer_func(input, output);
     });
 
     document.getElementById("transfer-form").appendChild(form);
@@ -2395,16 +2405,30 @@ function make_transfer_bode_panel() {
             }
         }
 
-        //*** need to add a validness check on required fields and values - chech_form_param()
-        if (form_params){
-            fetch_transfer_bode_data(form_params)
-            document.getElementById('bode-plot-section').scrollIntoView({ behavior: 'smooth' });
+        if(!form_params.input_node_bode || !form_params.output_node_bode || !form_params.start_freq_hz || !form_params.end_freq_hz || !form_params.points_per_decade) {
+            alert("Please fill in all the fields.");
+            return;
         }
-        else {
-            alert("input field incomplete")
-        }
-    });
 
+        const invalidNodes = [form_params.input_node_bode, form_params.output_node_bode].filter(node => !validateNode(node));
+
+        if (invalidNodes.length === 1) {
+            alert(`The selected node ${invalidNodes[0]} is not valid.`);
+            return;
+        } else if (invalidNodes.length === 2) {
+            alert(`The selected nodes ${invalidNodes[0]} and ${invalidNodes[1]} are not valid.`);
+            return;
+        }
+
+        // Check if min_val is less than max_val
+        if (form_params.start_freq_hz >= form_params.end_freq_hz) {
+            alert("Start frequency must be less than end frequency.");
+            return;
+        }
+
+        fetch_transfer_bode_data(form_params)
+        document.getElementById('bode-plot-section').scrollIntoView({ behavior: 'smooth' });
+    });
     document.getElementById("transfer-func-bode-form").appendChild(form);
 }
 
@@ -3164,16 +3188,20 @@ function make_loop_gain_bode_panel() {
             }
         }
 
-        //*** need to add a validness check on required fields and values - chech_form_param()
-        if (form_params){
-            fetch_loop_gain_bode_data(form_params)
-            document.getElementById('loop-gain-bode-plot').scrollIntoView({ behavior: 'smooth' });
+        if(!form_params.start_freq_hz || !form_params.end_freq_hz || !form_params.points_per_decade) {
+            alert("Please fill in all the fields.");
+            return;
         }
-        else {
-            alert("input field incomplete")
-        }
-    });
 
+        // Check if min_val is less than max_val
+        if (form_params.end_freq_hz >= form_params.start_freq_hz) {
+            alert("Start frequency must be less than end frequency.");
+            return;
+        }
+
+        fetch_loop_gain_bode_data(form_params)
+        document.getElementById('loop-gain-bode-plot').scrollIntoView({ behavior: 'smooth' });
+    });
     document.getElementById("loop-gain-bode-form").appendChild(form);
 }
 
