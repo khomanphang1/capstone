@@ -934,5 +934,27 @@ def plot_bandwidth(circuit_id):
 
     return response
 
+@app.route('/circuits/<circuit_id>/devices/check', methods=['GET'])
+def check_device(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+   # Get the device name from query parameters
+    device_name = request.args.get('device_name')
+    if not device_name:
+        return jsonify({"error": "Device name is required"}), 400
+
+    try:
+        # Use the is_device_valid function to check if the device exists
+        device_exists = circuit.is_device_valid(device_name)
+
+        # Return appropriate JSON response
+        return jsonify({"exists": device_exists})
+    except Exception as e:
+        # Handle unexpected errors gracefully
+        return jsonify({"error": str(e)}), 400
+
 if __name__ == "__main__":
     app.run(debug=True)

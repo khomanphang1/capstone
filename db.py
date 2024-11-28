@@ -995,3 +995,15 @@ class Circuit(Document):
         self.update_parameters({param_name: original_param})
 
         return param_values, bandwidths
+    
+    def is_device_valid(self, device_name: str) -> bool:
+        """
+        Check if a given device exists in the circuit parameters.
+
+        Args:
+            device_name (str): The name of the device to validate.
+
+        Returns:
+            bool: True if the device exists, False otherwise.
+        """
+        return device_name in self.parameters

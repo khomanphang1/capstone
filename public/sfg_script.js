@@ -3699,7 +3699,7 @@ function stability_parameter_panel() {
     form.appendChild(submitButton);
 
     // Event listener for the form submission
-    form.addEventListener("submit", event => {
+    form.addEventListener("submit", async (event) => {
         event.preventDefault();
 
         // Collect form data
@@ -3728,6 +3728,13 @@ function stability_parameter_panel() {
             return;
         }
 
+        // Validate device existence
+        const deviceExists = await check_if_device_exists(form_params.selected_device);
+        if (!deviceExists) {
+            alert(`The selected device ${form_params.selected_device} is not valid.`);
+            return;
+        }
+
         // Check if min_val is less than max_val
         if (form_params.min_val >= form_params.max_val) {
             alert("Minimum value must be less than maximum value.");
@@ -3747,6 +3754,32 @@ function stability_parameter_panel() {
 
     // Append form to the div with id "stability-params-form"
     document.getElementById("stability-params-form").appendChild(form);
+}
+
+async function check_if_device_exists(deviceName) {
+    const url = new URL(`${baseUrl}/circuits/${circuitId}/devices/check`);
+    url.searchParams.append('device_name', deviceName);
+
+    return fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.exists) {
+                console.log(`Device ${deviceName} exists.`);
+                return true;
+            } else {
+                console.log(`Device ${deviceName} does not exist.`);
+                return false;
+            }
+        })
+        .catch(error => {
+            console.error('Error checking device existence:', error);
+            return false;
+        });
 }
 
 function fetch_phase_margin_plot_data(input_params) {
