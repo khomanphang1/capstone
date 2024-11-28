@@ -2463,8 +2463,8 @@ function fetch_transfer_bode_data(input_params) {
         // for user: have a button to save bode plat ("data") ==> in an tuple array or stack somewhere
         // the user should be able to click save at any time (many versions of the bode plot "data")
         // also show a new updated bode plot from the most recent "data"
-        make_bode_plots(data, 'transfer-bode-plot')
-        createOverlayButtons('transfer-bode-plot', 'transfer-bode');
+        make_transfer_bode_plots(data, 'transfer-bode-plot')
+        create_transfer_overlay_buttons('transfer-bode-plot', 'transfer-bode');
         console.log("trasfer bode plot data:");
         console.log(data);
     })
@@ -2477,7 +2477,7 @@ function fetch_transfer_bode_data(input_params) {
 
 }
 
-function make_bode_plots(data, dom_element, overlayData = null) {
+function make_transfer_bode_plots(data, dom_element, overlayData = null) {
     let freq_points = [];
     let gain_points = [];
     let phase_points = [];
@@ -2570,11 +2570,165 @@ function make_bode_plots(data, dom_element, overlayData = null) {
     let ctx = document.getElementById(dom_element).getContext('2d');
 
     // Clear previous plot if it exists
-    if (window.myLine) {
-        window.myLine.destroy();
+    if (window.transfer_line) {
+        window.transfer_line.destroy();
     }
 
-    window.myLine = new Chart(ctx, {
+    window.transfer_line = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: freq_points,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            stacked: false,
+            title: {
+                display: true,
+                text: dom_element === 'transfer-bode-plot' ? 'Transfer Function Bode Plot' : 'Loop Gain Bode Plot'
+            },
+            scales: {
+                xAxes: [{
+                    afterTickToLabelConversion: function(data){
+                        var xLabels = data.ticks;
+                        xLabels.forEach((label, i) => {
+                            if (i % 10 != 0) {
+                                xLabels[i] = '';
+                            }
+                        });
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Hz'
+                    }
+                }],
+                yAxes: [{
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    id: 'y-axis-1',
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'db'
+                    }
+                }, {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    id: 'y-axis-2',
+                    ticks: {
+                        min: -180,
+                        max: 180,
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'deg'
+                    }
+                }]
+            }
+        }
+    });
+}
+
+function make_loop_gain_bode_plots(data, dom_element, overlayData = null) {
+    let freq_points = [];
+    let gain_points = [];
+    let phase_points = [];
+    let frequency = data["frequency"];
+    let gain = data["gain"];
+    let phase = data["phase"];
+
+    // Select the appropriate history array
+    let historyArray = dom_element === 'transfer-bode-plot' ? transfer_bode_plot_history : loop_gain_bode_plot_history;
+
+    // Check if the incoming data is different from the last entry in the history
+    let isDifferent = true;
+    if (historyArray.length > 0) {
+        let lastData = historyArray[historyArray.length - 1];
+        isDifferent = !(_.isEqual(lastData, data));  // Using lodash to compare objects
+    }
+
+    // Push data to history only if it's different and not an overlay
+    if (isDifferent && overlayData === null) {
+        historyArray.push(data);
+        console.log(dom_element + " history:", historyArray);
+    }
+
+    for (let i = 0; i < frequency.length; i++) {
+        freq_points.push(Number.parseFloat(frequency[i].toExponential(0)).toFixed(0));
+
+        gain_points.push({
+            x: frequency[i],
+            y: gain[i]
+        });
+
+        phase_points.push({
+            x: frequency[i],
+            y: phase[i]
+        });
+    }
+
+    let datasets = [{
+        label: 'Gain plot',
+        borderColor: 'rgb(255, 0, 0)',
+        backgroundColor: 'rgb(255, 0, 0)',
+        fill: false,
+        data: gain_points,
+        yAxisID: 'y-axis-1',
+    }, {
+        label: 'Phase plot',
+        borderColor: 'rgb(0, 102, 255)',
+        backgroundColor: 'rgb(0, 102, 255)',
+        fill: false,
+        data: phase_points,
+        yAxisID: 'y-axis-2'
+    }];
+
+    // Add overlay data if provided
+    if (overlayData) {
+        let overlay_gain_points = [];
+        let overlay_phase_points = [];
+
+        for (let i = 0; i < overlayData.frequency.length; i++) {
+            overlay_gain_points.push({
+                x: overlayData.frequency[i],
+                y: overlayData.gain[i]
+            });
+
+            overlay_phase_points.push({
+                x: overlayData.frequency[i],
+                y: overlayData.phase[i]
+            });
+        }
+
+        datasets.push({
+            label: 'Gain overlay',
+            borderColor: 'rgba(255, 0, 0, 0.5)',
+            backgroundColor: 'rgba(255, 0, 0, 0.5)',
+            fill: false,
+            data: overlay_gain_points,
+            yAxisID: 'y-axis-1',
+            borderDash: [5, 5],  // Dotted line
+        }, {
+            label: 'Phase overlay',
+            borderColor: 'rgba(0, 102, 255, 0.5)',
+            backgroundColor: 'rgba(0, 102, 255, 0.5)',
+            fill: false,
+            data: overlay_phase_points,
+            yAxisID: 'y-axis-2',
+            borderDash: [5, 5],  // Dotted line
+        });
+    }
+
+    let ctx = document.getElementById(dom_element).getContext('2d');
+
+    // Clear previous plot if it exists
+    if (window.loop_gain_line) {
+        window.loop_gain_line.destroy();
+    }
+
+    window.loop_gain_line = new Chart(ctx, {
         type: 'line',
         data: {
             labels: freq_points,
@@ -2784,7 +2938,7 @@ function mid_make_bode_plots(data, dom_element, overlayData = null) {
     // }
 }
 
-function createOverlayButtons(dom_element, targetDivId) {
+function create_transfer_overlay_buttons (dom_element, targetDivId) {
     console.log("********** running createOverlayButtons **********");
     let historyArray = dom_element === 'transfer-bode-plot' ? transfer_bode_plot_history : loop_gain_bode_plot_history;
     console.log("historyArray: ", historyArray);
@@ -2826,7 +2980,55 @@ function createOverlayButtons(dom_element, targetDivId) {
         button.textContent = `Overlay Plot ${index}`;
         button.onclick = function() {
             let overlayData = historyArray[index];
-            make_bode_plots(historyArray[0], dom_element, overlayData);  // Overlay selected plot over the original (index 0)
+            make_transfer_bode_plots(historyArray[0], dom_element, overlayData);  // Overlay selected plot over the original (index 0)
+        };
+        buttonContainer.appendChild(button);
+    });
+}
+
+function create_loop_gain_overlay_buttons(dom_element, targetDivId) {
+    console.log("********** running createOverlayButtons **********");
+    let historyArray = dom_element === 'transfer-bode-plot' ? transfer_bode_plot_history : loop_gain_bode_plot_history;
+    console.log("historyArray: ", historyArray);
+
+    // Check if the buttonContainer already exists
+    let targetDiv = document.getElementById(targetDivId);
+    let buttonContainer = document.getElementById(`${dom_element}-overlay-buttons`);
+    let clear_button = document.createElement('button');
+    clear_button.textContent = `Clear History`;
+    clear_button.onclick = function() {
+        historyArray.length = 0;
+        let ctx = document.getElementById(dom_element).getContext('2d');
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        buttonContainer.innerHTML = '';  // Clear the button container
+    }
+    
+
+    if (!buttonContainer) {
+        // Create a new buttonContainer if it doesn't exist
+        buttonContainer = document.createElement('div');
+        buttonContainer.id = `${dom_element}-overlay-buttons`;
+
+        if (targetDiv) {
+            targetDiv.appendChild(buttonContainer);  // Append to the specified target div
+        } else {
+            console.error(`Target div with id ${targetDivId} not found.`);
+            return;
+        }
+    }
+
+    // Clear existing buttons to avoid duplicates
+    buttonContainer.innerHTML = '';
+
+    buttonContainer.appendChild(clear_button);
+    
+    // Add buttons for each plot in history
+    historyArray.forEach((data, index) => {
+        let button = document.createElement('button');
+        button.textContent = `Overlay Plot ${index}`;
+        button.onclick = function() {
+            let overlayData = historyArray[index];
+            make_loop_gain_bode_plots(historyArray[0], dom_element, overlayData);  // Overlay selected plot over the original (index 0)
         };
         buttonContainer.appendChild(button);
     });
@@ -3227,8 +3429,8 @@ function fetch_loop_gain_bode_data(input_params) {
         return response.json();
     })
     .then(data => {
-        make_bode_plots(data, 'loop-gain-bode-plot')
-        createOverlayButtons('loop-gain-bode-plot', 'loop-gain-bode');
+        make_loop_gain_bode_plots(data, 'loop-gain-bode-plot')
+        create_loop_gain_overlay_buttons('loop-gain-bode-plot', 'loop-gain-bode');
         console.log("loop gain bode plot data:");
         console.log(data);
     })
