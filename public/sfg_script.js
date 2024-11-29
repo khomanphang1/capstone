@@ -3034,7 +3034,6 @@ function create_loop_gain_overlay_buttons(dom_element, targetDivId) {
     });
 }
 
-
 function old_createOverlayButtons(dom_element, targetDivId) {
     console.log("********** running createOverlayButtons **********")
     let historyArray = dom_element === 'transfer-bode-plot' ? transfer_bode_plot_history : loop_gain_bode_plot_history;
@@ -3061,7 +3060,6 @@ function old_createOverlayButtons(dom_element, targetDivId) {
         console.error(`Target div with id ${targetDivId} not found.`);
     }
 }
-
 
 function old_make_bode_plots(data, dom_element) {
     let freq_points = []
