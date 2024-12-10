@@ -144,7 +144,7 @@ def simplify_whole_graph(sfg):
     # List to store node pairs that need simplification
     simplify_pairs = []
 
-    target_pairs = [("Vvin", "Vvout"), ("Vvs1", "Vvout")]
+    target_pairs = [("Vvin", "Vvout")]
 
     # Dictionary to store transmittance for all paths
     path_transmittance = {}
@@ -220,46 +220,57 @@ def simplify_whole_graph(sfg):
 
 
 
+    #TODO: Check if it is removing the correct paths 
+    # Second pass: simplify the paths that are NOT the largest transmittance
+    # Iterate over source-target pairs and their corresponding paths
+    for (source, target), paths in path_transmittance.items():
+        # Identify the largest transmittance path for the current source-target pair
+        largest_path = None
+        max_transmittance = -float("inf")
+        for path, _, numerical in paths:
+            if numerical > max_transmittance:
+                max_transmittance = numerical
+                largest_path = path
 
+        # Simplify all paths except the largest one for this source-target pair
+        for path, symbolic, numerical in paths:
+            if path == largest_path:
+                continue  # Skip the largest transmittance path for this pair
 
-    # Second pass: perform the simplification for each identified pair
-    for source, target, path in simplify_pairs:
-        try:
-            # Check if edges exist before accessing their weight
-            if sfg.has_edge(path[0], path[1]) and sfg.has_edge(path[1], path[2]):
-                weight1 = sfg.get_edge_data(path[0], path[1])['weight']
-                weight2 = sfg.get_edge_data(path[1], path[2])['weight']
-                combined_weight = weight1 * weight2
-                print(f"Path: {path}, Weight: {combined_weight}")
+            try:
+                # Combine weights for the current path
+                combined_weight = 1
+                for i in range(len(path) - 1):
+                    edge = (path[i], path[i + 1])
+                    if sfg.has_edge(*edge):
+                        weight = sfg.get_edge_data(*edge)['weight']
+                        combined_weight *= weight
+                    else:
+                        print(f"Error: Edge {edge} not found in the graph!")
+                        raise KeyError(edge)
 
-                # Simplify the path between source and target using the combined weight
-                sy.simplify(combined_weight)  # Assuming 'sy.simplify' modifies the graph
+                print(f"Simplifying path: {path} with combined weight: {combined_weight}")
 
-                # Remove the intermediate edges
-                sfg.remove_edge(path[0], path[1])
-                sfg.remove_edge(path[1], path[2])
+                # Remove intermediate edges, but skip those in the largest path for this pair
+                for i in range(len(path) - 1):
+                    edge = (path[i], path[i + 1])
+                    if edge not in zip(largest_path[:-1], largest_path[1:]):  # Ensure edge is not in the largest path
+                        sfg.remove_edge(*edge)
 
-                # Add a new edge between the source and target with the combined weight
+                # Add a direct edge between source and target
                 sfg.add_edge(source, target, weight=combined_weight)
 
-                # Remove the intermediate node (path[1])
-                sfg.remove_node(path[1])
+                # Remove intermediate nodes, but skip nodes in the largest path for this pair
+                for node in path[1:-1]:
+                    if node not in largest_path:
+                        sfg.remove_node(node)
 
-                # Mark that the graph has been simplified
-                simplified = True
-            else:
-                print(f"Error: One or more edges not found for path {path}")
-
-        except KeyError as e:
-            print(f"Error: Missing edge data for {e}")
-            continue  # Skip this path if edge data is missing
+            except KeyError as e:
+                print(f"Error: Missing edge data for {e}")
+                continue  # Skip this path if edge data is missing
 
     # Report the result
-    if not simplified:
-        print("No further simplifications possible.")
-    else:
-        print("Graph simplification complete.")
-
+    print("Graph simplification complete.")
     return sfg
 
 # simiplification algorithm: takes in source and target nodes and
