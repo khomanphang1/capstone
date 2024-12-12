@@ -816,3 +816,194 @@ class Circuit(Document):
         self.created = new_circuit.created
         self.sfg_stack = new_circuit.sfg_stack
         self.redo_stack = new_circuit.redo_stack
+
+    def compute_phase_margin(
+            self,
+            gain: List[float],
+            phase: List[float]
+    ) -> Optional[float]:
+        
+        # Find the index where the gain is closest to 0 dB
+        zero_db_index = min(range(len(gain)), key=lambda i: abs(gain[i]))
+        
+        # Check if the gain at the closest index is within a reasonable threshold of 0 dB
+        #if abs(gain[zero_db_index]) > 0.1:  # Adjust threshold as needed
+        #    return None  # or raise an exception if preferred
+
+        # Get the phase at this index
+        phase_at_zero_db = phase[zero_db_index]
+        
+        # Calculate the phase margin
+        phase_margin = 180 - abs(phase_at_zero_db)
+
+        #print ("The phase margin is: "+phase_margin) # Temporarily adding print statement for BOL
+        
+        return phase_margin
+
+    def sweep_params_for_phase_margin(
+        self,
+        input_node: str,
+        output_node: str,
+        param_name: str,  
+        min_value: float,
+        max_value: float,
+        step: float
+    ) -> Tuple[List[float], List[float]]:
+        """Sweeps capacitance values and plots capacitance vs. phase margin.
+
+        Args:
+            param_name: Name of the capacitor parameter to update.
+            min_value: Minimum capacitance value to test.
+            max_value: Maximum capacitance value to test.
+            step: Increment step for capacitance.
+            freq, gain, phase: Frequency, gain, and phase lists to compute phase margin.
+
+        Returns:
+            A tuple of two lists: capacitances and their corresponding phase margins.
+        """
+        param_values = []
+        phase_margins = []
+
+        original_param = self.parameters[param_name]
+        # Parameters for eval_loop_gain
+        start_freq = 1e3
+        end_freq = 1e12
+        points_per_decade = 30
+
+        # Sweep capacitance values
+        current_value = min_value
+        while current_value <= max_value:
+            # Update the specified capacitance in the circuit
+            self.update_parameters({param_name: current_value})
+            freq_list, gain_list, phase_list= self.eval_transfer_function(input_node=input_node,
+                                                                        output_node=output_node,
+                                                                        start_freq=start_freq,
+                                                                        end_freq=end_freq,
+                                                                        points_per_decade=points_per_decade)
+
+            # Compute the phase margin for the current capacitance
+            phase_margin = self.compute_phase_margin(gain_list, phase_list)
+            
+            # Store results
+            param_values.append(current_value)
+            phase_margins.append(phase_margin)
+
+            print("Testing: "+str(current_value)+" F")
+            print("Phase margin: "+str(phase_margin)+" deg")
+            
+            # Increment capacitance
+            current_value += step
+            current_value = round(current_value,max(0, -int(math.floor(math.log10(abs(step))))))
+        
+        self.update_parameters({param_name: original_param})
+
+        return param_values, phase_margins
+
+    def calculate_bandwidth(
+            self,
+            frequencies: List[float],
+            magnitudes: List[float]
+    ) -> Optional[float]:
+        """
+        Calculate the bandwidth frequency where the gain is closest to max_gain - 3 dB.
+
+        Args:
+            frequencies: List of frequency values.
+            magnitudes: List of corresponding gain values in dB.
+
+        Returns:
+            float: Frequency at the closest -3 dB point (bandwidth).
+            None: If no such point is found.
+        """
+        # Determine the max gain and -3 dB threshold
+        max_gain_db = np.max(magnitudes)
+        threshold_db = max_gain_db - 3
+
+        # Find the index of the peak gain
+        max_index = np.argmax(magnitudes)
+
+        # Extract the part of the frequency and magnitude arrays after the peak
+        post_peak_frequencies = frequencies[max_index + 1:]
+        post_peak_magnitudes = magnitudes[max_index + 1:]
+
+        if not post_peak_frequencies:
+            return None  # Return None if there are no points after the peak
+
+        # Find the index of the magnitude closest to the threshold
+        closest_index = np.argmin(np.abs(np.array(post_peak_magnitudes) - threshold_db))
+
+        # Return the corresponding frequency
+        return post_peak_frequencies[closest_index]
+    
+    def sweep_params_for_bandwidth(
+        self,
+        input_node: str,
+        output_node: str,
+        param_name: str,  
+        min_val: float,
+        max_val: float,
+        step: float
+    ) -> Tuple[List[float], List[float]]:
+        """Sweeps inputted parameter values and plots inputted parameter vs. bandwidth.
+
+        Args:
+            input_node:
+            output_node
+            param_name: Name of the parameter to update.
+            min_val: Minimum value to test.
+            max_val: Maximum value to test.
+            step: Increment step for capacitance.
+            freq, gain, phase: Frequency, gain, and phase lists to compute phase margin.
+
+        Returns:
+            
+        """
+        param_values = []
+        bandwidths = []
+
+        original_param = self.parameters[param_name]
+        # Parameters for eval_loop_gain
+        start_freq = 1e3
+        end_freq = 1e12
+        points_per_decade = 30
+
+        # Sweep capacitance values
+        current_val = min_val
+        while current_val <= max_val:
+            # Update the specified capacitance in the circuit
+            self.update_parameters({param_name: current_val})
+            freq_list, gain_list, phase_list= self.eval_transfer_function(input_node=input_node,
+                                                                        output_node=output_node,
+                                                                        start_freq=start_freq,
+                                                                        end_freq=end_freq,
+                                                                        points_per_decade=points_per_decade)
+
+            # Compute the phase margin for the current capacitance
+            bandwidth = self.calculate_bandwidth(freq_list, gain_list)
+            
+            # Store results
+            param_values.append(current_val)
+            bandwidths.append(bandwidth)
+
+            print("Testing: "+str(current_val))
+            print("Bandwidth: "+str(bandwidth)+" hz")
+            
+            # Increment capacitance
+            current_val += step
+            current_val = round(current_val,max(0, -int(math.floor(math.log10(abs(step))))))
+        
+        self.update_parameters({param_name: original_param})
+
+        return param_values, bandwidths
+    
+    def is_device_valid(self, device_name: str) -> bool:
+        """
+        Check if a given device exists in the circuit parameters.
+
+        Args:
+            device_name (str): The name of the device to validate.
+
+        Returns:
+            bool: True if the device exists, False otherwise.
+        """
+        return device_name in self.parameters

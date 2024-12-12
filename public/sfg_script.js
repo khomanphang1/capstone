@@ -1852,6 +1852,9 @@ function render_frontend(data) {
     make_transfer_bode_panel()
     make_loop_gain_bode_panel()
 
+    // load stability plots
+    stability_parameter_panel()
+
     // Frequency bounds form
     make_frequency_bounds()
 }
@@ -2042,13 +2045,23 @@ function make_transfer_func_panel() {
 
         let input = document.querySelector('#input_node').value
         let output = document.querySelector('#output_node').value
-        
-        if (input && output){
-            make_transfer_func(input, output)
+
+        if (!input || !output) {
+            alert("Please fill in all the fields.");
+            return;
         }
-        else {
-            alert("input field incomplete")
+
+        const invalidNodes = [input, output].filter(node => !validateNode(node));
+
+        if (invalidNodes.length === 1) {
+            alert(`The selected node ${invalidNodes[0]} is not valid.`);
+            return;
+        } else if (invalidNodes.length === 2) {
+            alert(`The selected nodes ${invalidNodes[0]} and ${invalidNodes[1]} are not valid.`);
+            return;
         }
+    
+        make_transfer_func(input, output);
     });
 
     document.getElementById("transfer-form").appendChild(form);
@@ -2392,16 +2405,30 @@ function make_transfer_bode_panel() {
             }
         }
 
-        //*** need to add a validness check on required fields and values - chech_form_param()
-        if (form_params){
-            fetch_transfer_bode_data(form_params)
-            document.getElementById('bode-plot-section').scrollIntoView({ behavior: 'smooth' });
+        if(!form_params.input_node_bode || !form_params.output_node_bode || !form_params.start_freq_hz || !form_params.end_freq_hz || !form_params.points_per_decade) {
+            alert("Please fill in all the fields.");
+            return;
         }
-        else {
-            alert("input field incomplete")
-        }
-    });
 
+        const invalidNodes = [form_params.input_node_bode, form_params.output_node_bode].filter(node => !validateNode(node));
+
+        if (invalidNodes.length === 1) {
+            alert(`The selected node ${invalidNodes[0]} is not valid.`);
+            return;
+        } else if (invalidNodes.length === 2) {
+            alert(`The selected nodes ${invalidNodes[0]} and ${invalidNodes[1]} are not valid.`);
+            return;
+        }
+
+        // Check if min_val is less than max_val
+        if (form_params.start_freq_hz >= form_params.end_freq_hz) {
+            alert("Start frequency must be less than end frequency.");
+            return;
+        }
+
+        fetch_transfer_bode_data(form_params)
+        document.getElementById('bode-plot-section').scrollIntoView({ behavior: 'smooth' });
+    });
     document.getElementById("transfer-func-bode-form").appendChild(form);
 }
 
@@ -2436,8 +2463,8 @@ function fetch_transfer_bode_data(input_params) {
         // for user: have a button to save bode plat ("data") ==> in an tuple array or stack somewhere
         // the user should be able to click save at any time (many versions of the bode plot "data")
         // also show a new updated bode plot from the most recent "data"
-        make_bode_plots(data, 'transfer-bode-plot')
-        createOverlayButtons('transfer-bode-plot', 'transfer-bode');
+        make_transfer_bode_plots(data, 'transfer-bode-plot')
+        create_transfer_overlay_buttons('transfer-bode-plot', 'transfer-bode');
         console.log("trasfer bode plot data:");
         console.log(data);
     })
@@ -2450,7 +2477,7 @@ function fetch_transfer_bode_data(input_params) {
 
 }
 
-function make_bode_plots(data, dom_element, overlayData = null) {
+function make_transfer_bode_plots(data, dom_element, overlayData = null) {
     let freq_points = [];
     let gain_points = [];
     let phase_points = [];
@@ -2541,7 +2568,167 @@ function make_bode_plots(data, dom_element, overlayData = null) {
     }
 
     let ctx = document.getElementById(dom_element).getContext('2d');
-    window.myLine = new Chart(ctx, {
+
+    // Clear previous plot if it exists
+    if (window.transfer_line) {
+        window.transfer_line.destroy();
+    }
+
+    window.transfer_line = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: freq_points,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            stacked: false,
+            title: {
+                display: true,
+                text: dom_element === 'transfer-bode-plot' ? 'Transfer Function Bode Plot' : 'Loop Gain Bode Plot'
+            },
+            scales: {
+                xAxes: [{
+                    afterTickToLabelConversion: function(data){
+                        var xLabels = data.ticks;
+                        xLabels.forEach((label, i) => {
+                            if (i % 10 != 0) {
+                                xLabels[i] = '';
+                            }
+                        });
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Hz'
+                    }
+                }],
+                yAxes: [{
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    id: 'y-axis-1',
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'db'
+                    }
+                }, {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    id: 'y-axis-2',
+                    ticks: {
+                        min: -180,
+                        max: 180,
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'deg'
+                    }
+                }]
+            }
+        }
+    });
+}
+
+function make_loop_gain_bode_plots(data, dom_element, overlayData = null) {
+    let freq_points = [];
+    let gain_points = [];
+    let phase_points = [];
+    let frequency = data["frequency"];
+    let gain = data["gain"];
+    let phase = data["phase"];
+
+    // Select the appropriate history array
+    let historyArray = dom_element === 'transfer-bode-plot' ? transfer_bode_plot_history : loop_gain_bode_plot_history;
+
+    // Check if the incoming data is different from the last entry in the history
+    let isDifferent = true;
+    if (historyArray.length > 0) {
+        let lastData = historyArray[historyArray.length - 1];
+        isDifferent = !(_.isEqual(lastData, data));  // Using lodash to compare objects
+    }
+
+    // Push data to history only if it's different and not an overlay
+    if (isDifferent && overlayData === null) {
+        historyArray.push(data);
+        console.log(dom_element + " history:", historyArray);
+    }
+
+    for (let i = 0; i < frequency.length; i++) {
+        freq_points.push(Number.parseFloat(frequency[i].toExponential(0)).toFixed(0));
+
+        gain_points.push({
+            x: frequency[i],
+            y: gain[i]
+        });
+
+        phase_points.push({
+            x: frequency[i],
+            y: phase[i]
+        });
+    }
+
+    let datasets = [{
+        label: 'Gain plot',
+        borderColor: 'rgb(255, 0, 0)',
+        backgroundColor: 'rgb(255, 0, 0)',
+        fill: false,
+        data: gain_points,
+        yAxisID: 'y-axis-1',
+    }, {
+        label: 'Phase plot',
+        borderColor: 'rgb(0, 102, 255)',
+        backgroundColor: 'rgb(0, 102, 255)',
+        fill: false,
+        data: phase_points,
+        yAxisID: 'y-axis-2'
+    }];
+
+    // Add overlay data if provided
+    if (overlayData) {
+        let overlay_gain_points = [];
+        let overlay_phase_points = [];
+
+        for (let i = 0; i < overlayData.frequency.length; i++) {
+            overlay_gain_points.push({
+                x: overlayData.frequency[i],
+                y: overlayData.gain[i]
+            });
+
+            overlay_phase_points.push({
+                x: overlayData.frequency[i],
+                y: overlayData.phase[i]
+            });
+        }
+
+        datasets.push({
+            label: 'Gain overlay',
+            borderColor: 'rgba(255, 0, 0, 0.5)',
+            backgroundColor: 'rgba(255, 0, 0, 0.5)',
+            fill: false,
+            data: overlay_gain_points,
+            yAxisID: 'y-axis-1',
+            borderDash: [5, 5],  // Dotted line
+        }, {
+            label: 'Phase overlay',
+            borderColor: 'rgba(0, 102, 255, 0.5)',
+            backgroundColor: 'rgba(0, 102, 255, 0.5)',
+            fill: false,
+            data: overlay_phase_points,
+            yAxisID: 'y-axis-2',
+            borderDash: [5, 5],  // Dotted line
+        });
+    }
+
+    let ctx = document.getElementById(dom_element).getContext('2d');
+
+    // Clear previous plot if it exists
+    if (window.loop_gain_line) {
+        window.loop_gain_line.destroy();
+    }
+
+    window.loop_gain_line = new Chart(ctx, {
         type: 'line',
         data: {
             labels: freq_points,
@@ -2751,7 +2938,7 @@ function mid_make_bode_plots(data, dom_element, overlayData = null) {
     // }
 }
 
-function createOverlayButtons(dom_element, targetDivId) {
+function create_transfer_overlay_buttons (dom_element, targetDivId) {
     console.log("********** running createOverlayButtons **********");
     let historyArray = dom_element === 'transfer-bode-plot' ? transfer_bode_plot_history : loop_gain_bode_plot_history;
     console.log("historyArray: ", historyArray);
@@ -2793,12 +2980,59 @@ function createOverlayButtons(dom_element, targetDivId) {
         button.textContent = `Overlay Plot ${index}`;
         button.onclick = function() {
             let overlayData = historyArray[index];
-            make_bode_plots(historyArray[0], dom_element, overlayData);  // Overlay selected plot over the original (index 0)
+            make_transfer_bode_plots(historyArray[0], dom_element, overlayData);  // Overlay selected plot over the original (index 0)
         };
         buttonContainer.appendChild(button);
     });
 }
 
+function create_loop_gain_overlay_buttons(dom_element, targetDivId) {
+    console.log("********** running createOverlayButtons **********");
+    let historyArray = dom_element === 'transfer-bode-plot' ? transfer_bode_plot_history : loop_gain_bode_plot_history;
+    console.log("historyArray: ", historyArray);
+
+    // Check if the buttonContainer already exists
+    let targetDiv = document.getElementById(targetDivId);
+    let buttonContainer = document.getElementById(`${dom_element}-overlay-buttons`);
+    let clear_button = document.createElement('button');
+    clear_button.textContent = `Clear History`;
+    clear_button.onclick = function() {
+        historyArray.length = 0;
+        let ctx = document.getElementById(dom_element).getContext('2d');
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        buttonContainer.innerHTML = '';  // Clear the button container
+    }
+    
+
+    if (!buttonContainer) {
+        // Create a new buttonContainer if it doesn't exist
+        buttonContainer = document.createElement('div');
+        buttonContainer.id = `${dom_element}-overlay-buttons`;
+
+        if (targetDiv) {
+            targetDiv.appendChild(buttonContainer);  // Append to the specified target div
+        } else {
+            console.error(`Target div with id ${targetDivId} not found.`);
+            return;
+        }
+    }
+
+    // Clear existing buttons to avoid duplicates
+    buttonContainer.innerHTML = '';
+
+    buttonContainer.appendChild(clear_button);
+    
+    // Add buttons for each plot in history
+    historyArray.forEach((data, index) => {
+        let button = document.createElement('button');
+        button.textContent = `Overlay Plot ${index}`;
+        button.onclick = function() {
+            let overlayData = historyArray[index];
+            make_loop_gain_bode_plots(historyArray[0], dom_element, overlayData);  // Overlay selected plot over the original (index 0)
+        };
+        buttonContainer.appendChild(button);
+    });
+}
 
 function old_createOverlayButtons(dom_element, targetDivId) {
     console.log("********** running createOverlayButtons **********")
@@ -2826,7 +3060,6 @@ function old_createOverlayButtons(dom_element, targetDivId) {
         console.error(`Target div with id ${targetDivId} not found.`);
     }
 }
-
 
 function old_make_bode_plots(data, dom_element) {
     let freq_points = []
@@ -3155,16 +3388,20 @@ function make_loop_gain_bode_panel() {
             }
         }
 
-        //*** need to add a validness check on required fields and values - chech_form_param()
-        if (form_params){
-            fetch_loop_gain_bode_data(form_params)
-            document.getElementById('loop-gain-bode-plot').scrollIntoView({ behavior: 'smooth' });
+        if(!form_params.start_freq_hz || !form_params.end_freq_hz || !form_params.points_per_decade) {
+            alert("Please fill in all the fields.");
+            return;
         }
-        else {
-            alert("input field incomplete")
-        }
-    });
 
+        // Check if min_val is less than max_val
+        if (form_params.end_freq_hz >= form_params.start_freq_hz) {
+            alert("Start frequency must be less than end frequency.");
+            return;
+        }
+
+        fetch_loop_gain_bode_data(form_params)
+        document.getElementById('loop-gain-bode-plot').scrollIntoView({ behavior: 'smooth' });
+    });
     document.getElementById("loop-gain-bode-form").appendChild(form);
 }
 
@@ -3190,8 +3427,8 @@ function fetch_loop_gain_bode_data(input_params) {
         return response.json();
     })
     .then(data => {
-        make_bode_plots(data, 'loop-gain-bode-plot')
-        createOverlayButtons('loop-gain-bode-plot', 'loop-gain-bode');
+        make_loop_gain_bode_plots(data, 'loop-gain-bode-plot')
+        create_loop_gain_overlay_buttons('loop-gain-bode-plot', 'loop-gain-bode');
         console.log("loop gain bode plot data:");
         console.log(data);
     })
@@ -3621,3 +3858,292 @@ function import_dill_sfg(dill_sfg) {
     .catch(error => {
         console.log(error)
     })}
+
+function stability_parameter_panel() {
+
+    var form = document.createElement("form");
+    form.id = "stability-param-form-fields";
+
+    var br = document.createElement("br");
+
+    // Input for selected capacitor
+    var inputNode = document.createElement("input");
+    inputNode.type = "text";
+    inputNode.name = "input_node";
+    inputNode.id = "input_node";
+    inputNode.placeholder = "input node";
+    form.appendChild(inputNode);
+    form.appendChild(br.cloneNode());
+
+    // Input for selected capacitor
+    var outputNode = document.createElement("input");
+    outputNode.type = "text";
+    outputNode.name = "output_node";
+    outputNode.id = "output_node";
+    outputNode.placeholder = "output node";
+    form.appendChild(outputNode);
+    form.appendChild(br.cloneNode());
+
+    // Input for selected device
+    var selectedDevice = document.createElement("input");
+    selectedDevice.type = "text";
+    selectedDevice.name = "selected_device";
+    selectedDevice.id = "selected_device";
+    selectedDevice.placeholder = "Selected device";
+    form.appendChild(selectedDevice);
+    form.appendChild(br.cloneNode());
+
+    // Input for minimum value
+    var minVal = document.createElement("input");
+    minVal.type = "number";
+    minVal.name = "min_value";
+    minVal.id = "min_value";
+    minVal.placeholder = "Min value";
+    form.appendChild(minVal);
+    form.appendChild(br.cloneNode());
+
+    // Input for maximum value
+    var maxVal = document.createElement("input");
+    maxVal.type = "number";
+    maxVal.name = "max_value";
+    maxVal.id = "max_value";
+    maxVal.placeholder = "Max value";
+    form.appendChild(maxVal);
+    form.appendChild(br.cloneNode());
+
+    // Input for step size
+    var stepSize = document.createElement("input");
+    stepSize.type = "number";
+    stepSize.name = "step_size";
+    stepSize.id = "step_size";
+    stepSize.placeholder = "Step size";
+    form.appendChild(stepSize);
+    form.appendChild(br.cloneNode());
+
+    // Submit button
+    var submitButton = document.createElement("input");
+    submitButton.type = "submit";
+    submitButton.value = "Submit Form";
+    form.appendChild(submitButton);
+
+    // Event listener for the form submission
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        // Collect form data
+        let form_params = {
+            'input_node': inputNode.value,
+            'output_node': outputNode.value,
+            'selected_device': selectedDevice.value,
+            'min_val': Number(minVal.value),
+            'max_val': Number(maxVal.value),
+            'step_size': Number(stepSize.value)
+        };
+
+        // Check for empty fields
+        if (!form_params.input_node || !form_params.output_node || !form_params.selected_device || isNaN(form_params.min_val) || isNaN(form_params.max_val) || isNaN(form_params.step_size)) {
+            alert("Please fill in all the fields.");
+            return;
+        }
+
+        const invalidNodes = [form_params.input_node, form_params.output_node].filter(node => !validateNode(node));
+
+        if (invalidNodes.length === 1) {
+            alert(`The selected node ${invalidNodes[0]} is not valid.`);
+            return;
+        } else if (invalidNodes.length === 2) {
+            alert(`The selected nodes ${invalidNodes[0]} and ${invalidNodes[1]} are not valid.`);
+            return;
+        }
+
+        // Validate device existence
+        const deviceExists = await check_if_device_exists(form_params.selected_device);
+        if (!deviceExists) {
+            alert(`The selected device ${form_params.selected_device} is not valid.`);
+            return;
+        }
+
+        // Check if min_val is less than max_val
+        if (form_params.min_val >= form_params.max_val) {
+            alert("Minimum value must be less than maximum value.");
+            return;
+        }
+
+        // Check if step_size is less than (max_val - min_val)
+        if (form_params.step_size >= (form_params.max_val - form_params.min_val)) {
+            alert("Step size must be less than the difference between maximum and minimum values.");
+            return;
+        }
+
+        // Proceed if all checks pass
+        fetch_phase_margin_plot_data(form_params);
+        fetch_bandwidth_plot_data(form_params);
+    });
+
+    // Append form to the div with id "stability-params-form"
+    document.getElementById("stability-params-form").appendChild(form);
+}
+
+async function check_if_device_exists(deviceName) {
+    const url = new URL(`${baseUrl}/circuits/${circuitId}/devices/check`);
+    url.searchParams.append('device_name', deviceName);
+
+    return fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.exists) {
+                console.log(`Device ${deviceName} exists.`);
+                return true;
+            } else {
+                console.log(`Device ${deviceName} does not exist.`);
+                return false;
+            }
+        })
+        .catch(error => {
+            console.error('Error checking device existence:', error);
+            return false;
+        });
+}
+
+function fetch_phase_margin_plot_data(input_params) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/pm/plot`);
+    Object.keys(input_params).forEach(key => url.searchParams.append(key, input_params[key]));
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Phase Margin data received:", data);
+            plot_phase_margin(data.device_value, data.phase_margin);
+        })
+        .catch(error => console.error('Error fetching cap vs PM data:', error));
+}
+
+function plot_phase_margin(parameter_values, phase_margins) {
+    const ctx = document.getElementById('phase-margin-plot').getContext('2d');
+    const selectedDevice = document.getElementById('selected_device').value;
+
+    // Clear previous plot if it exists
+    if (window.phaseMarginChart) {
+        window.phaseMarginChart.destroy();
+    }
+
+    // Create a new chart with axis labels and dynamic title
+    window.phaseMarginChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: parameter_values,
+            datasets: [{
+                label: 'Phase Margin (degrees)',
+                data: phase_margins,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            stacked: false,
+            title: {
+                display: true,
+                text: `${selectedDevice} vs. Phase Margin`
+            },
+            scales: {
+                xAxes:[{
+                    scaleLabel: {
+                        display: true,
+                        labelString: `${selectedDevice}`
+                    }
+                }],
+                yAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Phase Margin (degrees)'
+                    }
+                }]
+            }
+        }
+    });
+}
+
+function fetch_bandwidth_plot_data(input_params) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/bandwidth/plot`);
+    Object.keys(input_params).forEach(key => url.searchParams.append(key, input_params[key]));
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Bandwidth plot data received:", data);
+            plot_bandwidth(data.parameter_value, data.bandwidth);
+        })
+        .catch(error => console.error('Error fetching bandwidth data:', error));
+}
+
+function plot_bandwidth(parameter_value, bandwidth) {
+    const ctx = document.getElementById('bandwidth-plot').getContext('2d');
+    const selectedDevice = document.getElementById('selected_device').value;
+
+    // Clear previous plot if it exists
+    if (window.bandwidthChart) {
+        window.bandwidthChart.destroy();
+    }
+
+    // Create a new chart with axis labels and dynamic title
+    window.bandwidthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: parameter_value,
+            datasets: [{
+                label: 'Bandwidth (hz)',
+                data: bandwidth,
+                borderColor: 'rgba(120, 50, 194, 1)',
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            stacked: false,
+            title: {
+                display: true,
+                text: `${selectedDevice} vs. Bandwidth`
+            },
+            scales: {
+                xAxes:[{
+                    scaleLabel: {
+                        display: true,
+                        labelString: `${selectedDevice}` // TO BE CHANGED TO PICK APPROPRIATE UNIT
+                    }
+                }],
+                yAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Bandwidth (hz)'
+                    }
+                }]
+            }
+        }
+    });
+}
+
+function validateNode(nodeId) {
+    const cy = window.cy; // Cytoscape instance
+    const existingNodes = cy.nodes().map(node => node.id()); // Get all node IDs
+    return existingNodes.includes(nodeId); // Check if the node exists
+}
