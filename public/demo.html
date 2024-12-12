@@ -2,7 +2,7 @@
 
 <html>
   <head>
-    <title>cytoscape graph drawing algorithm demo</title>
+    <title>SigFlow</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
 
@@ -113,6 +113,24 @@
             <div id="cy"></div>
             <div id="edge-info"></div>
           </div>
+
+          <div id="toggle-button-container">
+            <button id="toggle-svg" onclick="toggleSVG()">Toggle Schematic (SVG)</button>
+          </div>
+        
+
+          <div class="overlay-section">
+            <h1>Overlay: Circuit and Signal-Flow Graph</h1>
+            <div id="overlay-container">
+              <!-- SVG Layer -->
+              <div id="svg-layer"></div>
+              
+              <!-- SFG Layer -->
+              <div id="sfg-layer"></div>
+            </div>
+          </div>
+          
+
 
           <div class="circuit-panel">
             <div id="circuit-svg"></div>
