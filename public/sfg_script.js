@@ -310,6 +310,99 @@ function make_sfg(elements) {
     console.log("make_sfg SFG loading time: " + time_elapse + " seconds");
 }
 
+
+//SCALING WORKING
+//ALIGNMENT NOT FULLY CORRECT
+
+function alignLayers(svgLayer, sfgLayer) {
+    const svgBounds = svgLayer.getBoundingClientRect();
+    const sfgBounds = sfgLayer.getBoundingClientRect();
+
+    const scaleX = sfgBounds.width / svgBounds.width;
+    const scaleY = sfgBounds.height / svgBounds.height;
+    const offsetX = sfgBounds.left - svgBounds.left;
+    const offsetY = sfgBounds.top - svgBounds.top;
+
+    svgLayer.style.transformOrigin = "top left";
+    svgLayer.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scaleX}, ${scaleY})`;
+
+    svgLayer.style.opacity = 0.5;
+    sfgLayer.style.opacity = 0.8;
+
+    console.log("SVG aligned with SFG:", { scaleX, scaleY, offsetX, offsetY });
+}
+
+
+
+function renderOverlay(data, curr_elements) {
+    const svgLayer = document.getElementById('svg-layer');
+    svgLayer.innerHTML = data.svg; 
+
+    // viewbox
+    const svgElement = svgLayer.querySelector('svg');
+    if (svgElement) {
+        const boundingBox = svgElement.getBBox(); 
+        const viewBoxValue = `${boundingBox.x} ${boundingBox.y} ${boundingBox.width} ${boundingBox.height}`;
+        svgElement.setAttribute('viewBox', viewBoxValue); 
+        console.log("Dynamic viewBox added:", viewBoxValue);
+    }
+
+    const sfgLayer = document.getElementById('sfg-layer');
+    const cy = cytoscape({
+        container: sfgLayer,
+        elements: curr_elements, 
+        layout: {
+            name: 'dagre',
+            nodeSep: 200,
+            edgeSep: 200,
+            rankSep: 100,
+            rankDir: 'LR'
+        },
+        style: [
+            {
+                selector: 'node',
+                style: {
+                    'background-color': '#007bff',
+                    'label': 'data(name)',
+                    'font-size': '10px'
+                }
+            },
+            {
+                selector: 'edge',
+                style: {
+                    'width': 2,
+                    'line-color': '#888',
+                    'target-arrow-shape': 'triangle',
+                    'arrow-scale': 1.5,
+                    'curve-style': 'bezier'
+                }
+            }
+        ]
+    });
+
+    alignLayers(svgLayer, sfgLayer);
+
+
+}
+
+
+let isSVGVisible = true; 
+
+function toggleSVG() {
+    const svgLayer = document.getElementById('svg-layer');
+
+    if (isSVGVisible) {
+        // hiding
+        svgLayer.style.display = 'none';
+    } else {
+        svgLayer.style.display = 'block';
+    }
+
+    isSVGVisible = !isSVGVisible;
+}
+
+
+
 function HighlightPath(){
     var node = hlt_src;
     var target = hlt_tgt
@@ -1854,6 +1947,9 @@ function render_frontend(data) {
 
     // Frequency bounds form
     make_frequency_bounds()
+
+    // Render the overlay
+    renderOverlay(data, curr_elements); 
 }
 
 
