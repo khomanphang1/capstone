@@ -4,6 +4,7 @@ import networkx as nx
 import circuit_parser as cir
 from collections import defaultdict
 import sympy as sy
+from sympy import symbols
 
 class test:
     def __init__(self):
@@ -143,60 +144,133 @@ def simplify_whole_graph(sfg):
     # List to store node pairs that need simplification
     simplify_pairs = []
 
-    # First pass: identify all node pairs that can be simplified
-    for source in sfg.nodes:
-        for target in sfg.nodes:
-            if source == target:
-                continue  # Skip if source and target are the same
+    target_pairs = [("Vvin", "Vvout")]
 
-            # Simplify the path between source and target, if necessary
-            if nx.has_path(sfg, source, target):
-                path = nx.shortest_path(sfg, source, target)
+    # Dictionary to store transmittance for all paths
+    path_transmittance = {}
 
-                if len(path) > 2:  # Only simplify if there are intermediate nodes
-                    print(f"Identified path to simplify between {source} and {target}...")
+    # Dictionary for Path, Transmittance Source, Target 
 
-                    # Store the path to be simplified later
-                    simplify_pairs.append((source, target, path))
+    # Substitute numerical values
+    numerical_values = {
+        'G_M1': 10,  # Gain of M1
+        'R_O_M1': 1000,  # Resistance of M1
+        'C1': 1e-6,  # Capacitance
+        'RD1': 500,  # Resistance RD1
+        'G_M2': 20,  # Gain of M2
+        'C2': 2e-6,  # Capacitance
+        'R_O_M2': 2000,  # Resistance of M2
+        'RD2': 1000,  # Resistance RD2
+        'R2': 100,  # Resistance R2
+        's': 1e3,  # Frequency-domain variable (e.g., for s=jω, substitute a frequency)
+        'C3': 1e2,
+        'R1': 1e2, 
+        'R2': 1e2
+    }
 
-    # Second pass: perform the simplification for each identified pair
-    for source, target, path in simplify_pairs:
-        try:
-            # Check if edges exist before accessing their weight
-            if sfg.has_edge(path[0], path[1]) and sfg.has_edge(path[1], path[2]):
-                weight1 = sfg.get_edge_data(path[0], path[1])['weight']
-                weight2 = sfg.get_edge_data(path[1], path[2])['weight']
-                combined_weight = weight1 * weight2
-                print(f"Path: {path}, Weight: {combined_weight}")
+    largest_transmittance_list = []
 
-                # Simplify the path between source and target using the combined weight
-                sy.simplify(combined_weight)  # Assuming 'sy.simplify' modifies the graph
+    for source, target in target_pairs:
+        if nx.has_path(sfg, source, target):
+            # Find all paths between the source and target
+            paths = list(nx.all_simple_paths(sfg, source, target))
 
-                # Remove the intermediate edges
-                sfg.remove_edge(path[0], path[1])
-                sfg.remove_edge(path[1], path[2])
+            # Initialize transmittance for this pair
+            path_transmittance[(source, target)] = []
 
-                # Add a new edge between the source and target with the combined weight
+            # Calculate transmittance for each path
+            for path in paths:
+                symbolic_transmittance = 1  # Start with a multiplier of 1 for symbolic calculation
+                for i in range(len(path) - 1):
+                    edge = (path[i], path[i + 1])
+                    if sfg.has_edge(*edge):
+                        weight = sfg.edges[edge].get('weight', 1)  # Default weight is 1 if not specified
+                        symbolic_transmittance *= weight  # Multiply edge weights
+                    else:
+                        print(f"Warning: Edge {edge} not found in the graph!")
+
+                # Substitute numerical values into the symbolic transmittance
+                numerical_transmittance = symbolic_transmittance.subs(numerical_values)
+
+                # Store both symbolic and numerical results
+                path_transmittance[(source, target)].append(
+                    (path, symbolic_transmittance, numerical_transmittance)
+                )
+
+            # Print results for the pair
+            maxTransmittance = 0
+            largest_path = None  
+
+            print(f"Transmittance for paths between {source} and {target}:")
+            for path, symbolic, numerical in path_transmittance[(source, target)]:
+                print(f"  Path: {path}")
+                print(f"    Symbolic Transmittance: {symbolic}")
+                print(f"    Numerical Transmittance: {numerical}")
+                # Check if this path has the largest transmittance
+                if numerical > maxTransmittance:
+                    maxTransmittance = numerical
+                    largest_path = path  # Update the largest path
+
+            if largest_path is not None:
+                largest_transmittance_list.append((source, target, largest_path, maxTransmittance))        
+
+        else:
+            print(f"No path found between {source} and {target}")
+        print("Largest is: ", largest_transmittance_list)
+
+
+
+    #TODO: Check if it is removing the correct paths 
+    # Second pass: simplify the paths that are NOT the largest transmittance
+    # Iterate over source-target pairs and their corresponding paths
+    for (source, target), paths in path_transmittance.items():
+        # Identify the largest transmittance path for the current source-target pair
+        largest_path = None
+        max_transmittance = -float("inf")
+        for path, _, numerical in paths:
+            if numerical > max_transmittance:
+                max_transmittance = numerical
+                largest_path = path
+
+        # Simplify all paths except the largest one for this source-target pair
+        for path, symbolic, numerical in paths:
+            if path == largest_path:
+                continue  # Skip the largest transmittance path for this pair
+
+            try:
+                # Combine weights for the current path
+                combined_weight = 1
+                for i in range(len(path) - 1):
+                    edge = (path[i], path[i + 1])
+                    if sfg.has_edge(*edge):
+                        weight = sfg.get_edge_data(*edge)['weight']
+                        combined_weight *= weight
+                    else:
+                        print(f"Error: Edge {edge} not found in the graph!")
+                        raise KeyError(edge)
+
+                print(f"Simplifying path: {path} with combined weight: {combined_weight}")
+
+                # Remove intermediate edges, but skip those in the largest path for this pair
+                for i in range(len(path) - 1):
+                    edge = (path[i], path[i + 1])
+                    if edge not in zip(largest_path[:-1], largest_path[1:]):  # Ensure edge is not in the largest path
+                        sfg.remove_edge(*edge)
+
+                # Add a direct edge between source and target
                 sfg.add_edge(source, target, weight=combined_weight)
 
-                # Remove the intermediate node (path[1])
-                sfg.remove_node(path[1])
+                # Remove intermediate nodes, but skip nodes in the largest path for this pair
+                for node in path[1:-1]:
+                    if node not in largest_path:
+                        sfg.remove_node(node)
 
-                # Mark that the graph has been simplified
-                simplified = True
-            else:
-                print(f"Error: One or more edges not found for path {path}")
-
-        except KeyError as e:
-            print(f"Error: Missing edge data for {e}")
-            continue  # Skip this path if edge data is missing
+            except KeyError as e:
+                print(f"Error: Missing edge data for {e}")
+                continue  # Skip this path if edge data is missing
 
     # Report the result
-    if not simplified:
-        print("No further simplifications possible.")
-    else:
-        print("Graph simplification complete.")
-
+    print("Graph simplification complete.")
     return sfg
 
 # simiplification algorithm: takes in source and target nodes and

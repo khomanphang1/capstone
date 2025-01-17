@@ -2,7 +2,7 @@
 
 <html>
   <head>
-    <title>cytoscape graph drawing algorithm demo</title>
+    <title>SigFlow</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
 
@@ -38,6 +38,9 @@
         </div>
         <div id="loop-gain-bode-form">
             <h1> Loop Gain Bode Plot </h1>
+        </div>
+        <div id="stability-params-form">
+          <h1> Phase Margin and Bandwidth Plot Demo </h1>
         </div>
     </div>
 
@@ -111,6 +114,24 @@
             <div id="edge-info"></div>
           </div>
 
+          <div id="toggle-button-container">
+            <button id="toggle-svg" onclick="toggleSVG()">Toggle Schematic (SVG)</button>
+          </div>
+        
+
+          <div class="overlay-section">
+            <h1>Overlay: Circuit and Signal-Flow Graph</h1>
+            <div id="overlay-container">
+              <!-- SVG Layer -->
+              <div id="svg-layer"></div>
+              
+              <!-- SFG Layer -->
+              <div id="sfg-layer"></div>
+            </div>
+          </div>
+          
+
+
           <div class="circuit-panel">
             <div id="circuit-svg"></div>
           </div>
@@ -148,25 +169,19 @@
                   </div>
                   <div class="plot-1" id="loop-gain-bode">
                     <canvas id="loop-gain-bode-plot"></canvas>
+                  </div>
+                  <div class="plot-2" id="pm-plot">
+                    <canvas id="phase-margin-plot"></canvas>
+                  </div>
+                  <div class="plot-3" id="bw-plot">
+                    <canvas id="bandwidth-plot"></canvas>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-
-
         </div>
-
-        
-
-
-
-      </div>
-
-      
-
-    </div> 
-
+      </div> 
     <div id="edge-edit-modal" class="modal">
       <div class="modal-content">
           <span class="close">&times;</span>
