@@ -82,9 +82,8 @@ class ComponentFactory:
         print(prefix)
         print(cls._netlist_prefix_registry)
         constructor = cls._netlist_prefix_registry.get(prefix)
-
         if not constructor:
-            print("not registered", prefix)
+            print("not registered: "+ prefix)
             raise ValueError(f'No component found with prefix {prefix}.')
         
         return constructor(entry)
