@@ -78,6 +78,7 @@ class ComponentFactory:
         Returns:
             A component.
         """
+        print(f"Entry received: {repr(entry)}")
         prefix = entry[0].lower()
         print(prefix)
         print(cls._netlist_prefix_registry)
@@ -630,6 +631,11 @@ class Circuit:
     @classmethod
     def from_ltspice_netlist(cls, netlist: str,
                              op_point_log: Optional[str] = None) -> 'Circuit':
+        # Decode the netlist if necessary
+        if '\x00' in netlist:
+            print("Detected null bytes; decoding as UTF-16.")
+            netlist = netlist.encode("latin1").decode("utf-16")
+            
         print("op log:",op_point_log)
         hybrid_pi_parameters = get_hybrid_pi_parameters(op_point_log) if \
                                   op_point_log else {}
