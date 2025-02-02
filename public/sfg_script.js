@@ -20,6 +20,8 @@ let current_data = null //session data
 let edge_symbolic_label;
 let transfer_bode_plot_history = [];
 let loop_gain_bode_plot_history = [];
+let phase_margin_plot_history = [];
+let bandwidth_plot_history = [];
 
 // Function to convert float to exponential
 function expo(x, f) {
@@ -2432,7 +2434,6 @@ function make_transfer_bode_panel() {
     document.getElementById("transfer-func-bode-form").appendChild(form);
 }
 
-
 function fetch_transfer_bode_data(input_params) {
     let new_params = input_params
     new_params["input_node"] = input_params["input_node_bode"]
@@ -2472,9 +2473,6 @@ function fetch_transfer_bode_data(input_params) {
         console.error('fetch_transfer_bode_data error:', error);
         console.log('fetch_transfer_bode_data Full response:', error.response);
     });
-
-
-
 }
 
 function make_transfer_bode_plots(data, dom_element, overlayData = null) {
@@ -4050,20 +4048,56 @@ function fetch_phase_margin_plot_data(input_params) {
         .then(data => {
             console.log("Phase Margin data received:", data);
             plot_phase_margin(data.device_value, data.phase_margin);
+            create_phase_margin_overlay_buttons();
         })
         .catch(error => console.error('Error fetching cap vs PM data:', error));
 }
 
-function plot_phase_margin(parameter_values, phase_margins) {
+/*
+function plot_phase_margin(parameter_values, phase_margins, overlay_data=null) {
     const ctx = document.getElementById('phase-margin-plot').getContext('2d');
     const selectedDevice = document.getElementById('selected_device').value;
+
+
+    // Check if the current plot already exists in history to avoid duplicates
+    const is_duplicate = phase_margin_plot_history.some(entry => 
+        JSON.stringify(entry.parameter_values) === JSON.stringify(parameter_values) &&
+        JSON.stringify(entry.phase_margins) === JSON.stringify(phase_margins)
+    );
+
+    // Store current plot data in history only if it’s not a duplicate and overlay is not being applied
+    if (overlay_data == null && !is_duplicate) {
+        phase_margin_plot_history.push({ parameter_values, phase_margins });
+    }
+
+    const datasets = [{
+        label: 'Current Phase Margin',
+        data: phase_margins.map((y, i) => ({ x: parameter_values[i], y })),
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 2,
+        fill: false
+    }];
+
+    // Add overlay data if provided
+    if (overlay_data) {
+        console.log("Overlay data provided: ", overlay_data);
+        const overlay_dataset = {
+            label: `${selectedDevice} Overlay Phase Margin` || 'Overlay Phase Margin',
+            data: overlay_data.phase_margins.map((y, i) => ({ x: overlay_data.parameter_values[i], y })),
+            borderColor: 'rgba(255, 99, 132, 0.6)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            fill: false
+        };
+        datasets.push(overlay_dataset);
+    }
 
     // Clear previous plot if it exists
     if (window.phaseMarginChart) {
         window.phaseMarginChart.destroy();
     }
 
-    // Create a new chart with axis labels and dynamic title
+    // Create a new chart 
     window.phaseMarginChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -4100,6 +4134,167 @@ function plot_phase_margin(parameter_values, phase_margins) {
             }
         }
     });
+}*/
+
+function plot_phase_margin(parameter_values, phase_margins, overlay_data = null) {
+    const ctx = document.getElementById('phase-margin-plot').getContext('2d');
+    const selectedDevice = document.getElementById('selected_device').value;
+
+    // Check if the current plot already exists in history to avoid duplicates
+    const is_duplicate = phase_margin_plot_history.some(entry => 
+        JSON.stringify(entry.parameter_values) === JSON.stringify(parameter_values) &&
+        JSON.stringify(entry.phase_margins) === JSON.stringify(phase_margins)
+    );
+
+    // Store current plot data in history only if it’s not a duplicate and overlay is not being applied
+    if (overlay_data == null && !is_duplicate) {
+        phase_margin_plot_history.push({ parameter_values, phase_margins });
+    }
+
+    // Prepare the initial dataset for the current phase margin
+    const datasets = [{
+        label: `${selectedDevice} - Current Phase Margin`,
+        data: parameter_values.map((x, i) => ({ x: x, y: phase_margins[i] })),
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 2,
+        fill: false
+    }];
+
+    // Add overlay data if provided
+    if (overlay_data) {
+        console.log("Overlay data provided: ", overlay_data);
+        datasets.push({
+            label: `${selectedDevice} Overlay Phase Margin`,
+            data: overlay_data.parameter_values.map((x, i) => ({ x: x, y: overlay_data.phase_margins[i] })),
+            borderColor: 'rgba(255, 99, 132, 0.6)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            fill: false
+        });
+    }
+
+    // Clear previous plot if it exists
+    if (window.phaseMarginChart) {
+        window.phaseMarginChart.destroy();
+    }
+
+    // Create a new chart
+    window.phaseMarginChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            title: {
+                display: true,
+                text: `${selectedDevice} vs. Phase Margin`
+            },
+            scales: {
+                xAxes: [{
+                    type: 'linear',
+                    scaleLabel: {
+                        display: true,
+                        labelString: `${selectedDevice}`
+                    }
+                }],
+                yAxes: [{
+                    type: 'linear',
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Phase Margin (degrees)'
+                    }
+                }]
+            }
+        }
+    });
+}
+
+function create_phase_margin_overlay_buttons() {
+    console.log("********** Running create_phase_margin_overlay_buttons **********");
+    const selectedDevice = document.getElementById('selected_device').value;
+    let targetDiv = document.getElementById('pm-plot');
+    let buttonContainer = document.createElement("csv");
+    buttonContainer.id = 'phase-margin-plot-download';
+/*    let historyArray = phase_margin_plot_history;
+    console.log("Phase Margin History Array: ", historyArray);
+
+    // Check if the button container already exists
+    
+    if (!buttonContainer) {
+        // Create a new button container if it doesn't exist
+        buttonContainer = document.createElement('div');
+        buttonContainer.id = `phase-margin-overlay-buttons`;
+
+        if (targetDiv) {
+            targetDiv.appendChild(buttonContainer);  // Append to the specified target div
+        } else {
+            console.error(`[ERROR] Target div with id ppm-plot not found.`);
+            return;
+        }
+    }*/
+
+    // Clear existing buttons to avoid duplicates
+ /*   buttonContainer.innerHTML = '';
+
+    // Create the clear history button
+    let clearButton = document.createElement('button');
+    clearButton.textContent = 'Clear History';
+    clearButton.onclick = function() {
+        historyArray.length = 0;
+        let ctx = document.getElementById('phase-margin-plot').getContext('2d');
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        buttonContainer.innerHTML = '';  // Clear the button container
+    };
+    buttonContainer.appendChild(clearButton);*/
+
+    // Create the download CSV button
+    let downloadButton = document.createElement('button');
+    downloadButton.textContent = 'Download CSV';
+    downloadButton.onclick = function() {
+        if (historyArray.length === 0) {
+            alert("No data available for download.");
+            return;
+        }
+        const latestPlot = historyArray[historyArray.length - 1];
+        download_csv_phase_margin(latestPlot.parameter_values, latestPlot.phase_margins, selectedDevice);
+    };
+    buttonContainer.appendChild(downloadButton);
+/*
+    // Add overlay buttons for each plot in history
+    historyArray.forEach((data, index) => {
+        let button = document.createElement('button');
+        button.textContent = `Overlay Plot ${selectedDevice} vs. Phase Margin`;
+        button.onclick = function() {
+            console.log("Overlay params: ",data.parameter_values);
+            console.log("Overlay phase margins: ",data.phase_margins);
+            plot_phase_margin(data.parameter_values, data.phase_margins, data);
+        };
+        buttonContainer.appendChild(button);
+    });*/
+}
+
+function download_csv_phase_margin (parameterValues, phaseMargins, selectedDevice) {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    let filename = `${selectedDevice}_phase_margin_data.csv`;
+    // Add headers
+    csvContent += `${selectedDevice},Phase Margin (degrees)\n`;
+
+    // Loop through the provided values and format them into CSV rows
+    for (let i = 0; i < parameterValues.length; i++) {
+        let row = `${parameterValues[i]},${phaseMargins[i]}`;
+        csvContent += row + "\n";
+    }
+
+    // Encode and trigger download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function fetch_bandwidth_plot_data(input_params) {
@@ -4116,10 +4311,12 @@ function fetch_bandwidth_plot_data(input_params) {
         .then(data => {
             console.log("Bandwidth plot data received:", data);
             plot_bandwidth(data.parameter_value, data.bandwidth);
+            create_bandwidth_overlay_buttons();
         })
         .catch(error => console.error('Error fetching bandwidth data:', error));
 }
 
+/*
 function plot_bandwidth(parameter_value, bandwidth) {
     const ctx = document.getElementById('bandwidth-plot').getContext('2d');
     const selectedDevice = document.getElementById('selected_device').value;
@@ -4190,6 +4387,160 @@ function plot_bandwidth(parameter_value, bandwidth) {
             }
         }
     });
+}*/
+
+function plot_bandwidth(parameter_values, bandwidth_values, overlay_data = null) {
+    const ctx = document.getElementById('bandwidth-plot').getContext('2d');
+    const selectedDevice = document.getElementById('selected_device').value;
+
+    // Check for duplicates and store current plot data if overlay is not being applied
+    const is_duplicate = bandwidth_plot_history.some(entry =>
+        JSON.stringify(entry.parameter_values) === JSON.stringify(parameter_values) &&
+        JSON.stringify(entry.bandwidth_values) === JSON.stringify(bandwidth_values)
+    );
+
+    if (!overlay_data && !is_duplicate) {
+        bandwidth_plot_history.push({ parameter_values, bandwidth_values });
+    }
+
+    // Create dataset for the current plot
+    const datasets = [{
+        label: `${selectedDevice} - Current Bandwidth`,
+        data: parameter_values.map((x, i) => ({ x: x, y: bandwidth_values[i] })),
+        borderColor: 'rgba(120, 50, 194, 1)',
+        borderWidth: 2,
+        fill: false
+    }];
+
+    // Add overlay dataset if provided
+    if (overlay_data) {
+        datasets.push({
+            label: `${selectedDevice} Overlay Bandwidth`,
+            data: overlay_data.parameter_values.map((x, i) => ({ x: x, y: overlay_data.bandwidth_values[i] })),
+            borderColor: 'rgba(255, 99, 132, 0.6)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            fill: false
+        });
+    }
+
+    // Clear previous plot if it exists
+    if (window.bandwidthChart) {
+        window.bandwidthChart.destroy();
+    }
+
+    // Create a new chart with proper axis scaling
+    window.bandwidthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            stacked: false,
+            title: {
+                display: true,
+                text: `${selectedDevice} vs. Bandwidth`
+            },
+            scales: {
+                xAxes: [{
+                    type: 'linear',
+                    scaleLabel: {
+                        display: true,
+                        labelString: `${selectedDevice}`
+                    }
+                }],
+                yAxes: [{
+                    type: 'logarithmic',
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Bandwidth (Hz)'
+                    },
+                    ticks: {
+                        callback: function (value) {
+                            return value.toExponential();  // Scientific notation for better readability
+                        }
+                    }
+                }]
+            }
+        }
+    });
+}
+
+function create_bandwidth_overlay_buttons() {
+    const selectedDevice = document.getElementById('selected_device').value;
+    console.log("********** Running create_bandwidth_overlay_buttons **********");
+    let targetDiv = document.getElementById('bw-plot');
+    let buttonContainer = document.createElement("csv");
+    buttonContainer.id = 'bandwidth-plot-download';
+/*    let historyArray = bandwidth_plot_history;
+
+    if (!buttonContainer) {
+        buttonContainer = document.createElement('div');
+        buttonContainer.id = 'bandwidth-overlay-buttons';
+        targetDiv.appendChild(buttonContainer);
+    }
+
+    // Clear existing buttons to avoid duplicates
+    buttonContainer.innerHTML = '';
+
+    // Create the clear history button
+    let clearButton = document.createElement('button');
+    clearButton.textContent = 'Clear History';
+    clearButton.onclick = function() {
+        historyArray.length = 0;
+        let ctx = document.getElementById('bandwidth-plot').getContext('2d');
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        buttonContainer.innerHTML = '';  // Clear the button container
+    };
+    buttonContainer.appendChild(clearButton);*/
+
+    // Create the download CSV button
+    let downloadButton = document.createElement('button');
+    downloadButton.textContent = 'Download CSV';
+    downloadButton.onclick = function() {
+        if (historyArray.length === 0) {
+            alert("No data available for download.");
+            return;
+        }
+        const latestPlot = historyArray[historyArray.length - 1];
+        download_csv_bandwidth(latestPlot.parameter_values, latestPlot.bandwidth_values, selectedDevice);
+    };
+    buttonContainer.appendChild(downloadButton);
+/*
+    // Add overlay buttons for each plot in history
+    historyArray.forEach((data, index) => {
+        let button = document.createElement('button');
+        button.textContent = `Overlay Plot ${index + 1}`;
+        button.onclick = function() {
+            plot_bandwidth(data.parameter_values, data.bandwidth_values, data);
+        };
+        buttonContainer.appendChild(button);
+    });*/
+}
+
+function download_csv_bandwidth(parameterValues, bandwidthValues, selectedDevice) {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    let filename = filename = `${selectedDevice}_bandwidth_data.cs`
+
+    // Add headers
+    csvContent += `${selectedDevice},Bandwidth (Hz)\n`;
+
+    // Loop through the provided values and format them into CSV rows
+    for (let i = 0; i < parameterValues.length; i++) {
+        let row = `${parameterValues[i]},${bandwidthValues[i]}`;
+        csvContent += row + "\n";
+    }
+
+    // Encode and trigger download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function validateNode(nodeId) {
