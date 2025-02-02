@@ -4100,6 +4100,7 @@ function plot_phase_margin(parameter_values, phase_margins) {
             }
         }
     });
+    create_csv_download_button(selectedDevice, parameter_values, phase_margins, 'phase_margin');
 }
 
 function fetch_bandwidth_plot_data(input_params) {
@@ -4190,6 +4191,45 @@ function plot_bandwidth(parameter_value, bandwidth) {
             }
         }
     });
+    create_csv_download_button(selectedDevice, parameter_value, bandwidth, 'bandwidth');
+}
+
+function create_csv_download_button(device, parameter_values, y_values, plot_type) {
+    console.log("Create csv download button called");
+    // Create a button or update an existing button
+    const container = document.getElementById(`${plot_type}-csv-download-container`);
+    container.innerHTML = '';  // Clear previous button
+
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = `Download CSV`;
+    downloadButton.onclick = function () {
+        download_csv_data(device, parameter_values, y_values, plot_type);
+    };
+
+    container.appendChild(downloadButton);
+}
+
+function download_csv_data(device, parameter_values, y_values, plot_type) {
+    console.log("Download csv data called");
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += `${device},${plot_type === 'phase_margin' ? 'Phase Margin (degrees)' : 'Bandwidth (hz)'}\n`;
+
+    // Loop through the provided values and format them into CSV rows
+    for (let i = 0; i < parameter_values.length; i++) {
+        csvContent += `${parameter_values[i]},${y_values[i]}\n`;
+    }
+
+    // Generate filename based on device and plot type
+    const filename = `${device}_${plot_type}_data.csv`;
+
+    // Encode and trigger download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function validateNode(nodeId) {
