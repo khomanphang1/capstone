@@ -4103,6 +4103,13 @@ function plot_bandwidth(parameter_value, bandwidth) {
         window.bandwidthChart.destroy();
     }
 
+    // Get min and max values for bandwidth to set appropriate range
+    const minBandwidth = Math.min(...bandwidth);
+    const maxBandwidth = Math.max(...bandwidth);
+
+    console.log("Min bandwidth: ", minBandwidth);
+    console.log("Max bandwidth: ", maxBandwidth);
+
     // Create a new chart with axis labels and dynamic title
     window.bandwidthChart = new Chart(ctx, {
         type: 'line',
@@ -4132,9 +4139,18 @@ function plot_bandwidth(parameter_value, bandwidth) {
                     }
                 }],
                 yAxes: [{
+                    type: 'logarithmic',
+                    display: true,
                     scaleLabel: {
                         display: true,
                         labelString: 'Bandwidth (hz)'
+                    },
+                    ticks: {
+                        min: minBandwidth,
+                        max: maxBandwidth,
+                        callback: function (value) {
+                            return value.toExponential(); // Display tick values in scientific notation
+                        }
                     }
                 }]
             }
