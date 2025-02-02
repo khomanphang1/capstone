@@ -4107,8 +4107,17 @@ function plot_bandwidth(parameter_value, bandwidth) {
     const minBandwidth = Math.min(...bandwidth);
     const maxBandwidth = Math.max(...bandwidth);
 
-    console.log("Min bandwidth: ", minBandwidth);
-    console.log("Max bandwidth: ", maxBandwidth);
+    // Function to round to a more "human-readable" scale
+    function getRoundedValue(value, roundUp = false) {
+        const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+        return roundUp ? Math.ceil(value / magnitude) * magnitude : Math.floor(value / magnitude) * magnitude;
+    }
+
+    const roundedMin = getRoundedValue(minBandwidth);
+    const roundedMax = getRoundedValue(maxBandwidth, true);
+
+    console.log("Rounded Min Bandwidth: ", roundedMin);
+    console.log("Rounded Max Bandwidth: ", roundedMax);
 
     // Create a new chart with axis labels and dynamic title
     window.bandwidthChart = new Chart(ctx, {
@@ -4132,22 +4141,21 @@ function plot_bandwidth(parameter_value, bandwidth) {
                 text: `${selectedDevice} vs. Bandwidth`
             },
             scales: {
-                xAxes:[{
+                xAxes: [{
                     scaleLabel: {
                         display: true,
-                        labelString: `${selectedDevice}` // TO BE CHANGED TO PICK APPROPRIATE UNIT
+                        labelString: `${selectedDevice}`
                     }
                 }],
                 yAxes: [{
                     type: 'logarithmic',
-                    display: true,
                     scaleLabel: {
                         display: true,
                         labelString: 'Bandwidth (hz)'
                     },
                     ticks: {
-                        min: minBandwidth,
-                        max: maxBandwidth,
+                        min: roundedMin,
+                        max: roundedMax,
                         callback: function (value) {
                             return value.toExponential(); // Display tick values in scientific notation
                         }
