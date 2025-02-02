@@ -3866,7 +3866,7 @@ function stability_parameter_panel() {
 
     var br = document.createElement("br");
 
-    // Input for selected capacitor
+    // Input node
     var inputNode = document.createElement("input");
     inputNode.type = "text";
     inputNode.name = "input_node";
@@ -3875,13 +3875,31 @@ function stability_parameter_panel() {
     form.appendChild(inputNode);
     form.appendChild(br.cloneNode());
 
-    // Input for selected capacitor
+    // Output node
     var outputNode = document.createElement("input");
     outputNode.type = "text";
     outputNode.name = "output_node";
     outputNode.id = "output_node";
     outputNode.placeholder = "output node";
     form.appendChild(outputNode);
+    form.appendChild(br.cloneNode());
+
+    // Input for start frequency
+    var startFreq = document.createElement("input");
+    startFreq.type = "number";
+    startFreq.name = "start_freq";
+    startFreq.id = "start_freq";
+    startFreq.placeholder = "start freq hz";
+    form.appendChild(startFreq);
+    form.appendChild(br.cloneNode());
+
+    // Input for end frequency
+    var endFreq = document.createElement("input");
+    endFreq.type = "number";
+    endFreq.name = "end_freq";
+    endFreq.id = "end_freq";
+    endFreq.placeholder = "end freq hz";
+    form.appendChild(endFreq);
     form.appendChild(br.cloneNode());
 
     // Input for selected device
@@ -3934,6 +3952,8 @@ function stability_parameter_panel() {
         let form_params = {
             'input_node': inputNode.value,
             'output_node': outputNode.value,
+            'start_freq': startFreq.value,
+            'end_freq': endFreq.value,
             'selected_device': selectedDevice.value,
             'min_val': Number(minVal.value),
             'max_val': Number(maxVal.value),
@@ -3963,15 +3983,21 @@ function stability_parameter_panel() {
             return;
         }
 
+        // Check if start_freq is smaller than end_freq
+        if (Number(form_params.start_freq) >= Number(form_params.end_freq)) {
+            alert("Start frequency must be smaller than end frequency.");
+            return;
+        }
+
         // Check if min_val is less than max_val
         if (form_params.min_val >= form_params.max_val) {
-            alert("Minimum value must be less than maximum value.");
+            alert("Minimum value must be smaller than maximum value.");
             return;
         }
 
         // Check if step_size is less than (max_val - min_val)
         if (form_params.step_size >= (form_params.max_val - form_params.min_val)) {
-            alert("Step size must be less than the difference between maximum and minimum values.");
+            alert("Step size must be smaller than the difference between maximum and minimum values.");
             return;
         }
 

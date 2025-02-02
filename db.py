@@ -844,6 +844,8 @@ class Circuit(Document):
         self,
         input_node: str,
         output_node: str,
+        start_freq: float,
+        end_freq: float,
         param_name: str,  
         min_value: float,
         max_value: float,
@@ -866,8 +868,8 @@ class Circuit(Document):
 
         original_param = self.parameters[param_name]
         # Parameters for eval_loop_gain
-        start_freq = 1e3
-        end_freq = 1e12
+        #start_freq = 1e3
+        #end_freq = 1e12
         points_per_decade = 30
 
         # Sweep capacitance values
@@ -939,6 +941,8 @@ class Circuit(Document):
         self,
         input_node: str,
         output_node: str,
+        start_freq: float,
+        end_freq: float,
         param_name: str,  
         min_val: float,
         max_val: float,
@@ -963,8 +967,8 @@ class Circuit(Document):
 
         original_param = self.parameters[param_name]
         # Parameters for eval_loop_gain
-        start_freq = 1e3
-        end_freq = 1e12
+        #start_freq = 1e3
+        #end_freq = 1e12
         points_per_decade = 30
 
         # Sweep capacitance values
