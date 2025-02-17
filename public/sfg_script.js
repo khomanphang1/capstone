@@ -2515,9 +2515,9 @@ function make_transfer_bode_panel() {
             alert(`The selected nodes ${invalidNodes[0]} and ${invalidNodes[1]} are not valid.`);
             return;
         }
-
+        
         // Check if min_val is less than max_val
-        if (form_params.start_freq_hz >= form_params.end_freq_hz) {
+        if (Number(form_params.start_freq_hz) >= Number(form_params.end_freq_hz)) {
             alert("Start frequency must be less than end frequency.");
             return;
         }
@@ -2694,6 +2694,12 @@ function make_transfer_bode_plots(data, dom_element, overlayData = null) {
                             }
                         });
                     },
+                    type: 'logarithmic',
+                    ticks: {
+                        callback: function(value, index, values) {
+                            return Number.parseFloat(value).toExponential(1); // Convert to exponential notation
+                        }
+                    },
                     scaleLabel: {
                         display: true,
                         labelString: 'Hz'
@@ -2847,6 +2853,12 @@ function make_loop_gain_bode_plots(data, dom_element, overlayData = null) {
                                 xLabels[i] = '';
                             }
                         });
+                    },
+                    type: 'logarithmic',
+                    ticks: {
+                        callback: function(value, index, values) {
+                            return Number.parseFloat(value).toExponential(1); // Convert to exponential notation
+                        }
                     },
                     scaleLabel: {
                         display: true,
@@ -3490,7 +3502,7 @@ function make_loop_gain_bode_panel() {
         }
 
         // Check if min_val is less than max_val
-        if (form_params.end_freq_hz >= form_params.start_freq_hz) {
+        if (Number(form_params.end_freq_hz) <= Number(form_params.start_freq_hz)) {
             alert("Start frequency must be less than end frequency.");
             return;
         }
@@ -3962,7 +3974,7 @@ function stability_parameter_panel() {
 
     var br = document.createElement("br");
 
-    // Input for selected capacitor
+    // Input node
     var inputNode = document.createElement("input");
     inputNode.type = "text";
     inputNode.name = "input_node";
@@ -3971,13 +3983,31 @@ function stability_parameter_panel() {
     form.appendChild(inputNode);
     form.appendChild(br.cloneNode());
 
-    // Input for selected capacitor
+    // Output node
     var outputNode = document.createElement("input");
     outputNode.type = "text";
     outputNode.name = "output_node";
     outputNode.id = "output_node";
     outputNode.placeholder = "output node";
     form.appendChild(outputNode);
+    form.appendChild(br.cloneNode());
+
+    // Input for start frequency
+    var startFreq = document.createElement("input");
+    startFreq.type = "number";
+    startFreq.name = "start_freq";
+    startFreq.id = "start_freq";
+    startFreq.placeholder = "start freq hz";
+    form.appendChild(startFreq);
+    form.appendChild(br.cloneNode());
+
+    // Input for end frequency
+    var endFreq = document.createElement("input");
+    endFreq.type = "number";
+    endFreq.name = "end_freq";
+    endFreq.id = "end_freq";
+    endFreq.placeholder = "end freq hz";
+    form.appendChild(endFreq);
     form.appendChild(br.cloneNode());
 
     // Input for selected device
@@ -4016,6 +4046,38 @@ function stability_parameter_panel() {
     form.appendChild(stepSize);
     form.appendChild(br.cloneNode());
 
+    var testResistor = document.createElement("input");
+    testResistor.type = "text";
+    testResistor.name = "test_resistor";
+    testResistor.id = "test_resistor";
+    testResistor.placeholder = "Test resistor (optional)";
+    form.appendChild(testResistor);
+    form.appendChild(br.cloneNode());
+    
+    var startRes = document.createElement("input");
+    startRes.type = "number";
+    startRes.name = "start_res";
+    startRes.id = "start_res";
+    startRes.placeholder = "Start resistance (optional)";
+    form.appendChild(startRes);
+    form.appendChild(br.cloneNode());
+    /*
+    var endRes = document.createElement("input");
+    endRes.type = "number";
+    endRes.name = "end_res";
+    endRes.id = "end_res";
+    endRes.placeholder = "End resistance (optional)";
+    form.appendChild(endRes);
+    form.appendChild(br.cloneNode());
+
+    var stepRes = document.createElement("input");
+    stepRes.type = "number";
+    stepRes.name = "step_res";
+    stepRes.id = "step_res";
+    stepRes.placeholder = "Step resistance (optional)";
+    form.appendChild(stepRes);
+    form.appendChild(br.cloneNode());*/
+
     // Submit button
     var submitButton = document.createElement("input");
     submitButton.type = "submit";
@@ -4030,17 +4092,27 @@ function stability_parameter_panel() {
         let form_params = {
             'input_node': inputNode.value,
             'output_node': outputNode.value,
+            'start_freq': Number(startFreq.value),
+            'end_freq': Number(endFreq.value),
             'selected_device': selectedDevice.value,
             'min_val': Number(minVal.value),
             'max_val': Number(maxVal.value),
-            'step_size': Number(stepSize.value)
+            'step_size': Number(stepSize.value),
+            'test_resistor': testResistor.value,
+            'start_resistance': Number(startRes.value),
         };
 
         // Check for empty fields
-        if (!form_params.input_node || !form_params.output_node || !form_params.selected_device || isNaN(form_params.min_val) || isNaN(form_params.max_val) || isNaN(form_params.step_size)) {
+        if (!form_params.input_node || !form_params.output_node || !form_params.start_freq || !form_params.end_freq || !form_params.selected_device) {
             alert("Please fill in all the fields.");
             return;
         }
+        /*
+        // Check for empty fields
+        if (!form_params.test_resistor || !form_params.start_resistance || !form_params.end_resistance || !form_params.step_resistance) {
+            alert("Please fill in all the fields.");
+            return;
+        }*/
 
         const invalidNodes = [form_params.input_node, form_params.output_node].filter(node => !validateNode(node));
 
@@ -4059,15 +4131,21 @@ function stability_parameter_panel() {
             return;
         }
 
+        // Check if start_freq is smaller than end_freq
+        if (form_params.start_freq >= form_params.end_freq) {
+            alert("Start frequency must be smaller than end frequency.");
+            return;
+        }
+
         // Check if min_val is less than max_val
         if (form_params.min_val >= form_params.max_val) {
-            alert("Minimum value must be less than maximum value.");
+            alert("Minimum value must be smaller than maximum value.");
             return;
         }
 
         // Check if step_size is less than (max_val - min_val)
         if (form_params.step_size >= (form_params.max_val - form_params.min_val)) {
-            alert("Step size must be less than the difference between maximum and minimum values.");
+            alert("Step size must be smaller than the difference between maximum and minimum values.");
             return;
         }
 
@@ -4170,6 +4248,7 @@ function plot_phase_margin(parameter_values, phase_margins) {
             }
         }
     });
+    create_csv_download_button(selectedDevice, parameter_values, phase_margins, 'phase_margin');
 }
 
 function fetch_bandwidth_plot_data(input_params) {
@@ -4199,6 +4278,22 @@ function plot_bandwidth(parameter_value, bandwidth) {
         window.bandwidthChart.destroy();
     }
 
+    // Get min and max values for bandwidth to set appropriate range
+    const minBandwidth = Math.min(...bandwidth);
+    const maxBandwidth = Math.max(...bandwidth);
+
+    // Function to round to a more "human-readable" scale
+    function getRoundedValue(value, roundUp = false) {
+        const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+        return roundUp ? Math.ceil(value / magnitude) * magnitude : Math.floor(value / magnitude) * magnitude;
+    }
+
+    const roundedMin = getRoundedValue(minBandwidth);
+    const roundedMax = getRoundedValue(maxBandwidth, true);
+
+    console.log("Rounded Min Bandwidth: ", roundedMin);
+    console.log("Rounded Max Bandwidth: ", roundedMax);
+
     // Create a new chart with axis labels and dynamic title
     window.bandwidthChart = new Chart(ctx, {
         type: 'line',
@@ -4221,21 +4316,68 @@ function plot_bandwidth(parameter_value, bandwidth) {
                 text: `${selectedDevice} vs. Bandwidth`
             },
             scales: {
-                xAxes:[{
+                xAxes: [{
                     scaleLabel: {
                         display: true,
-                        labelString: `${selectedDevice}` // TO BE CHANGED TO PICK APPROPRIATE UNIT
+                        labelString: `${selectedDevice}`
                     }
                 }],
                 yAxes: [{
+                    type: 'logarithmic',
                     scaleLabel: {
                         display: true,
                         labelString: 'Bandwidth (hz)'
+                    },
+                    ticks: {
+                        min: roundedMin,
+                        max: roundedMax,
+                        callback: function (value) {
+                            return value.toExponential(); // Display tick values in scientific notation
+                        }
                     }
                 }]
             }
         }
     });
+    create_csv_download_button(selectedDevice, parameter_value, bandwidth, 'bandwidth');
+}
+
+function create_csv_download_button(device, parameter_values, y_values, plot_type) {
+    console.log("Create csv download button called");
+    // Create a button or update an existing button
+    const container = document.getElementById(`${plot_type}-csv-download-container`);
+    container.innerHTML = '';  // Clear previous button
+
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = `Download CSV`;
+    downloadButton.onclick = function () {
+        download_csv_data(device, parameter_values, y_values, plot_type);
+    };
+
+    container.appendChild(downloadButton);
+}
+
+function download_csv_data(device, parameter_values, y_values, plot_type) {
+    console.log("Download csv data called");
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += `${device},${plot_type === 'phase_margin' ? 'Phase Margin (degrees)' : 'Bandwidth (hz)'}\n`;
+
+    // Loop through the provided values and format them into CSV rows
+    for (let i = 0; i < parameter_values.length; i++) {
+        csvContent += `${parameter_values[i]},${y_values[i]}\n`;
+    }
+
+    // Generate filename based on device and plot type
+    const filename = `${device}_${plot_type}_data.csv`;
+
+    // Encode and trigger download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function validateNode(nodeId) {

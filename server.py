@@ -865,19 +865,27 @@ def plot_phase_margin(circuit_id):
     # Step 1: Parse query parameters
     input_node = request.args.get('input_node', type=str)
     output_node = request.args.get('output_node', type=str)
+    start_freq = request.args.get('start_freq', type=float)
+    end_freq = request.args.get('end_freq', type=float)
     selected_device = request.args.get('selected_device', type=str)
     min_val = float(request.args.get('min_val', type=float))
     max_val = float(request.args.get('max_val', type=float))
     step_size = float(request.args.get('step_size', type=float))
+    test_resistor = request.args.get('test_resistor', type=str)
+    start_resistance = request.args.get('start_resistance', type=float)
 
     try:
         device_value, phase_margin = circuit.sweep_params_for_phase_margin(
             input_node=input_node,
             output_node=output_node,
+            start_freq=start_freq,
+            end_freq=end_freq,
             param_name=selected_device,
             min_value=min_val,
             max_value=max_val,
-            step=step_size
+            step=step_size,
+            test_resistor=test_resistor,
+            test_resistance=start_resistance
         )
 
     except Exception as e:
@@ -906,19 +914,27 @@ def plot_bandwidth(circuit_id):
     # Step 1: Parse query parameters
     input_node = request.args.get('input_node', type=str)
     output_node = request.args.get('output_node', type=str)
+    start_freq = request.args.get('start_freq', type=float)
+    end_freq = request.args.get('end_freq', type=float)
     selected_device = request.args.get('selected_device', type=str)
     min_val = float(request.args.get('min_val', type=float))
     max_val = float(request.args.get('max_val', type=float))
     step_size = float(request.args.get('step_size', type=float))
+    test_resistor = request.args.get('test_resistor', type=str)
+    start_resistance = request.args.get('start_resistance', type=float)
 
     try:
         parameter_value, bandwidth = circuit.sweep_params_for_bandwidth(
             input_node=input_node,
             output_node=output_node,
+            start_freq=start_freq,
+            end_freq=end_freq,
             param_name=selected_device,
             min_val=min_val,
             max_val=max_val,
-            step=step_size
+            step=step_size,
+            test_resistor=test_resistor,
+            test_resistance=start_resistance
         )
 
     except Exception as e:
