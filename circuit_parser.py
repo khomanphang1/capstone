@@ -585,39 +585,37 @@ def get_hybrid_pi_parameters(op_point_log: str) \
 
 
 class Circuit:
-    """Class that represents an ideal small-signal circuit.
-    """
+    """Class that represents an ideal small-signal circuit."""
+    
     def __init__(self, multigraph: nx.MultiGraph):
         self.multigraph = multigraph
+
+    def __repr__(self):
+        """Provide a human-readable representation of the circuit."""
+        component_list = "\n".join(f"{src} -- {dest}: {comp}" for src, dest, comp in self.iter_components())
+        return f"Circuit with {len(self.multigraph.nodes)} nodes and {len(self.multigraph.edges)} components:\n{component_list}"
 
     def parameters(self):
         params = {comp.name: comp.value
                   for _, _, comp in self.iter_components()
-                  if type(comp.value) is float}
+                  if isinstance(comp.value, float)}
 
         params['f'] = 1e3
-
         return params
 
     def print_components(self):
-        for e in self.multigraph.edges(data='component'):
-            src_node, dest_node, component = e
-            print(src_node, dest_node, component)
+        """Prints all components in the circuit."""
+        for src, dest, component in self.iter_components():
+            print(f"{src} -- {dest}: {component}")
 
-    def iter_nodes(self):
-        yield from self.multigraph
-
-    def iter_neighbours(self, node):
-        for nbr, edgedict in self.multigraph.adj[node].items():
-            for edge_key, edge_attribs in edgedict.items():
-                yield nbr, edge_attribs['component']
-
-    def iter_components(self) -> Tuple[str, str, Component]:
+    def iter_components(self):
+        """Yields all components in the circuit as (src_node, dest_node, component) tuples."""
         for e in self.multigraph.edges(data='component'):
             src_node, dest_node, component = e
             yield src_node, dest_node, component
 
     def netlist(self) -> str:
+        """Generates a netlist representation of the circuit."""
         return '\n'.join(c.to_netlist_entry() for _, _, c in self.iter_components())
 
     @classmethod
@@ -685,12 +683,12 @@ class Circuit:
         print("after from_ltspice_netlist!!!")
         for node in graph:
             graph.nodes[node]['alias'] = set()
-
+            
         if not op_point_log:
             return Circuit(graph)
 
         for source in dc_sources:
-
+            print(source)
             if isinstance(source, VoltageSource):
                 node_names = (source.pos_node, source.neg_node)
                 rename_to = next((node for node in node_names if node == '0'),
@@ -707,7 +705,7 @@ class Circuit:
                 graph.remove_edge(source.pos_node,
                                   source.neg_node,
                                   source.name)
-
+                
                 for nbr, nbrdict in graph.adj[rename_from].items():
                     for edge in nbrdict.items():
                         # node_from, node_to, edge_key, component
@@ -722,8 +720,8 @@ class Circuit:
 
                 # Relabel node relabel_from as relabel_to
                 nx.relabel_nodes(graph, {rename_from: rename_to},
-                                 copy=False)
-
+                               copy=False)
+        print(Circuit(graph))
         return Circuit(graph)
 
 
@@ -740,5 +738,6 @@ if __name__ == '__main__':
 
     circ = Circuit.from_ltspice_netlist(args['netlist'],
                                         args.get('op_point_log'))
+    print("from_lispice_netlist completed.")
     circ.print_components()
     pass

@@ -849,7 +849,9 @@ class Circuit(Document):
         param_name: str,  
         min_value: float,
         max_value: float,
-        step: float
+        step: float,
+        test_resistor: str = None,
+        test_resistance: float = None
     ) -> Tuple[List[float], List[float]]:
         """Sweeps capacitance values and plots capacitance vs. phase margin.
 
@@ -867,6 +869,12 @@ class Circuit(Document):
         phase_margins = []
 
         original_param = self.parameters[param_name]
+        original_res = self.parameters.get(test_resistor) if test_resistor else None  # Handle optional test resistor
+
+        # Update test resistor only if provided
+        if test_resistor and test_resistance is not None:
+            self.update_parameters({test_resistor: test_resistance})
+
         # Parameters for eval_loop_gain
         #start_freq = 1e3
         #end_freq = 1e12
@@ -898,6 +906,8 @@ class Circuit(Document):
             current_value = round(current_value,max(0, -int(math.floor(math.log10(abs(step))))))
         
         self.update_parameters({param_name: original_param})
+        if test_resistor and original_res is not None:
+            self.update_parameters({test_resistor: original_res})
 
         return param_values, phase_margins
 
@@ -946,7 +956,9 @@ class Circuit(Document):
         param_name: str,  
         min_val: float,
         max_val: float,
-        step: float
+        step: float,
+        test_resistor: str = None,  # Optional
+        test_resistance: float = None  # Optional
     ) -> Tuple[List[float], List[float]]:
         """Sweeps inputted parameter values and plots inputted parameter vs. bandwidth.
 
@@ -966,6 +978,12 @@ class Circuit(Document):
         bandwidths = []
 
         original_param = self.parameters[param_name]
+        original_res = self.parameters.get(test_resistor) if test_resistor else None  # Handle optional test resistor
+
+        # Update test resistor only if provided
+        if test_resistor and test_resistance is not None:
+            self.update_parameters({test_resistor: test_resistance})
+
         # Parameters for eval_loop_gain
         #start_freq = 1e3
         #end_freq = 1e12
@@ -997,6 +1015,8 @@ class Circuit(Document):
             current_val = round(current_val,max(0, -int(math.floor(math.log10(abs(step))))))
         
         self.update_parameters({param_name: original_param})
+        if test_resistor and original_res is not None:
+            self.update_parameters({test_resistor: original_res})
 
         return param_values, bandwidths
     
