@@ -3965,7 +3965,7 @@ function stability_parameter_panel() {
     startRes.placeholder = "Start resistance (optional)";
     form.appendChild(startRes);
     form.appendChild(br.cloneNode());
-
+    /*
     var endRes = document.createElement("input");
     endRes.type = "number";
     endRes.name = "end_res";
@@ -3980,7 +3980,7 @@ function stability_parameter_panel() {
     stepRes.id = "step_res";
     stepRes.placeholder = "Step resistance (optional)";
     form.appendChild(stepRes);
-    form.appendChild(br.cloneNode());
+    form.appendChild(br.cloneNode());*/
 
     // Submit button
     var submitButton = document.createElement("input");
