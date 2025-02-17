@@ -872,7 +872,7 @@ def plot_phase_margin(circuit_id):
     max_val = float(request.args.get('max_val', type=float))
     step_size = float(request.args.get('step_size', type=float))
     test_resistor = request.args.get('test_resistor', type=str)
-    test_resistance = request.args.get('test_resistance', type=float)
+    start_resistance = request.args.get('start_resistance', type=float)
 
     try:
         device_value, phase_margin = circuit.sweep_params_for_phase_margin(
@@ -885,7 +885,7 @@ def plot_phase_margin(circuit_id):
             max_value=max_val,
             step=step_size,
             test_resistor=test_resistor,
-            test_resistance=test_resistance
+            test_resistance=start_resistance
         )
 
     except Exception as e:
@@ -921,7 +921,7 @@ def plot_bandwidth(circuit_id):
     max_val = float(request.args.get('max_val', type=float))
     step_size = float(request.args.get('step_size', type=float))
     test_resistor = request.args.get('test_resistor', type=str)
-    test_resistance = request.args.get('test_resistance', type=float)
+    start_resistance = request.args.get('start_resistance', type=float)
 
     try:
         parameter_value, bandwidth = circuit.sweep_params_for_bandwidth(
@@ -934,7 +934,7 @@ def plot_bandwidth(circuit_id):
             max_val=max_val,
             step=step_size,
             test_resistor=test_resistor,
-            test_resistance=test_resistance
+            test_resistance=start_resistance
         )
 
     except Exception as e:

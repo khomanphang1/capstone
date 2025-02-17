@@ -4004,8 +4004,6 @@ function stability_parameter_panel() {
             'step_size': Number(stepSize.value),
             'test_resistor': testResistor.value,
             'start_resistance': Number(startRes.value),
-            'end_resistance': Number(endRes.value),
-            'step_resistance': Number(stepRes.value)
         };
 
         // Check for empty fields
