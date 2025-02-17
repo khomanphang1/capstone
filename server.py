@@ -873,9 +873,11 @@ def plot_phase_margin(circuit_id):
     step_size = float(request.args.get('step_size', type=float))
     test_resistor = request.args.get('test_resistor', type=str)
     start_resistance = request.args.get('start_resistance', type=float)
+    end_resistance = request.args.get('end_resistance', type=float)
+    step_resistance = request.args.get('step_resistance', type=float)
 
     try:
-        device_value, phase_margin = circuit.sweep_params_for_phase_margin(
+        results = circuit.sweep_params_for_phase_margin(
             input_node=input_node,
             output_node=output_node,
             start_freq=start_freq,
@@ -884,20 +886,20 @@ def plot_phase_margin(circuit_id):
             min_value=min_val,
             max_value=max_val,
             step=step_size,
-            test_resistor=test_resistor,
-            test_resistance=start_resistance
+            start_resistance=start_resistance,
+            end_resistance=end_resistance,
+            step_resistance=step_resistance
         )
 
     except Exception as e:
         abort(400, description=str(e))
 
     circuit.save()
-    
-    # print response
-    print("device value: " + str(device_value))
-    print("phase margin: " + str(phase_margin))
+    # Print response for debugging
+    print("Results: ", results)
 
-    response = jsonify({'device_value': device_value, 'phase_margin': phase_margin})
+    # JSON Response Structure:
+    response = jsonify(results)
 
     return response
 
@@ -907,9 +909,6 @@ def plot_bandwidth(circuit_id):
 
     if not circuit:
         abort(404, description='Circuit not found')
-
-    #if  min_cap <= 0 or max_cap <= 0 or step_size <= 0 or not selected_cap:
-    #    return jsonify({"error": "Invalid input parameters"}), 400
     
     # Step 1: Parse query parameters
     input_node = request.args.get('input_node', type=str)
@@ -922,9 +921,11 @@ def plot_bandwidth(circuit_id):
     step_size = float(request.args.get('step_size', type=float))
     test_resistor = request.args.get('test_resistor', type=str)
     start_resistance = request.args.get('start_resistance', type=float)
+    end_resistance = request.args.get('end_resistance', type=float)
+    step_resistance = request.args.get('step_resistance', type=float)
 
     try:
-        parameter_value, bandwidth = circuit.sweep_params_for_bandwidth(
+        results = circuit.sweep_params_for_bandwidth(
             input_node=input_node,
             output_node=output_node,
             start_freq=start_freq,
@@ -934,7 +935,9 @@ def plot_bandwidth(circuit_id):
             max_val=max_val,
             step=step_size,
             test_resistor=test_resistor,
-            test_resistance=start_resistance
+            start_resistance=start_resistance,
+            end_resistance=end_resistance,
+            step_resistance=step_resistance
         )
 
     except Exception as e:
@@ -942,11 +945,11 @@ def plot_bandwidth(circuit_id):
 
     circuit.save()
     
-    # print response
-    print("parameter value: " + str(parameter_value))
-    print("bandwidth: " + str(bandwidth))
+    # Print response for debugging
+    print("Results: ", results)
 
-    response = jsonify({'parameter_value': parameter_value, 'bandwidth': bandwidth})
+    # JSON Response Structure:
+    response = jsonify(results)
 
     return response
 

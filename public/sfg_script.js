@@ -4061,7 +4061,7 @@ function stability_parameter_panel() {
     startRes.placeholder = "Start resistance (optional)";
     form.appendChild(startRes);
     form.appendChild(br.cloneNode());
-    /*
+    
     var endRes = document.createElement("input");
     endRes.type = "number";
     endRes.name = "end_res";
@@ -4076,7 +4076,7 @@ function stability_parameter_panel() {
     stepRes.id = "step_res";
     stepRes.placeholder = "Step resistance (optional)";
     form.appendChild(stepRes);
-    form.appendChild(br.cloneNode());*/
+    form.appendChild(br.cloneNode());
 
     // Submit button
     var submitButton = document.createElement("input");
@@ -4100,19 +4100,32 @@ function stability_parameter_panel() {
             'step_size': Number(stepSize.value),
             'test_resistor': testResistor.value,
             'start_resistance': Number(startRes.value),
+            'end_resistance': Number(endRes.value),
+            'step_resistance': Number(stepRes.value)
         };
+
+        form_params.test_resistor = testResistor.value || null;
+        form_params.start_resistance = Number(startRes.value) || null;
+        form_params.end_resistance = Number(endRes.value) || null;
+        form_params.step_resistance = Number(stepRes.value) || null;
 
         // Check for empty fields
         if (!form_params.input_node || !form_params.output_node || !form_params.start_freq || !form_params.end_freq || !form_params.selected_device) {
             alert("Please fill in all the fields.");
             return;
         }
-        /*
-        // Check for empty fields
-        if (!form_params.test_resistor || !form_params.start_resistance || !form_params.end_resistance || !form_params.step_resistance) {
-            alert("Please fill in all the fields.");
-            return;
-        }*/
+
+        if (form_params.start_resistance && form_params.end_resistance && form_params.step_resistance) {
+            if (form_params.start_resistance >= form_params.end_resistance) {
+                alert("Start resistance must be smaller than end resistance.");
+                return;
+            }
+        
+            if (form_params.step_resistance >= (form_params.end_resistance - form_params.start_resistance)) {
+                alert("Step resistance must be smaller than the difference between start and end resistance.");
+                return;
+            }
+        }
 
         const invalidNodes = [form_params.input_node, form_params.output_node].filter(node => !validateNode(node));
 
@@ -4148,6 +4161,8 @@ function stability_parameter_panel() {
             alert("Step size must be smaller than the difference between maximum and minimum values.");
             return;
         }
+
+        console.log("Final form_params being sent:", form_params);
 
         // Proceed if all checks pass
         fetch_phase_margin_plot_data(form_params);
@@ -4186,7 +4201,13 @@ async function check_if_device_exists(deviceName) {
 
 function fetch_phase_margin_plot_data(input_params) {
     var url = new URL(`${baseUrl}/circuits/${circuitId}/pm/plot`);
-    Object.keys(input_params).forEach(key => url.searchParams.append(key, input_params[key]));
+
+    // Append only non-null, non-undefined parameters
+    Object.keys(input_params).forEach(key => {
+        if (input_params[key] !== null && input_params[key] !== undefined) {
+            url.searchParams.append(key, input_params[key]);
+        }
+    });
 
     fetch(url)
         .then(response => {
@@ -4196,33 +4217,66 @@ function fetch_phase_margin_plot_data(input_params) {
             return response.json();
         })
         .then(data => {
-            console.log("Phase Margin data received:", data);
-            plot_phase_margin(data.device_value, data.phase_margin);
+            console.log("Phase margin plot data received:", data);
+
+            // Check if the plots array exists and contains data
+            if (!data.plots || data.plots.length === 0) {
+                console.error("No phase margin data received!");
+                return;
+            }
+
+            // Loop through each resistance sweep and plot separately
+            data.plots.forEach((plot, index) => {
+                console.log(`Plotting phase margin for Resistance: ${plot.resistance} Ω`);
+                plot_phase_margin(plot.device_values, plot.phase_margins, plot.resistance);
+            });
         })
-        .catch(error => console.error('Error fetching cap vs PM data:', error));
+        .catch(error => console.error('Error fetching phase margin data:', error));
 }
 
-function plot_phase_margin(parameter_values, phase_margins) {
+let phase_margin_plot_history = []; // Stores past plots
+
+function plot_phase_margin(parameter_values, phase_margins, resistance) {
     const ctx = document.getElementById('phase-margin-plot').getContext('2d');
     const selectedDevice = document.getElementById('selected_device').value;
+
+    // Generate a unique color for each resistance value
+    const colors = [
+        'rgba(255, 99, 132, 1)', // Red
+        'rgba(54, 162, 235, 1)', // Blue
+        'rgba(255, 206, 86, 1)', // Yellow
+        'rgba(75, 192, 192, 1)', // Green
+        'rgba(153, 102, 255, 1)', // Purple
+        'rgba(255, 159, 64, 1)'  // Orange
+    ];
+    let colorIndex = phase_margin_plot_history.length % colors.length;
+    let lineColor = colors[colorIndex];
+
+    // Store plot data, limiting to 10
+    if (phase_margin_plot_history.length === 10) {
+        phase_margin_plot_history.shift(); // Remove oldest plot
+    }
+    phase_margin_plot_history.push({ parameter_values, phase_margins, resistance });
+
+    // Create datasets for each stored plot
+    let datasets = phase_margin_plot_history.map((data, index) => ({
+        label: `Resistance: ${data.resistance} Ω`,
+        data: data.phase_margins.map((y, i) => ({ x: data.parameter_values[i], y })),
+        borderColor: colors[index % colors.length],
+        borderWidth: 2,
+        fill: false
+    }));
 
     // Clear previous plot if it exists
     if (window.phaseMarginChart) {
         window.phaseMarginChart.destroy();
     }
 
-    // Create a new chart with axis labels and dynamic title
+    // Create a new chart with multiple resistance sweeps
     window.phaseMarginChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: parameter_values,
-            datasets: [{
-                label: 'Phase Margin (degrees)',
-                data: phase_margins,
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 2,
-                fill: false
-            }]
+            datasets: datasets
         },
         options: {
             responsive: true,
@@ -4233,7 +4287,7 @@ function plot_phase_margin(parameter_values, phase_margins) {
                 text: `${selectedDevice} vs. Phase Margin`
             },
             scales: {
-                xAxes:[{
+                xAxes: [{
                     scaleLabel: {
                         display: true,
                         labelString: `${selectedDevice}`
@@ -4248,12 +4302,18 @@ function plot_phase_margin(parameter_values, phase_margins) {
             }
         }
     });
-    create_csv_download_button(selectedDevice, parameter_values, phase_margins, 'phase_margin');
+    create_csv_download_button(selectedDevice, parameter_values, phase_margins, 'phase margin');
 }
 
 function fetch_bandwidth_plot_data(input_params) {
     var url = new URL(`${baseUrl}/circuits/${circuitId}/bandwidth/plot`);
-    Object.keys(input_params).forEach(key => url.searchParams.append(key, input_params[key]));
+
+    // Append only non-null, non-undefined parameters
+    Object.keys(input_params).forEach(key => {
+        if (input_params[key] !== null && input_params[key] !== undefined) {
+            url.searchParams.append(key, input_params[key]);
+        }
+    });
 
     fetch(url)
         .then(response => {
@@ -4264,23 +4324,59 @@ function fetch_bandwidth_plot_data(input_params) {
         })
         .then(data => {
             console.log("Bandwidth plot data received:", data);
-            plot_bandwidth(data.parameter_value, data.bandwidth);
+
+            // Check if the plots array exists and contains data
+            if (!data.plots || data.plots.length === 0) {
+                console.error("No bandwidth data received!");
+                return;
+            }
+
+            // Loop through each resistance sweep and plot separately
+            data.plots.forEach((plot, index) => {
+                console.log(`Plotting bandwidth for Resistance: ${plot.resistance} Ω`);
+                plot_bandwidth(plot.device_values, plot.bandwidths, plot.resistance);
+            });
         })
         .catch(error => console.error('Error fetching bandwidth data:', error));
 }
 
-function plot_bandwidth(parameter_value, bandwidth) {
+let bandwidth_plot_history = []; // Stores past bandwidth plots
+
+function plot_bandwidth(parameter_values, bandwidths, resistance) {
     const ctx = document.getElementById('bandwidth-plot').getContext('2d');
     const selectedDevice = document.getElementById('selected_device').value;
 
-    // Clear previous plot if it exists
-    if (window.bandwidthChart) {
-        window.bandwidthChart.destroy();
-    }
+    // Generate a unique color for each resistance value
+    const colors = [
+        'rgba(255, 99, 132, 1)', // Red
+        'rgba(54, 162, 235, 1)', // Blue
+        'rgba(255, 206, 86, 1)', // Yellow
+        'rgba(75, 192, 192, 1)', // Green
+        'rgba(153, 102, 255, 1)', // Purple
+        'rgba(255, 159, 64, 1)'  // Orange
+    ];
+    let colorIndex = bandwidth_plot_history.length % colors.length;
+    let lineColor = colors[colorIndex];
 
-    // Get min and max values for bandwidth to set appropriate range
-    const minBandwidth = Math.min(...bandwidth);
-    const maxBandwidth = Math.max(...bandwidth);
+    // Store plot data, limiting to 10
+    if (bandwidth_plot_history.length === 10) {
+        bandwidth_plot_history.shift(); // Remove oldest plot
+    }
+    bandwidth_plot_history.push({ parameter_values, bandwidths, resistance });
+
+    // Create datasets for each stored plot
+    let datasets = bandwidth_plot_history.map((data, index) => ({
+        label: `Resistance: ${data.resistance} Ω`,
+        data: data.bandwidths.map((y, i) => ({ x: data.parameter_values[i], y })),
+        borderColor: colors[index % colors.length],
+        borderWidth: 2,
+        fill: false
+    }));
+
+    // Determine appropriate axis limits
+    let allBandwidths = bandwidth_plot_history.flatMap(plot => plot.bandwidths);
+    const minBandwidth = Math.min(...allBandwidths);
+    const maxBandwidth = Math.max(...allBandwidths);
 
     // Function to round to a more "human-readable" scale
     function getRoundedValue(value, roundUp = false) {
@@ -4291,21 +4387,16 @@ function plot_bandwidth(parameter_value, bandwidth) {
     const roundedMin = getRoundedValue(minBandwidth);
     const roundedMax = getRoundedValue(maxBandwidth, true);
 
-    console.log("Rounded Min Bandwidth: ", roundedMin);
-    console.log("Rounded Max Bandwidth: ", roundedMax);
+    // Clear previous plot if it exists
+    if (window.bandwidthChart) {
+        window.bandwidthChart.destroy();
+    }
 
-    // Create a new chart with axis labels and dynamic title
+    // Create a new chart with multiple resistance sweeps
     window.bandwidthChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: parameter_value,
-            datasets: [{
-                label: 'Bandwidth (hz)',
-                data: bandwidth,
-                borderColor: 'rgba(120, 50, 194, 1)',
-                borderWidth: 2,
-                fill: false
-            }]
+            datasets: datasets
         },
         options: {
             responsive: true,
@@ -4326,7 +4417,7 @@ function plot_bandwidth(parameter_value, bandwidth) {
                     type: 'logarithmic',
                     scaleLabel: {
                         display: true,
-                        labelString: 'Bandwidth (hz)'
+                        labelString: 'Bandwidth (Hz)'
                     },
                     ticks: {
                         min: roundedMin,
@@ -4339,11 +4430,12 @@ function plot_bandwidth(parameter_value, bandwidth) {
             }
         }
     });
-    create_csv_download_button(selectedDevice, parameter_value, bandwidth, 'bandwidth');
+    create_csv_download_button(selectedDevice, parameter_values, bandwidths, 'bandwidth');
 }
 
-function create_csv_download_button(device, parameter_values, y_values, plot_type) {
+function create_csv_download_button(device, parameter_values, y_values, plot_type, resistance) {
     console.log("Create csv download button called");
+
     // Create a button or update an existing button
     const container = document.getElementById(`${plot_type}-csv-download-container`);
     container.innerHTML = '';  // Clear previous button
@@ -4351,24 +4443,24 @@ function create_csv_download_button(device, parameter_values, y_values, plot_typ
     const downloadButton = document.createElement('button');
     downloadButton.textContent = `Download CSV`;
     downloadButton.onclick = function () {
-        download_csv_data(device, parameter_values, y_values, plot_type);
+        download_csv_data(device, parameter_values, y_values, plot_type, resistance);
     };
 
     container.appendChild(downloadButton);
 }
 
-function download_csv_data(device, parameter_values, y_values, plot_type) {
+function download_csv_data(device, parameter_values, y_values, plot_type, resistance) {
     console.log("Download csv data called");
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += `${device},${plot_type === 'phase_margin' ? 'Phase Margin (degrees)' : 'Bandwidth (hz)'}\n`;
+    csvContent += `Resistance (Ω),${device},${plot_type === 'phase_margin' ? 'Phase Margin (degrees)' : 'Bandwidth (Hz)'}\n`;
 
-    // Loop through the provided values and format them into CSV rows
+    // Loop through values and format as CSV
     for (let i = 0; i < parameter_values.length; i++) {
-        csvContent += `${parameter_values[i]},${y_values[i]}\n`;
+        csvContent += `${resistance},${parameter_values[i]},${y_values[i]}\n`;
     }
 
-    // Generate filename based on device and plot type
-    const filename = `${device}_${plot_type}_data.csv`;
+    // Generate filename
+    const filename = `${device}_${plot_type}_R${resistance}_data.csv`;
 
     // Encode and trigger download
     const encodedUri = encodeURI(csvContent);
