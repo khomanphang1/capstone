@@ -852,8 +852,8 @@ def import_dill_sfg(circuit_id):
     except Exception as e:
         abort(400, description=str(e))
 
-@app.route('/circuits/<circuit_id>/pm/plot', methods=['GET'])
-def plot_phase_margin(circuit_id):
+@app.route('/circuits/<circuit_id>/pm_transfer/plot', methods=['GET'])
+def plot_phase_margin_transfer(circuit_id):
     circuit = db.Circuit.objects(id=circuit_id).first()
 
     if not circuit:
@@ -865,8 +865,8 @@ def plot_phase_margin(circuit_id):
     # Step 1: Parse query parameters
     input_node = request.args.get('input_node', type=str)
     output_node = request.args.get('output_node', type=str)
-    start_freq = request.args.get('start_freq', type=float)
-    end_freq = request.args.get('end_freq', type=float)
+    start_freq = 1e1
+    end_freq = 1e15
     selected_device = request.args.get('selected_device', type=str)
     min_val = float(request.args.get('min_val', type=float))
     max_val = float(request.args.get('max_val', type=float))
@@ -886,9 +886,11 @@ def plot_phase_margin(circuit_id):
             min_value=min_val,
             max_value=max_val,
             step=step_size,
+            test_resistor=test_resistor,
             start_resistance=start_resistance,
             end_resistance=end_resistance,
-            step_resistance=step_resistance
+            step_resistance=step_resistance,
+            bode_type="transfer"
         )
 
     except Exception as e:
@@ -896,15 +898,68 @@ def plot_phase_margin(circuit_id):
 
     circuit.save()
     # Print response for debugging
-    print("Results: ", results)
+    print("Phase margin transfer results: ", results)
 
     # JSON Response Structure:
     response = jsonify(results)
 
     return response
 
-@app.route('/circuits/<circuit_id>/bandwidth/plot', methods=['GET'])
-def plot_bandwidth(circuit_id):
+@app.route('/circuits/<circuit_id>/pm_lg/plot', methods=['GET'])
+def plot_phase_margin_lg(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    #if  min_cap <= 0 or max_cap <= 0 or step_size <= 0 or not selected_cap:
+    #    return jsonify({"error": "Invalid input parameters"}), 400
+    
+    # Step 1: Parse query parameters
+    input_node = request.args.get('input_node', type=str)
+    output_node = request.args.get('output_node', type=str)
+    start_freq = 1e1
+    end_freq = 1e15
+    selected_device = request.args.get('selected_device', type=str)
+    min_val = float(request.args.get('min_val', type=float))
+    max_val = float(request.args.get('max_val', type=float))
+    step_size = float(request.args.get('step_size', type=float))
+    test_resistor = request.args.get('test_resistor', type=str)
+    start_resistance = request.args.get('start_resistance', type=float)
+    end_resistance = request.args.get('end_resistance', type=float)
+    step_resistance = request.args.get('step_resistance', type=float)
+
+    try:
+        results = circuit.sweep_params_for_phase_margin(
+            input_node=input_node,
+            output_node=output_node,
+            start_freq=start_freq,
+            end_freq=end_freq,
+            param_name=selected_device,
+            min_value=min_val,
+            max_value=max_val,
+            step=step_size,
+            test_resistor=test_resistor,
+            start_resistance=start_resistance,
+            end_resistance=end_resistance,
+            step_resistance=step_resistance,
+            bode_type="loop_gain"
+        )
+
+    except Exception as e:
+        abort(400, description=str(e))
+
+    circuit.save()
+    # Print response for debugging
+    print("Phase margin loop gain results: ", results)
+
+    # JSON Response Structure:
+    response = jsonify(results)
+
+    return response
+
+@app.route('/circuits/<circuit_id>/bandwidth_transfer/plot', methods=['GET'])
+def plot_bandwidth_transfer(circuit_id):
     circuit = db.Circuit.objects(id=circuit_id).first()
 
     if not circuit:
@@ -913,8 +968,8 @@ def plot_bandwidth(circuit_id):
     # Step 1: Parse query parameters
     input_node = request.args.get('input_node', type=str)
     output_node = request.args.get('output_node', type=str)
-    start_freq = request.args.get('start_freq', type=float)
-    end_freq = request.args.get('end_freq', type=float)
+    start_freq = 1e1
+    end_freq = 1e15
     selected_device = request.args.get('selected_device', type=str)
     min_val = float(request.args.get('min_val', type=float))
     max_val = float(request.args.get('max_val', type=float))
@@ -937,7 +992,8 @@ def plot_bandwidth(circuit_id):
             test_resistor=test_resistor,
             start_resistance=start_resistance,
             end_resistance=end_resistance,
-            step_resistance=step_resistance
+            step_resistance=step_resistance,
+            bode_type = "transfer"
         )
 
     except Exception as e:
@@ -946,7 +1002,59 @@ def plot_bandwidth(circuit_id):
     circuit.save()
     
     # Print response for debugging
-    print("Results: ", results)
+    print("Bandwidth transfer results: ", results)
+
+    # JSON Response Structure:
+    response = jsonify(results)
+
+    return response
+
+@app.route('/circuits/<circuit_id>/bandwidth_lg/plot', methods=['GET'])
+def plot_bandwidth_lg(circuit_id):
+    circuit = db.Circuit.objects(id=circuit_id).first()
+
+    if not circuit:
+        abort(404, description='Circuit not found')
+
+    # Step 1: Parse query parameters
+    input_node = request.args.get('input_node', type=str)
+    output_node = request.args.get('output_node', type=str)
+    start_freq = 1e1
+    end_freq = 1e15
+    selected_device = request.args.get('selected_device', type=str)
+    min_val = float(request.args.get('min_val', type=float))
+    max_val = float(request.args.get('max_val', type=float))
+    step_size = float(request.args.get('step_size', type=float))
+    test_resistor = request.args.get('test_resistor', type=str)
+    start_resistance = request.args.get('start_resistance', type=float)
+    end_resistance = request.args.get('end_resistance', type=float)
+    step_resistance = request.args.get('step_resistance', type=float)
+
+    try:
+        results = circuit.sweep_params_for_bandwidth(
+            input_node=input_node,
+            output_node=output_node,
+            start_freq=start_freq,
+            end_freq=end_freq,
+            param_name=selected_device,
+            min_val=min_val,
+            max_val=max_val,
+            step=step_size,
+            test_resistor=test_resistor,
+            start_resistance=start_resistance,
+            end_resistance=end_resistance,
+            step_resistance=step_resistance,
+            bode_type="loop_gain"
+        )
+
+    except Exception as e:
+        print(f"[ERROR] Bandwidth LG Plot: {e}")  # Print the error message for debugging
+        abort(400, description=str(e))
+    
+    circuit.save()
+    
+    # Print response for debugging
+    print("Bandwidth loop gain results: ", results)
 
     # JSON Response Structure:
     response = jsonify(results)

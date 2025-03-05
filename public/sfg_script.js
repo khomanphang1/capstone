@@ -3991,7 +3991,7 @@ function stability_parameter_panel() {
     outputNode.placeholder = "output node";
     form.appendChild(outputNode);
     form.appendChild(br.cloneNode());
-
+/*
     // Input for start frequency
     var startFreq = document.createElement("input");
     startFreq.type = "number";
@@ -4008,7 +4008,7 @@ function stability_parameter_panel() {
     endFreq.id = "end_freq";
     endFreq.placeholder = "end freq hz";
     form.appendChild(endFreq);
-    form.appendChild(br.cloneNode());
+    form.appendChild(br.cloneNode());*/
 
     // Input for selected device
     var selectedDevice = document.createElement("input");
@@ -4092,8 +4092,8 @@ function stability_parameter_panel() {
         let form_params = {
             'input_node': inputNode.value,
             'output_node': outputNode.value,
-            'start_freq': Number(startFreq.value),
-            'end_freq': Number(endFreq.value),
+            //'start_freq': Number(startFreq.value),
+            //'end_freq': Number(endFreq.value),
             'selected_device': selectedDevice.value,
             'min_val': Number(minVal.value),
             'max_val': Number(maxVal.value),
@@ -4110,19 +4110,30 @@ function stability_parameter_panel() {
         form_params.step_resistance = Number(stepRes.value) || null;
 
         // Check for empty fields
-        if (!form_params.input_node || !form_params.output_node || !form_params.start_freq || !form_params.end_freq || !form_params.selected_device) {
+        if (!form_params.input_node || !form_params.output_node || !form_params.selected_device || !form_params.min_val || !form_params.max_val || !form_params.step_size) {
             alert("Please fill in all the fields.");
             return;
         }
 
-        if (form_params.start_resistance && form_params.end_resistance && form_params.step_resistance) {
+        // Ensure that if any optional test resistor field is filled, all must be filled
+        const hasAnyResistorInput = form_params.test_resistor || form_params.start_resistance || form_params.end_resistance || form_params.step_resistance;
+        const missingResistorInput = !form_params.test_resistor || !form_params.start_resistance || !form_params.end_resistance || !form_params.step_resistance;
+
+        if (hasAnyResistorInput && missingResistorInput) {
+            alert("Please fill in all the fields for test resistor sweep.");
+            return;
+        } else if (form_params.start_resistance && form_params.end_resistance && form_params.step_resistance) {
             if (form_params.start_resistance >= form_params.end_resistance) {
                 alert("Start resistance must be smaller than end resistance.");
                 return;
-            }
-        
-            if (form_params.step_resistance >= (form_params.end_resistance - form_params.start_resistance)) {
+            } else if (form_params.step_resistance >= (form_params.end_resistance - form_params.start_resistance)) {
                 alert("Step resistance must be smaller than the difference between start and end resistance.");
+                return;
+            }
+        } else if (form_params.test_resistor) {
+            const device2_exists = await check_if_device_exists(form_params.test_resistor);
+            if (!device2_exists) {
+                alert(`The selected device ${form_params.test_resistor} is not valid.`);
                 return;
             }
         }
@@ -4138,15 +4149,9 @@ function stability_parameter_panel() {
         }
 
         // Validate device existence
-        const deviceExists = await check_if_device_exists(form_params.selected_device);
-        if (!deviceExists) {
+        const device1_exists = await check_if_device_exists(form_params.selected_device);
+        if (!device1_exists) {
             alert(`The selected device ${form_params.selected_device} is not valid.`);
-            return;
-        }
-
-        // Check if start_freq is smaller than end_freq
-        if (form_params.start_freq >= form_params.end_freq) {
-            alert("Start frequency must be smaller than end frequency.");
             return;
         }
 
@@ -4165,8 +4170,10 @@ function stability_parameter_panel() {
         console.log("Final form_params being sent:", form_params);
 
         // Proceed if all checks pass
-        fetch_phase_margin_plot_data(form_params);
-        fetch_bandwidth_plot_data(form_params);
+        fetch_phase_margin_plot_data_transfer(form_params);
+        fetch_bandwidth_plot_data_transfer(form_params);
+        fetch_phase_margin_plot_data_loop_gain(form_params);
+        fetch_bandwidth_plot_data_loop_gain(form_params);
     });
 
     // Append form to the div with id "stability-params-form"
@@ -4199,8 +4206,42 @@ async function check_if_device_exists(deviceName) {
         });
 }
 
-function fetch_phase_margin_plot_data(input_params) {
-    var url = new URL(`${baseUrl}/circuits/${circuitId}/pm/plot`);
+function fetch_phase_margin_plot_data_transfer(input_params) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/pm_transfer/plot`);
+
+    // Append only non-null, non-undefined parameters
+    Object.keys(input_params).forEach(key => {
+        if (input_params[key] !== null && input_params[key] !== undefined) {
+
+            url.searchParams.append(key, input_params[key]);
+        }
+    });
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Phase margin plot data received:", data);
+
+            // Check if the plots array exists and contains data
+            if (!data.plots || data.plots.length === 0) {
+                console.error("No bandwidth data received!");
+                return;
+            }
+
+            //const plot_data = data.plots[0];  // Access the first plot object
+            //plot_phase_margin(plot_data.device_values, plot_data.phase_margins);
+            plot_phase_margin_transfer(data.plots)
+        })
+        .catch(error => console.error('Error fetching phase margin data:', error));
+}
+
+function fetch_phase_margin_plot_data_loop_gain(input_params) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/pm_lg/plot`);
 
     // Append only non-null, non-undefined parameters
     Object.keys(input_params).forEach(key => {
@@ -4221,76 +4262,71 @@ function fetch_phase_margin_plot_data(input_params) {
 
             // Check if the plots array exists and contains data
             if (!data.plots || data.plots.length === 0) {
-                console.error("No phase margin data received!");
+                console.error("No bandwidth data received!");
                 return;
             }
 
-            // Loop through each resistance sweep and plot separately
-            data.plots.forEach((plot, index) => {
-                console.log(`Plotting phase margin for Resistance: ${plot.resistance} Ω`);
-                plot_phase_margin(plot.device_values, plot.phase_margins, plot.resistance);
-            });
+            plot_phase_margin_loop_gain(data.plots)
         })
         .catch(error => console.error('Error fetching phase margin data:', error));
 }
 
-let phase_margin_plot_history = []; // Stores past plots
-
-function plot_phase_margin(parameter_values, phase_margins, resistance) {
-    const ctx = document.getElementById('phase-margin-plot').getContext('2d');
+function plot_phase_margin_transfer(plots) {
+    const ctx = document.getElementById('phase-margin-transfer-plot').getContext('2d');
     const selectedDevice = document.getElementById('selected_device').value;
 
-    // Generate a unique color for each resistance value
+    // Define colors for different resistances
     const colors = [
         'rgba(255, 99, 132, 1)', // Red
         'rgba(54, 162, 235, 1)', // Blue
         'rgba(255, 206, 86, 1)', // Yellow
         'rgba(75, 192, 192, 1)', // Green
         'rgba(153, 102, 255, 1)', // Purple
-        'rgba(255, 159, 64, 1)'  // Orange
+        'rgba(255, 159, 64, 1)',  // Orange
+        'rgba(0, 128, 255, 1)',   // Light Blue
+        'rgba(128, 0, 128, 1)',    // Dark Purple
+        'rgb(88, 12, 12)',    // Burgundy 
+        'rgb(11, 76, 33)'    // Dark green 
     ];
-    let colorIndex = phase_margin_plot_history.length % colors.length;
-    let lineColor = colors[colorIndex];
+    // Extract unique x values (assumes all plots have the same x-axis values)
+    const x_vals = plots.length > 0 ? plots[0].device_values : [];
 
-    // Store plot data, limiting to 10
-    if (phase_margin_plot_history.length === 10) {
-        phase_margin_plot_history.shift(); // Remove oldest plot
-    }
-    phase_margin_plot_history.push({ parameter_values, phase_margins, resistance });
-
-    // Create datasets for each stored plot
-    let datasets = phase_margin_plot_history.map((data, index) => ({
-        label: `Resistance: ${data.resistance} Ω`,
-        data: data.phase_margins.map((y, i) => ({ x: data.parameter_values[i], y })),
+    // Create datasets for each resistance
+    let datasets = plots.map((plot, index) => ({
+        label: plot.resistance !== null && plot.resistance !== undefined 
+            ? `Resistance: ${plot.resistance.toExponential()} Ω` 
+            : "Resistance: N/A (Default)",
+        data: plot.phase_margins.map((y, i) => ({ x: plot.device_values[i], y })),
         borderColor: colors[index % colors.length],
         borderWidth: 2,
         fill: false
     }));
 
+    console.log("datasets:", datasets);
+
     // Clear previous plot if it exists
-    if (window.phaseMarginChart) {
-        window.phaseMarginChart.destroy();
+    if (window.phaseMarginChart_transfer) {
+        window.phaseMarginChart_transfer.destroy();
     }
 
-    // Create a new chart with multiple resistance sweeps
-    window.phaseMarginChart = new Chart(ctx, {
+    // Create the new chart
+    window.phaseMarginChart_transfer = new Chart(ctx, {
         type: 'line',
-        data: {
-            datasets: datasets
+        data: { labels: x_vals,
+                datasets: datasets 
         },
         options: {
             responsive: true,
             hoverMode: 'index',
-            stacked: false,
             title: {
                 display: true,
-                text: `${selectedDevice} vs. Phase Margin`
+                text: `${selectedDevice} vs. Phase Margin (transfer)`
             },
             scales: {
                 xAxes: [{
                     scaleLabel: {
                         display: true,
-                        labelString: `${selectedDevice}`
+                        labelString: selectedDevice
                     }
                 }],
                 yAxes: [{
@@ -4302,11 +4338,111 @@ function plot_phase_margin(parameter_values, phase_margins, resistance) {
             }
         }
     });
-    create_csv_download_button(selectedDevice, parameter_values, phase_margins, 'phase margin');
+    create_json_download_button(plots, "phase_margins-transfer");
 }
 
-function fetch_bandwidth_plot_data(input_params) {
-    var url = new URL(`${baseUrl}/circuits/${circuitId}/bandwidth/plot`);
+function plot_phase_margin_loop_gain(plots) {
+    const ctx = document.getElementById('phase-margin-loop-gain-plot').getContext('2d');
+    const selectedDevice = document.getElementById('selected_device').value;
+
+    // Define colors for different resistances
+    const colors = [
+        'rgba(255, 99, 132, 1)', // Red
+        'rgba(54, 162, 235, 1)', // Blue
+        'rgba(255, 206, 86, 1)', // Yellow
+        'rgba(75, 192, 192, 1)', // Green
+        'rgba(153, 102, 255, 1)', // Purple
+        'rgba(255, 159, 64, 1)',  // Orange
+        'rgba(0, 128, 255, 1)',   // Light Blue
+        'rgba(128, 0, 128, 1)',    // Dark Purple
+        'rgb(88, 12, 12)',    // Burgundy 
+        'rgb(11, 76, 33)'    // Dark green 
+    ];
+    // Extract unique x values (assumes all plots have the same x-axis values)
+    const x_vals = plots.length > 0 ? plots[0].device_values : [];
+
+    // Create datasets for each resistance
+    let datasets = plots.map((plot, index) => ({
+        label: plot.resistance !== null && plot.resistance !== undefined 
+            ? `Resistance: ${plot.resistance.toExponential()} Ω` 
+            : "Resistance: N/A (Default)",
+        data: plot.phase_margins.map((y, i) => ({ x: plot.device_values[i], y })),
+        borderColor: colors[index % colors.length],
+        borderWidth: 2,
+        fill: false
+    }));
+
+    console.log("datasets:", datasets);
+
+    // Clear previous plot if it exists
+    if (window.phaseMarginChart_loop_gain) {
+        window.phaseMarginChart_loop_gain.destroy();
+    }
+
+    // Create the new chart
+    window.phaseMarginChart_loop_gain = new Chart(ctx, {
+        type: 'line',
+        data: { labels: x_vals,
+                datasets: datasets 
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            title: {
+                display: true,
+                text: `${selectedDevice} vs. Phase Margin (loop gain)`
+            },
+            scales: {
+                xAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: selectedDevice
+                    }
+                }],
+                yAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Phase Margin (degrees)'
+                    }
+                }]
+            }
+        }
+    });
+    create_json_download_button(plots, "phase_margins-loop-gain");
+}
+
+function fetch_bandwidth_plot_data_transfer(input_params) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/bandwidth_transfer/plot`);
+
+    // Append only non-null, non-undefined parameters
+    Object.keys(input_params).forEach(key => {
+        if (input_params[key] !== null && input_params[key] !== undefined) {
+            url.searchParams.append(key, input_params[key]);
+        }
+    });
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Bandwidth plot data received:", data);
+
+            // Check if the plots array exists and contains data
+            if (!data.plots || data.plots.length === 0) {
+                console.error("No bandwidth data received!");
+                return;
+            }
+            plot_bandwidth_transfer(data.plots);  // Pass all resistance sweeps to the plot function
+        })
+        .catch(error => console.error('Error fetching bandwidth data:', error));
+}
+
+function fetch_bandwidth_plot_data_loop_gain(input_params) {
+    var url = new URL(`${baseUrl}/circuits/${circuitId}/bandwidth_lg/plot`);
 
     // Append only non-null, non-undefined parameters
     Object.keys(input_params).forEach(key => {
@@ -4331,50 +4467,47 @@ function fetch_bandwidth_plot_data(input_params) {
                 return;
             }
 
-            // Loop through each resistance sweep and plot separately
-            data.plots.forEach((plot, index) => {
-                console.log(`Plotting bandwidth for Resistance: ${plot.resistance} Ω`);
-                plot_bandwidth(plot.device_values, plot.bandwidths, plot.resistance);
-            });
+            plot_bandwidth_loop_gain(data.plots);  // Pass all resistance sweeps to the plot function
         })
         .catch(error => console.error('Error fetching bandwidth data:', error));
 }
 
-let bandwidth_plot_history = []; // Stores past bandwidth plots
-
-function plot_bandwidth(parameter_values, bandwidths, resistance) {
-    const ctx = document.getElementById('bandwidth-plot').getContext('2d');
+function plot_bandwidth_transfer(plots) {
+    const ctx = document.getElementById('bandwidth-transfer-plot').getContext('2d');
     const selectedDevice = document.getElementById('selected_device').value;
 
-    // Generate a unique color for each resistance value
+    // Define colors for different resistances
     const colors = [
         'rgba(255, 99, 132, 1)', // Red
         'rgba(54, 162, 235, 1)', // Blue
         'rgba(255, 206, 86, 1)', // Yellow
         'rgba(75, 192, 192, 1)', // Green
         'rgba(153, 102, 255, 1)', // Purple
-        'rgba(255, 159, 64, 1)'  // Orange
+        'rgba(255, 159, 64, 1)',  // Orange
+        'rgba(0, 128, 255, 1)',   // Light Blue
+        'rgba(128, 0, 128, 1)',   // Dark Purple
+        'rgb(88, 12, 12)',    // Burgundy 
+        'rgb(11, 76, 33)'    // Dark green     // Dark Purple
     ];
-    let colorIndex = bandwidth_plot_history.length % colors.length;
-    let lineColor = colors[colorIndex];
 
-    // Store plot data, limiting to 10
-    if (bandwidth_plot_history.length === 10) {
-        bandwidth_plot_history.shift(); // Remove oldest plot
-    }
-    bandwidth_plot_history.push({ parameter_values, bandwidths, resistance });
+    // Extract unique x values (assumes all plots have the same x-axis values)
+    const x_vals = plots.length > 0 ? plots[0].device_values : [];
 
-    // Create datasets for each stored plot
-    let datasets = bandwidth_plot_history.map((data, index) => ({
-        label: `Resistance: ${data.resistance} Ω`,
-        data: data.bandwidths.map((y, i) => ({ x: data.parameter_values[i], y })),
+    // Create datasets for each resistance
+    let datasets = plots.map((plot, index) => ({
+        label: plot.resistance !== null && plot.resistance !== undefined 
+            ? `Resistance: ${plot.resistance.toExponential()} Ω` 
+            : "Resistance: N/A (Default)",
+        data: plot.bandwidths.map((y, i) => ({ x: plot.device_values[i], y })),
         borderColor: colors[index % colors.length],
         borderWidth: 2,
         fill: false
     }));
 
+    console.log("datasets:", datasets);
+
     // Determine appropriate axis limits
-    let allBandwidths = bandwidth_plot_history.flatMap(plot => plot.bandwidths);
+    let allBandwidths = plots.flatMap(plot => plot.bandwidths);
     const minBandwidth = Math.min(...allBandwidths);
     const maxBandwidth = Math.max(...allBandwidths);
 
@@ -4387,30 +4520,33 @@ function plot_bandwidth(parameter_values, bandwidths, resistance) {
     const roundedMin = getRoundedValue(minBandwidth);
     const roundedMax = getRoundedValue(maxBandwidth, true);
 
+    console.log("Rounded Min Bandwidth: ", roundedMin);
+    console.log("Rounded Max Bandwidth: ", roundedMax);
+
     // Clear previous plot if it exists
-    if (window.bandwidthChart) {
-        window.bandwidthChart.destroy();
+    if (window.bandwidthChart_transfer) {
+        window.bandwidthChart_transfer.destroy();
     }
 
-    // Create a new chart with multiple resistance sweeps
-    window.bandwidthChart = new Chart(ctx, {
+    // Create the new chart
+    window.bandwidthChart_transfer = new Chart(ctx, {
         type: 'line',
-        data: {
-            datasets: datasets
+        data: { 
+            labels: x_vals,
+            datasets: datasets 
         },
         options: {
             responsive: true,
             hoverMode: 'index',
-            stacked: false,
             title: {
                 display: true,
-                text: `${selectedDevice} vs. Bandwidth`
+                text: `${selectedDevice} vs. Bandwidth (transfer)`
             },
             scales: {
                 xAxes: [{
                     scaleLabel: {
                         display: true,
-                        labelString: `${selectedDevice}`
+                        labelString: selectedDevice
                     }
                 }],
                 yAxes: [{
@@ -4430,43 +4566,148 @@ function plot_bandwidth(parameter_values, bandwidths, resistance) {
             }
         }
     });
-    create_csv_download_button(selectedDevice, parameter_values, bandwidths, 'bandwidth');
+    create_json_download_button(plots, "bandwidths-transfer");
 }
 
-function create_csv_download_button(device, parameter_values, y_values, plot_type, resistance) {
-    console.log("Create csv download button called");
+function plot_bandwidth_loop_gain(plots) {
+    console.log("plot_bandwidth_loop_gain called");
+    const ctx = document.getElementById('bandwidth-loop-gain-plot').getContext('2d');
+    const selectedDevice = document.getElementById('selected_device').value;
 
-    // Create a button or update an existing button
-    const container = document.getElementById(`${plot_type}-csv-download-container`);
+    // Define colors for different resistances
+    const colors = [
+        'rgba(255, 99, 132, 1)', // Red
+        'rgba(54, 162, 235, 1)', // Blue
+        'rgba(255, 206, 86, 1)', // Yellow
+        'rgba(75, 192, 192, 1)', // Green
+        'rgba(153, 102, 255, 1)', // Purple
+        'rgba(255, 159, 64, 1)',  // Orange
+        'rgba(0, 128, 255, 1)',   // Light Blue
+        'rgba(128, 0, 128, 1)',   // Dark Purple
+        'rgb(88, 12, 12)',    // Burgundy 
+        'rgb(11, 76, 33)'    // Dark green     // Dark Purple
+    ];
+
+    // Extract unique x values (assumes all plots have the same x-axis values)
+    const x_vals = plots.length > 0 ? plots[0].device_values : [];
+
+    // Create datasets for each resistance
+    let datasets = plots.map((plot, index) => ({
+        label: plot.resistance !== null && plot.resistance !== undefined 
+            ? `Resistance: ${plot.resistance.toExponential()} Ω` 
+            : "Resistance: N/A (Default)",
+        data: plot.bandwidths.map((y, i) => ({ x: plot.device_values[i], y })),
+        borderColor: colors[index % colors.length],
+        borderWidth: 2,
+        fill: false
+    }));
+
+    console.log("datasets:", datasets);
+
+    // Determine appropriate axis limits
+    let allBandwidths = plots.flatMap(plot => plot.bandwidths);
+    const minBandwidth = Math.min(...allBandwidths);
+    const maxBandwidth = Math.max(...allBandwidths);
+
+    // Function to round to a more "human-readable" scale
+    function getRoundedValue(value, roundUp = false) {
+        const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+        return roundUp ? Math.ceil(value / magnitude) * magnitude : Math.floor(value / magnitude) * magnitude;
+    }
+
+    const roundedMin = getRoundedValue(minBandwidth);
+    const roundedMax = getRoundedValue(maxBandwidth, true);
+
+    console.log("Rounded Min Bandwidth: ", roundedMin);
+    console.log("Rounded Max Bandwidth: ", roundedMax);
+
+    // Clear previous plot if it exists
+    if (window.bandwidthChart_loop_gain) {
+        window.bandwidthChart_loop_gain.destroy();
+    }
+
+    // Create the new chart
+    window.bandwidthChart_loop_gain = new Chart(ctx, {
+        type: 'line',
+        data: { 
+            labels: x_vals,
+            datasets: datasets 
+        },
+        options: {
+            responsive: true,
+            hoverMode: 'index',
+            title: {
+                display: true,
+                text: `${selectedDevice} vs. Bandwidth (loop gain)`
+            },
+            scales: {
+                xAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: selectedDevice
+                    }
+                }],
+                yAxes: [{
+                    type: 'logarithmic',
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Bandwidth (Hz)'
+                    },
+                    ticks: {
+                        min: roundedMin,
+                        max: roundedMax,
+                        callback: function (value) {
+                            return value.toExponential(); // Display tick values in scientific notation
+                        }
+                    }
+                }]
+            }
+        }
+    });
+    create_json_download_button(plots, "bandwidths-loop-gain");
+}
+
+function create_json_download_button(plots, plot_type) {
+    console.log("Create JSON download button called");
+
+    const container = document.getElementById(`${plot_type}-json-download-container`);
     container.innerHTML = '';  // Clear previous button
 
     const downloadButton = document.createElement('button');
-    downloadButton.textContent = `Download CSV`;
+    downloadButton.textContent = `Download ${plot_type.replace("_", " ")} JSON`;
     downloadButton.onclick = function () {
-        download_csv_data(device, parameter_values, y_values, plot_type, resistance);
+        download_json_data(plots, plot_type);
     };
 
     container.appendChild(downloadButton);
 }
 
-function download_csv_data(device, parameter_values, y_values, plot_type, resistance) {
-    console.log("Download csv data called");
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += `Resistance (Ω),${device},${plot_type === 'phase_margin' ? 'Phase Margin (degrees)' : 'Bandwidth (Hz)'}\n`;
+function download_json_data(plots, plot_type) {
+    console.log(`Download JSON data for ${plot_type} called`);
 
-    // Loop through values and format as CSV
-    for (let i = 0; i < parameter_values.length; i++) {
-        csvContent += `${resistance},${parameter_values[i]},${y_values[i]}\n`;
-    }
+    let jsonData = { "resistances": {} };
 
-    // Generate filename
-    const filename = `${device}_${plot_type}_R${resistance}_data.csv`;
+    plots.forEach(plot => {
+        let resistanceKey = plot.resistance !== null ? plot.resistance.toExponential() : "null";
+    
+        // Determine the correct data key for JSON
+        let dataKey = plot_type.includes("bandwidths") ? "bandwidths" :
+                      plot_type.includes("phase_margins") ? "phase_margins" : plot_type;
+    
+        jsonData["resistances"][resistanceKey] = {
+            "device_values": plot.device_values,
+            [dataKey]: plot[dataKey]  // Use the correctly determined key
+        };
+    });
 
-    // Encode and trigger download
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', filename);
+    // Create a specific filename based on the plot type
+    const filename = `${plot_type}.json`;
+    const jsonString = JSON.stringify(jsonData, null, 4);
+
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

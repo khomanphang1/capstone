@@ -834,7 +834,7 @@ class Circuit(Document):
         phase_at_zero_db = phase[zero_db_index]
         
         # Calculate the phase margin
-        phase_margin = 180 - abs(phase_at_zero_db)
+        phase_margin = 180 + phase_at_zero_db
 
         #print ("The phase margin is: "+phase_margin) # Temporarily adding print statement for BOL
         
@@ -850,6 +850,7 @@ class Circuit(Document):
         min_value: float,
         max_value: float,
         step: float,
+        bode_type: str,
         test_resistor: Optional[str] = None,
         start_resistance: Optional[float] = None,
         end_resistance: Optional[float] = None,
@@ -873,7 +874,12 @@ class Circuit(Document):
         else:
             resistance_values = [None]  # Only perform one sweep if no resistance is specified
 
+
+        i = 0 # Generate only 10 graphs to prevent cluttering
         for test_res in resistance_values:
+            if (i>=10):
+                break
+    
             if test_resistor and test_res is not None:
                 self.update_parameters({test_resistor: test_res})
 
@@ -886,13 +892,20 @@ class Circuit(Document):
             while current_value <= max_value:
                 self.update_parameters({param_name: current_value})
 
-                freq_list, gain_list, phase_list = self.eval_transfer_function(
-                    input_node=input_node,
-                    output_node=output_node,
-                    start_freq=start_freq,
-                    end_freq=end_freq,
-                    points_per_decade=30
-                )
+                if bode_type == "transfer":
+                    freq_list, gain_list, phase_list = self.eval_transfer_function(
+                        input_node=input_node,
+                        output_node=output_node,
+                        start_freq=start_freq,
+                        end_freq=end_freq,
+                        points_per_decade=30
+                    )
+                elif bode_type == "loop_gain":
+                    freq_list, gain_list, phase_list = self.eval_loop_gain(
+                        start_freq=start_freq,
+                        end_freq=end_freq,
+                        points_per_decade=30
+                    )
 
                 phase_margin = self.compute_phase_margin(gain_list, phase_list)
 
@@ -912,6 +925,7 @@ class Circuit(Document):
                 "device_values": param_values,
                 "phase_margins": phase_margins
             })
+            i=i+1
 
         self.update_parameters({param_name: original_param})
         if test_resistor is not None:
@@ -965,6 +979,7 @@ class Circuit(Document):
         min_val: float,
         max_val: float,
         step: float,
+        bode_type: str,
         test_resistor: Optional[str] = None,
         start_resistance: Optional[float] = None,
         end_resistance: Optional[float] = None,
@@ -987,8 +1002,12 @@ class Circuit(Document):
             original_res = self.parameters[test_resistor]
         else:
             resistance_values = [None]  # Only perform one sweep if no resistance is specified
-
+        
+        i = 0
         for test_res in resistance_values:
+            if (i >= 10):
+                break
+
             if test_resistor and test_res is not None:
                 self.update_parameters({test_resistor: test_res})
 
@@ -1001,13 +1020,20 @@ class Circuit(Document):
             while current_value <= max_val:
                 self.update_parameters({param_name: current_value})
 
-                freq_list, gain_list, phase_list = self.eval_transfer_function(
-                    input_node=input_node,
-                    output_node=output_node,
-                    start_freq=start_freq,
-                    end_freq=end_freq,
-                    points_per_decade=30
-                )
+                if bode_type == "transfer":
+                    freq_list, gain_list, phase_list = self.eval_transfer_function(
+                        input_node=input_node,
+                        output_node=output_node,
+                        start_freq=start_freq,
+                        end_freq=end_freq,
+                        points_per_decade=30
+                    )
+                elif bode_type == "loop_gain":
+                    freq_list, gain_list, phase_list = self.eval_loop_gain(
+                        start_freq=start_freq,
+                        end_freq=end_freq,
+                        points_per_decade=30
+                    )
 
                 bandwidth = self.calculate_bandwidth(freq_list, gain_list)
 
@@ -1027,6 +1053,7 @@ class Circuit(Document):
                 "device_values": param_values,
                 "bandwidths": bandwidths
             })
+            i=i+1
 
         self.update_parameters({param_name: original_param})
         if test_resistor is not None:
