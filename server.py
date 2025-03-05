@@ -789,42 +789,5 @@ def import_dill_sfg(circuit_id):
     except Exception as e:
         abort(400, description=str(e))
 
-@app.route('/circuits/<circuit_id>/cap_pm/plot', methods=['GET'])
-def plot_cap_vs_phase_margin(circuit_id):
-    circuit = db.Circuit.objects(id=circuit_id).first()
-
-    if not circuit:
-        abort(404, description='Circuit not found')
-
-    #if  min_cap <= 0 or max_cap <= 0 or step_size <= 0 or not selected_cap:
-    #    return jsonify({"error": "Invalid input parameters"}), 400
-    
-    # Step 1: Parse query parameters
-    selected_capacitor = request.args.get('selected_cap', type=str)
-    min_cap = float(request.args.get('min_cap', type=float))
-    max_cap = float(request.args.get('max_cap', type=float))
-    step_size = float(request.args.get('step_size', type=float))
-
-    try:
-        capacitance, phase_margin = circuit.sweep_capacitance_for_phase_margin(
-            cap_name=selected_capacitor,
-            min_capacitance=min_cap,
-            max_capacitance=max_cap,
-            step=step_size
-        )
-
-    except Exception as e:
-        abort(400, description=str(e))
-
-    circuit.save()
-    
-    # print response
-    print("cap: " + str(capacitance))
-    print("phase margin: " + str(phase_margin))
-
-    response = jsonify({'capacitance': capacitance, 'phase_margin': phase_margin})
-
-    return response
-
 if __name__ == '__main__':
     app.run(debug=True)
