@@ -3700,12 +3700,21 @@ function sfg_simplification_entire_graph_trivial(params) {
 function simplify_entire_graph_trivial() 
 {
     console.log("Requesting entire graph simplification");
+
+    cy.on('click', 'node', function(event) {
+        let node = event.target;
+        let nodeId = node.id(); // Get the clicked node ID
     
+        console.log("Clicked Node ID:", nodeId); // Debugging: Check the clicked node
+    
+        // Call your function with the clicked node ID as part of the params
+        sfg_simplification_entire_graph_trivial({ nodeId: nodeId });
+    });
     // Optional: Set up any parameters you want to pass.
-    let params = {}; // Add any needed parameters here
+    // let params = {}; // Add any needed parameters here
     
-    // Call the simplification request function
-    sfg_simplification_entire_graph_trivial(params);
+    // // Call the simplification request function
+    // sfg_simplification_entire_graph_trivial(params);
 }
 
 

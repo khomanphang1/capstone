@@ -749,6 +749,12 @@ def simplification_automation_sfg_entire(circuit_id):
 
     if not circuit:
         abort(404, description="Circuit not found")
+    
+    data = request.get_json()
+
+    # TODO: Get the source and destination node and pass it to the simplify_whole_graph_trivial function
+    # TODO: When it is passed then can get the values and replace the target pairs in [Vvin and Vvout]
+    print("This is the data gotten: ", data['nodeId']) 
 
     circuit.simplify_whole_graph_trivial()
     circuit.save()

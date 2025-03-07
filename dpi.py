@@ -144,6 +144,7 @@ def simplify_whole_graph(sfg):
     # List to store node pairs that need simplification
     simplify_pairs = []
 
+    # TODO: Click on the pairs instead of input 
     target_pairs = [("Vvin", "Vvout")]
 
     # Dictionary to store transmittance for all paths
