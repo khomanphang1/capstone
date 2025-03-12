@@ -754,9 +754,9 @@ def simplification_automation_sfg_entire(circuit_id):
 
     # TODO: Get the source and destination node and pass it to the simplify_whole_graph_trivial function
     # TODO: When it is passed then can get the values and replace the target pairs in [Vvin and Vvout]
-    print("This is the data gotten: ", data['nodeId']) 
+    print("This is the data gotten: ", data['nodeIds'][0], data['nodeIds'][1]) 
 
-    circuit.simplify_whole_graph_trivial()
+    circuit.simplify_whole_graph_trivial(data['nodeIds'][0], data['nodeIds'][1])
     circuit.save()
 
     try:
