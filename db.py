@@ -228,9 +228,15 @@ class Circuit(Document):
         sfg = dill.loads(self.sfg)
 
         # Compute the transfer function.
-        sympy_expression, _ = mason.transfer_function(
+        sympy_expression, loop_gain_expr = mason.transfer_function(
             sfg, input_node, output_node
         )
+
+        #numeric_transfer_function = sympy_expression.subs(self.parameters)
+        #numeric_loop_gain = loop_gain_expr.subs(self.parameters)
+
+        #print(f"Numeric Transfer Function: {numeric_transfer_function}")
+        #print(f"Numeric Loop Gain: {numeric_loop_gain}")
 
         # Substitute all terms for their numerical values except the frequency.
         lambda_function = sympy_expression.subs(

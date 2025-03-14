@@ -91,6 +91,7 @@ def determinant(graph: nx.DiGraph,
 
         # Odd-sized combinations have a negative sign.
         sign = -1 if size % 2 else 1
+        #sign = 1 if size % 2 else -1
         gain_products_sums.append(sympy.Add.fromiter(gain_products) * sign)
 
     return 1 + sympy.Add.fromiter(gain_products_sums)
@@ -139,8 +140,9 @@ def transfer_function(sfg: nx.DiGraph, input_node: str, output_node: str) \
     transfer_function = numer / denom
     loop_gain = 1 - denom
 
-    print(cycles)
-    print(cycle_combinations)
+    print("paths: ", paths)
+    print("cycles: ", cycles)
+    print("cycle combinations:", cycle_combinations)
     print(sfg)
     print("lg")
     print(loop_gain)
@@ -166,11 +168,13 @@ def loop_gain(sfg: nx.DiGraph) -> sympy.Expr:
 
     # Find overall determinant.
     determ = determinant(sfg, cycle_combinations)
-    print(cycles)
-    print(cycle_combinations)
+    print("determinant: ",determ)
+    print("cycles: ",cycles)
+    print("cycle combinations: ",cycle_combinations)
     print(sfg)
     print("lg!!")
     loop_gain = 1 - determ
+    #loop_gain = determ - 1
     print(loop_gain)
     return loop_gain
 
