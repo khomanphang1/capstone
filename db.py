@@ -228,9 +228,15 @@ class Circuit(Document):
         sfg = dill.loads(self.sfg)
 
         # Compute the transfer function.
-        sympy_expression, _ = mason.transfer_function(
+        sympy_expression, loop_gain_expr = mason.transfer_function(
             sfg, input_node, output_node
         )
+
+        #numeric_transfer_function = sympy_expression.subs(self.parameters)
+        #numeric_loop_gain = loop_gain_expr.subs(self.parameters)
+
+        #print(f"Numeric Transfer Function: {numeric_transfer_function}")
+        #print(f"Numeric Loop Gain: {numeric_loop_gain}")
 
         # Substitute all terms for their numerical values except the frequency.
         lambda_function = sympy_expression.subs(
@@ -833,7 +839,7 @@ class Circuit(Document):
         phase_at_zero_db = phase[zero_db_index]
         
         # Calculate the phase margin
-        phase_margin = 180 - abs(phase_at_zero_db)
+        phase_margin = 180 + phase_at_zero_db
 
         #print ("The phase margin is: "+phase_margin) # Temporarily adding print statement for BOL
         
@@ -843,60 +849,94 @@ class Circuit(Document):
         self,
         input_node: str,
         output_node: str,
+        start_freq: float,
+        end_freq: float,
         param_name: str,  
         min_value: float,
         max_value: float,
-        step: float
-    ) -> Tuple[List[float], List[float]]:
-        """Sweeps capacitance values and plots capacitance vs. phase margin.
-
-        Args:
-            param_name: Name of the capacitor parameter to update.
-            min_value: Minimum capacitance value to test.
-            max_value: Maximum capacitance value to test.
-            step: Increment step for capacitance.
-            freq, gain, phase: Frequency, gain, and phase lists to compute phase margin.
-
-        Returns:
-            A tuple of two lists: capacitances and their corresponding phase margins.
+        step: float,
+        bode_type: str,
+        test_resistor: Optional[str] = None,
+        start_resistance: Optional[float] = None,
+        end_resistance: Optional[float] = None,
+        step_resistance: Optional[float] = None
+    ) -> Dict:
         """
-        param_values = []
-        phase_margins = []
-
-        original_param = self.parameters[param_name]
-        # Parameters for eval_loop_gain
-        start_freq = 1e3
-        end_freq = 1e12
-        points_per_decade = 30
-
-        # Sweep capacitance values
-        current_value = min_value
-        while current_value <= max_value:
-            # Update the specified capacitance in the circuit
-            self.update_parameters({param_name: current_value})
-            freq_list, gain_list, phase_list= self.eval_transfer_function(input_node=input_node,
-                                                                        output_node=output_node,
-                                                                        start_freq=start_freq,
-                                                                        end_freq=end_freq,
-                                                                        points_per_decade=points_per_decade)
-
-            # Compute the phase margin for the current capacitance
-            phase_margin = self.compute_phase_margin(gain_list, phase_list)
-            
-            # Store results
-            param_values.append(current_value)
-            phase_margins.append(phase_margin)
-
-            print("Testing: "+str(current_value)+" F")
-            print("Phase margin: "+str(phase_margin)+" deg")
-            
-            # Increment capacitance
-            current_value += step
-            current_value = round(current_value,max(0, -int(math.floor(math.log10(abs(step))))))
+        Sweeps capacitance values and optionally a test resistor across a range.
         
-        self.update_parameters({param_name: original_param})
+        Returns:
+            A dictionary containing phase margin results for each resistance.
+        """
+        results = {
+            "test_resistor": test_resistor,
+            "resistance_values": [],
+            "plots": []
+        }
 
-        return param_values, phase_margins
+        if test_resistor and start_resistance is not None and end_resistance is not None and step_resistance is not None:
+            resistance_values = np.arange(start_resistance, end_resistance + step_resistance, step_resistance)
+            original_res = self.parameters[test_resistor]
+        else:
+            resistance_values = [None]  # Only perform one sweep if no resistance is specified
+
+
+        i = 0 # Generate only 10 graphs to prevent cluttering
+        for test_res in resistance_values:
+            if (i>=10):
+                break
+    
+            if test_resistor and test_res is not None:
+                self.update_parameters({test_resistor: test_res})
+
+            param_values = []
+            phase_margins = []
+
+            original_param = self.parameters[param_name]
+            current_value = min_value
+
+            while current_value <= max_value:
+                self.update_parameters({param_name: current_value})
+
+                if bode_type == "transfer":
+                    freq_list, gain_list, phase_list = self.eval_transfer_function(
+                        input_node=input_node,
+                        output_node=output_node,
+                        start_freq=start_freq,
+                        end_freq=end_freq,
+                        points_per_decade=30
+                    )
+                elif bode_type == "loop_gain":
+                    freq_list, gain_list, phase_list = self.eval_loop_gain(
+                        start_freq=start_freq,
+                        end_freq=end_freq,
+                        points_per_decade=30
+                    )
+
+                phase_margin = self.compute_phase_margin(gain_list, phase_list)
+
+                param_values.append(current_value)
+                phase_margins.append(phase_margin)
+
+                print(f"Testing: {current_value} F, Resistance: {test_res} Ω")
+                print(f"Phase margin: {phase_margin} deg")
+
+                current_value += step
+                current_value = round(current_value, max(0, -int(math.floor(math.log10(abs(step))))))
+
+            # Store the results for this resistance value
+            results["resistance_values"].append(test_res)
+            results["plots"].append({
+                "resistance": test_res,
+                "device_values": param_values,
+                "phase_margins": phase_margins
+            })
+            i=i+1
+
+        self.update_parameters({param_name: original_param})
+        if test_resistor is not None:
+            self.update_parameters({test_resistor: original_res})
+
+        return results
 
     def calculate_bandwidth(
             self,
@@ -938,62 +978,93 @@ class Circuit(Document):
         self,
         input_node: str,
         output_node: str,
+        start_freq: float,
+        end_freq: float,
         param_name: str,  
         min_val: float,
         max_val: float,
-        step: float
-    ) -> Tuple[List[float], List[float]]:
-        """Sweeps inputted parameter values and plots inputted parameter vs. bandwidth.
-
-        Args:
-            input_node:
-            output_node
-            param_name: Name of the parameter to update.
-            min_val: Minimum value to test.
-            max_val: Maximum value to test.
-            step: Increment step for capacitance.
-            freq, gain, phase: Frequency, gain, and phase lists to compute phase margin.
-
-        Returns:
-            
+        step: float,
+        bode_type: str,
+        test_resistor: Optional[str] = None,
+        start_resistance: Optional[float] = None,
+        end_resistance: Optional[float] = None,
+        step_resistance: Optional[float] = None
+    ) -> Dict:
         """
-        param_values = []
-        bandwidths = []
-
-        original_param = self.parameters[param_name]
-        # Parameters for eval_loop_gain
-        start_freq = 1e3
-        end_freq = 1e12
-        points_per_decade = 30
-
-        # Sweep capacitance values
-        current_val = min_val
-        while current_val <= max_val:
-            # Update the specified capacitance in the circuit
-            self.update_parameters({param_name: current_val})
-            freq_list, gain_list, phase_list= self.eval_transfer_function(input_node=input_node,
-                                                                        output_node=output_node,
-                                                                        start_freq=start_freq,
-                                                                        end_freq=end_freq,
-                                                                        points_per_decade=points_per_decade)
-
-            # Compute the phase margin for the current capacitance
-            bandwidth = self.calculate_bandwidth(freq_list, gain_list)
-            
-            # Store results
-            param_values.append(current_val)
-            bandwidths.append(bandwidth)
-
-            print("Testing: "+str(current_val))
-            print("Bandwidth: "+str(bandwidth)+" hz")
-            
-            # Increment capacitance
-            current_val += step
-            current_val = round(current_val,max(0, -int(math.floor(math.log10(abs(step))))))
+        Sweeps capacitance values and optionally a test resistor across a range.
         
-        self.update_parameters({param_name: original_param})
+        Returns:
+            A dictionary containing bandwidth results for each resistance.
+        """
+        results = {
+            "test_resistor": test_resistor,
+            "resistance_values": [],
+            "plots": []
+        }
 
-        return param_values, bandwidths
+        if test_resistor and start_resistance is not None and end_resistance is not None and step_resistance is not None:
+            resistance_values = np.arange(start_resistance, end_resistance + step_resistance, step_resistance)
+            original_res = self.parameters[test_resistor]
+        else:
+            resistance_values = [None]  # Only perform one sweep if no resistance is specified
+        
+        i = 0
+        for test_res in resistance_values:
+            if (i >= 10):
+                break
+
+            if test_resistor and test_res is not None:
+                self.update_parameters({test_resistor: test_res})
+
+            param_values = []
+            bandwidths = []
+
+            original_param = self.parameters[param_name]
+            current_value = min_val
+
+            while current_value <= max_val:
+                self.update_parameters({param_name: current_value})
+
+                if bode_type == "transfer":
+                    freq_list, gain_list, phase_list = self.eval_transfer_function(
+                        input_node=input_node,
+                        output_node=output_node,
+                        start_freq=start_freq,
+                        end_freq=end_freq,
+                        points_per_decade=30
+                    )
+                elif bode_type == "loop_gain":
+                    freq_list, gain_list, phase_list = self.eval_loop_gain(
+                        start_freq=start_freq,
+                        end_freq=end_freq,
+                        points_per_decade=30
+                    )
+
+                bandwidth = self.calculate_bandwidth(freq_list, gain_list)
+
+                param_values.append(current_value)
+                bandwidths.append(bandwidth)
+
+                print(f"Testing: {current_value} F, Resistance: {test_res} Ω")
+                print(f"Bandwidth: {bandwidth} Hz")
+
+                current_value += step
+                current_value = round(current_value, max(0, -int(math.floor(math.log10(abs(step))))))
+
+            # Store the results for this resistance value
+            results["resistance_values"].append(test_res)
+            results["plots"].append({
+                "resistance": test_res,
+                "device_values": param_values,
+                "bandwidths": bandwidths
+            })
+            i=i+1
+
+        self.update_parameters({param_name: original_param})
+        if test_resistor is not None:
+            self.update_parameters({test_resistor: original_res})
+
+        return results
     
     def is_device_valid(self, device_name: str) -> bool:
         """
