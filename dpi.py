@@ -125,7 +125,7 @@ def remove_dead_branches(sfg):
 # This function will simplify the entire graph 
 # Inputs: The Signal Flow Graph 
 # Output: A simplified graph where and successful or error message 
-def simplify_whole_graph(sfg):
+def simplify_whole_graph(sfg, source, destination):
     """
     Simplify the entire graph by iterating over all node pairs and simplifying them.
     Repeated simplifications continue until no further changes can be made.
@@ -144,7 +144,10 @@ def simplify_whole_graph(sfg):
     # List to store node pairs that need simplification
     simplify_pairs = []
 
-    target_pairs = [("Vvin", "Vvout")]
+    print("THIS IS THE SOURCE ", source, " DESTINATION: ", destination)
+
+    # TODO: Click on the pairs instead of input 
+    target_pairs = [(source, destination)]
 
     # Dictionary to store transmittance for all paths
     path_transmittance = {}

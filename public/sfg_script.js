@@ -20,6 +20,7 @@ let current_data = null //session data
 let edge_symbolic_label;
 let transfer_bode_plot_history = [];
 let loop_gain_bode_plot_history = [];
+let selectedNodes = [];
 
 // Function to convert float to exponential
 function expo(x, f) {
@@ -255,6 +256,7 @@ function make_sfg(elements) {
         if(simplify_mode) {
             let node = evt.target;
             console.log( 'tapped ' + node.id() );
+            selectedNodes.push(node.id());
             if (node === node1) {
                 cy.$('#'+node.id()).css({'background-color': ''})
                 node1 = null;
@@ -3696,17 +3698,76 @@ function sfg_simplification_entire_graph_trivial(params) {
 }
 
 
-
 function simplify_entire_graph_trivial() 
 {
     console.log("Requesting entire graph simplification");
+
+    // cy.on('click', 'node', function(event) {
+    //     let node = event.target;
+    //     let nodeId = node.id(); // Get the clicked node ID
     
+    //     console.log("Clicked Node ID:", nodeId); // Debugging: Check the clicked node
+
+    //     if (!selectedNodes.includes(nodeId)) 
+    //     {
+    //         selectedNodes.push(nodeId);
+    //     }
+
+    // If two nodes are selected, trigger the function and reset selection
+    if (selectedNodes.length === 2) 
+    {
+        console.log("Two Nodes Selected:", selectedNodes[0], selectedNodes[1]);
+        
+        // Call the function with both node IDs
+        sfg_simplification_entire_graph_trivial({ nodeIds: selectedNodes });
+
+        // Reset for the next selection
+        selectedNodes = [];
+    }
+    
+        // Call your function with the clicked node ID as part of the params
+        // sfg_simplification_entire_graph_trivial({ nodeId: nodeId });
+    // });
     // Optional: Set up any parameters you want to pass.
-    let params = {}; // Add any needed parameters here
+    // let params = {}; // Add any needed parameters here
     
-    // Call the simplification request function
-    sfg_simplification_entire_graph_trivial(params);
+    // // Call the simplification request function
+    // sfg_simplification_entire_graph_trivial(params);
 }
+
+
+// HERE
+// let selectedNodes = []; // Store clicked nodes
+
+// // Handle node selection
+// cy.on('click', 'node', function(event) {
+//     let node = event.target;
+//     let nodeId = node.id(); // Get the clicked node ID
+
+//     console.log("Clicked Node ID:", nodeId);
+
+//     // Add node if not already selected (avoid duplicates)
+//     if (!selectedNodes.includes(nodeId)) {
+//         selectedNodes.push(nodeId);
+//     }
+
+//     console.log("Currently Selected Nodes:", selectedNodes);
+// });
+
+// // Handle button click to trigger the function
+// document.getElementById("simplifyButton").addEventListener("click", function() {
+//     if (selectedNodes.length === 2) {
+//         console.log("Two Nodes Selected:", selectedNodes);
+
+//         // Call the function with both node IDs
+//         sfg_simplification_entire_graph_trivial({ nodeIds: selectedNodes });
+
+//         // Reset selection for the next operation
+//         selectedNodes = [];
+//     } else {
+//         console.log("Please select exactly two nodes before clicking the button.");
+//     }
+// });
 
 
 function sfg_undo_request(params) {

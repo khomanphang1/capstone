@@ -592,7 +592,6 @@ class Circuit(Document):
             sfg = dill.loads(self.sfg)
 
             # Remove dead branches (or simplify based on the given source/target)
-            print("removing dead branches...")
             sfg = remove_dead_branches(sfg)  # Pass 'sfg' to remove_dead_branches
 
             # Update the SFG state with the simplified graph
@@ -616,8 +615,8 @@ class Circuit(Document):
     #                 sfg = simplify(sfg, source, target)
     #     return sfg
     
-    def simplify_whole_graph_trivial(self):
-        print("Simplifying the entire graph...")
+    def simplify_whole_graph_trivial(self, source, dest):
+        print("Simplifying the entire graph...", source, dest)
 
         # Save current SFG state for undo functionality
         self.sfg_stack.append(self.sfg)
@@ -632,7 +631,7 @@ class Circuit(Document):
 
             # Remove dead branches (or simplify based on the given source/target)
             print("removing dead branches...")
-            sfg = simplify_whole_graph(sfg)  # Pass 'sfg' to remove_dead_branches
+            sfg = simplify_whole_graph(sfg, source, dest)  # Pass 'sfg' to remove_dead_branches
 
             # Update the SFG state with the simplified graph
             self.sfg = dill.dumps(sfg)
