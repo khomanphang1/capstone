@@ -366,13 +366,13 @@ function renderOverlay(data, curr_elements) {
                 style: {
                     'background-color': '#007bff',
                     'label': 'data(name)',
-                    'font-size': '10px'
+                    'font-size': '100px'
                 }
             },
             {
                 selector: 'edge',
                 style: {
-                    'width': 2,
+                    'width': 6,
                     'line-color': '#888',
                     'target-arrow-shape': 'triangle',
                     'arrow-scale': 1.5,
