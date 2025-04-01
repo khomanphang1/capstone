@@ -14,6 +14,8 @@ import circuit_parser
 from dpi import DPI_algorithm as DPI
 from dpi import simplify
 from dpi import removing_branch
+from dpi import remove_dead_branches
+from dpi import simplify_whole_graph
 import ltspice2svg
 import networkx as nx
 
@@ -78,7 +80,7 @@ class Circuit(Document):
         Returns:
             A dictionary.
         """
-        print("to_dict called in db.py")
+
         
         fields = set(fields or ('id', 'name', 'parameters', 'sfg'))
 
@@ -97,10 +99,10 @@ class Circuit(Document):
 
             for src, dst in sfg.edges:
                 # print the edge and its weights
-                print("src:", src)
-                print("dst:", dst)
-                print("edge:", sfg.edges[src, dst])
-                print("edge weight:", sfg.edges[src, dst]['weight'])
+                # print("src:", src)
+                # print("dst:", dst)
+                # print("edge:", sfg.edges[src, dst])
+                # print("edge weight:", sfg.edges[src, dst]['weight'])
                 symbolic = sfg.edges[src, dst]['weight']
 
                 if isinstance(symbolic, sympy.Expr):
@@ -568,6 +570,90 @@ class Circuit(Document):
 
         self.sfg = dill.dumps(sfg)
 
+
+    # STARTED HERE 
+    def simplify_entire_sfg(self, source=None, target=None):
+        """Simplify the SFG. If source and target are provided, simplify only that path;
+        otherwise, simplify the whole graph.
+
+        Args:
+            source: node representing start of path (optional)
+            target: node representing end of path (optional)
+        """
+        # Save current SFG state for undo functionality
+        self.sfg_stack.append(self.sfg)
+        self.redo_stack.clear()
+        
+        if len(self.sfg_stack) > 5:
+            self.sfg_stack = self.sfg_stack[-5:]
+
+        try:
+            # De-serialize the SFG (make sure it's a valid graph object)
+            sfg = dill.loads(self.sfg)
+
+            # Remove dead branches (or simplify based on the given source/target)
+            print("removing dead branches...")
+            sfg = remove_dead_branches(sfg)  # Pass 'sfg' to remove_dead_branches
+
+            # Update the SFG state with the simplified graph
+            self.sfg = dill.dumps(sfg)
+
+        except Exception as e:
+            # Handle any errors (like bad deserialization or invalid graph)
+            print(f"Error simplifying SFG: {e}")
+            self.sfg = self.sfg_stack.pop()  # Restore previous state in case of error
+            raise  # Re-raise the exception for further handling if needed
+
+        # Optionally, you could return the simplified SFG or just ensure the state is updated
+        return self.sfg  # Returning updated SFG
+
+
+    # def simplify_whole_graph(self, sfg):
+    #     """Simplify the entire SFG by iterating over node pairs."""
+    #     for source in list(sfg.nodes):
+    #         for target in list(sfg.nodes):
+    #             if source != target:
+    #                 sfg = simplify(sfg, source, target)
+    #     return sfg
+    
+    def simplify_whole_graph_trivial(self):
+        print("Simplifying the entire graph...")
+
+        # Save current SFG state for undo functionality
+        self.sfg_stack.append(self.sfg)
+        self.redo_stack.clear()
+        
+        if len(self.sfg_stack) > 5:
+            self.sfg_stack = self.sfg_stack[-5:]
+
+        try:
+            # De-serialize the SFG (make sure it's a valid graph object)
+            sfg = dill.loads(self.sfg)
+
+            # Remove dead branches (or simplify based on the given source/target)
+            print("removing dead branches...")
+            sfg = simplify_whole_graph(sfg)  # Pass 'sfg' to remove_dead_branches
+
+            # Update the SFG state with the simplified graph
+            self.sfg = dill.dumps(sfg)
+
+        except Exception as e:
+            # Handle any errors (like bad deserialization or invalid graph)
+            print(f"Error simplifying SFG: {e}")
+            self.sfg = self.sfg_stack.pop()  # Restore previous state in case of error
+            raise  # Re-raise the exception for further handling if needed
+
+        # Optionally, you could return the simplified SFG or just ensure the state is updated
+        return self.sfg  # Returning updated SFG
+
+
+
+    def is_target_node(self, node):
+        """Check if a node is a primary output or target in the SFG."""
+        # Define target nodes based on specific criteria for your application
+        # For example, nodes with no successors could be targets
+        return len(list(self.sfg.successors(node))) == 0
+
     def undo_sfg(self):
         if len(self.sfg_stack) > 0:
             self.redo_stack.append(self.sfg)
@@ -589,32 +675,31 @@ class Circuit(Document):
             editDst: the destination vertex of the edge
             editSymbolic: the new symbolic function of the edge.
         """
-        print("edit_edge called in db.py")
-        print("self:", self)
-        print("editSrc:", editSrc)
-        print("editDst:", editDst)
-        print("editSymbolic:", editSymbolic)
+        # print("edit_edge called in db.py")
+        # print("self:", self)
+        # print("editSrc:", editSrc)
+        # print("editDst:", editDst)
+        # print("editSymbolic:", editSymbolic)
         
-        print("loading sfg")
+        # print("loading sfg")
         sfg = dill.loads(self.sfg)
-        print("sfg loaded")
-        print("sfg:", sfg)
+        # print("sfg loaded")
+        # print("sfg:", sfg)
 
         # print sfg info
-        print("nodes:", sfg.nodes)
-        print("edges:", sfg.edges)
+        # print("nodes:", sfg.nodes)
+        # print("edges:", sfg.edges)
 
 
-        print("iterating through edges")
         for src, dst in sfg.edges:
             if src == editSrc and dst == editDst:
-                print("found edge")
-                print("edge:", sfg.edges)
+                # print("found edge")
+                # print("edge:", sfg.edges)
                 symbolic = sfg.edges[src, dst]['weight']
-                print("old symbolic:", symbolic)
-                print("edge data:", sfg.edges[src, dst])
+                # print("old symbolic:", symbolic)
+                # print("edge data:", sfg.edges[src, dst])
                 sfg.edges[src, dst]['weight'] = editSymbolic
-                print("edge data after edit:", sfg.edges[src, dst])
+                # print("edge data after edit:", sfg.edges[src, dst])
                 self.sfg = dill.dumps(sfg)
                 # return sfg.edges[src, dst]['weight']
                 break
@@ -630,40 +715,40 @@ class Circuit(Document):
             editDst: the destination vertex of the edge
             editSymbolic: the new symbolic function of the edge.
         """
-        print("edit_edge called in db.py")
-        print("editSrc:", editSrc)
-        print("editDst:", editDst)
-        print("editSymbolic:", editSymbolic)
+        # print("edit_edge called in db.py")
+        # print("editSrc:", editSrc)
+        # print("editDst:", editDst)
+        # print("editSymbolic:", editSymbolic)
         
         try:
             # Convert the symbolic string to a SymPy expression
-            print("trying to convert to SymPy expression")
+            # print("trying to convert to SymPy expression")
             editSymbolic = sympy.sympify(editSymbolic)
-            print("successfully converted to SymPy expression")
+            # print("successfully converted to SymPy expression")
         except sympy.SympifyError:
             # print("failed to convert to SymPy expression")
             # raise ValueError(f"Invalid symbolic expression: {editSymbolic}")
             try:
                 # Fallback to parsing as a LaTeX expression
                 editSymbolic = parse_latex(editSymbolic)
-                print("successfully parsed as LaTeX expression")
+                # print("successfully parsed as LaTeX expression")
             except Exception as e:
-                print("failed to parse as LaTeX expression")
+                # print("failed to parse as LaTeX expression")
                 raise ValueError(f"Invalid symbolic expression: {editSymbolic}. Error: {e}")
         # Load the current state of the SFG
         try:
-            print("Loading SFG...")
+            # print("Loading SFG...")
             sfg = dill.loads(self.sfg)
-            print("SFG loaded successfully.")
+            # print("SFG loaded successfully.")
         except Exception as e:
             raise RuntimeError(f"Failed to load SFG: {e}")
 
         # Iterate through edges and find the one to update
         edge_found = False
-        print("Iterating through edges...")
+        # print("Iterating through edges...")
         for src, dst in sfg.edges:
             if src == editSrc and dst == editDst:
-                print(f"Found edge from {src} to {dst}. Updating symbolic weight.")
+                # print(f"Found edge from {src} to {dst}. Updating symbolic weight.")
                 # Update the symbolic weight for the found edge
                 sfg.edges[src, dst]['weight'] = editSymbolic
                 edge_found = True
@@ -675,9 +760,9 @@ class Circuit(Document):
 
         # Serialize the updated SFG back to the database field
         try:
-            print("Serializing the updated SFG...")
+            # print("Serializing the updated SFG...")
             self.sfg = dill.dumps(sfg)
-            print("SFG serialized and stored successfully.")
+            # print("SFG serialized and stored successfully.")
         except Exception as e:
             raise RuntimeError(f"Failed to serialize the updated SFG: {e}")
 
@@ -719,8 +804,6 @@ class Circuit(Document):
     #     self.sfg = sfg_serialized
 
     def import_circuit(self, new_circuit):
-        print(self.id)
-        print(new_circuit.id)
         # self.name = new_circuit.name
         self.svg = new_circuit.svg
         self.schematic = new_circuit.schematic
@@ -733,3 +816,194 @@ class Circuit(Document):
         self.created = new_circuit.created
         self.sfg_stack = new_circuit.sfg_stack
         self.redo_stack = new_circuit.redo_stack
+
+    def compute_phase_margin(
+            self,
+            gain: List[float],
+            phase: List[float]
+    ) -> Optional[float]:
+        
+        # Find the index where the gain is closest to 0 dB
+        zero_db_index = min(range(len(gain)), key=lambda i: abs(gain[i]))
+        
+        # Check if the gain at the closest index is within a reasonable threshold of 0 dB
+        #if abs(gain[zero_db_index]) > 0.1:  # Adjust threshold as needed
+        #    return None  # or raise an exception if preferred
+
+        # Get the phase at this index
+        phase_at_zero_db = phase[zero_db_index]
+        
+        # Calculate the phase margin
+        phase_margin = 180 - abs(phase_at_zero_db)
+
+        #print ("The phase margin is: "+phase_margin) # Temporarily adding print statement for BOL
+        
+        return phase_margin
+
+    def sweep_params_for_phase_margin(
+        self,
+        input_node: str,
+        output_node: str,
+        param_name: str,  
+        min_value: float,
+        max_value: float,
+        step: float
+    ) -> Tuple[List[float], List[float]]:
+        """Sweeps capacitance values and plots capacitance vs. phase margin.
+
+        Args:
+            param_name: Name of the capacitor parameter to update.
+            min_value: Minimum capacitance value to test.
+            max_value: Maximum capacitance value to test.
+            step: Increment step for capacitance.
+            freq, gain, phase: Frequency, gain, and phase lists to compute phase margin.
+
+        Returns:
+            A tuple of two lists: capacitances and their corresponding phase margins.
+        """
+        param_values = []
+        phase_margins = []
+
+        original_param = self.parameters[param_name]
+        # Parameters for eval_loop_gain
+        start_freq = 1e3
+        end_freq = 1e12
+        points_per_decade = 30
+
+        # Sweep capacitance values
+        current_value = min_value
+        while current_value <= max_value:
+            # Update the specified capacitance in the circuit
+            self.update_parameters({param_name: current_value})
+            freq_list, gain_list, phase_list= self.eval_transfer_function(input_node=input_node,
+                                                                        output_node=output_node,
+                                                                        start_freq=start_freq,
+                                                                        end_freq=end_freq,
+                                                                        points_per_decade=points_per_decade)
+
+            # Compute the phase margin for the current capacitance
+            phase_margin = self.compute_phase_margin(gain_list, phase_list)
+            
+            # Store results
+            param_values.append(current_value)
+            phase_margins.append(phase_margin)
+
+            print("Testing: "+str(current_value)+" F")
+            print("Phase margin: "+str(phase_margin)+" deg")
+            
+            # Increment capacitance
+            current_value += step
+            current_value = round(current_value,max(0, -int(math.floor(math.log10(abs(step))))))
+        
+        self.update_parameters({param_name: original_param})
+
+        return param_values, phase_margins
+
+    def calculate_bandwidth(
+            self,
+            frequencies: List[float],
+            magnitudes: List[float]
+    ) -> Optional[float]:
+        """
+        Calculate the bandwidth frequency where the gain is closest to max_gain - 3 dB.
+
+        Args:
+            frequencies: List of frequency values.
+            magnitudes: List of corresponding gain values in dB.
+
+        Returns:
+            float: Frequency at the closest -3 dB point (bandwidth).
+            None: If no such point is found.
+        """
+        # Determine the max gain and -3 dB threshold
+        max_gain_db = np.max(magnitudes)
+        threshold_db = max_gain_db - 3
+
+        # Find the index of the peak gain
+        max_index = np.argmax(magnitudes)
+
+        # Extract the part of the frequency and magnitude arrays after the peak
+        post_peak_frequencies = frequencies[max_index + 1:]
+        post_peak_magnitudes = magnitudes[max_index + 1:]
+
+        if not post_peak_frequencies:
+            return None  # Return None if there are no points after the peak
+
+        # Find the index of the magnitude closest to the threshold
+        closest_index = np.argmin(np.abs(np.array(post_peak_magnitudes) - threshold_db))
+
+        # Return the corresponding frequency
+        return post_peak_frequencies[closest_index]
+    
+    def sweep_params_for_bandwidth(
+        self,
+        input_node: str,
+        output_node: str,
+        param_name: str,  
+        min_val: float,
+        max_val: float,
+        step: float
+    ) -> Tuple[List[float], List[float]]:
+        """Sweeps inputted parameter values and plots inputted parameter vs. bandwidth.
+
+        Args:
+            input_node:
+            output_node
+            param_name: Name of the parameter to update.
+            min_val: Minimum value to test.
+            max_val: Maximum value to test.
+            step: Increment step for capacitance.
+            freq, gain, phase: Frequency, gain, and phase lists to compute phase margin.
+
+        Returns:
+            
+        """
+        param_values = []
+        bandwidths = []
+
+        original_param = self.parameters[param_name]
+        # Parameters for eval_loop_gain
+        start_freq = 1e3
+        end_freq = 1e12
+        points_per_decade = 30
+
+        # Sweep capacitance values
+        current_val = min_val
+        while current_val <= max_val:
+            # Update the specified capacitance in the circuit
+            self.update_parameters({param_name: current_val})
+            freq_list, gain_list, phase_list= self.eval_transfer_function(input_node=input_node,
+                                                                        output_node=output_node,
+                                                                        start_freq=start_freq,
+                                                                        end_freq=end_freq,
+                                                                        points_per_decade=points_per_decade)
+
+            # Compute the phase margin for the current capacitance
+            bandwidth = self.calculate_bandwidth(freq_list, gain_list)
+            
+            # Store results
+            param_values.append(current_val)
+            bandwidths.append(bandwidth)
+
+            print("Testing: "+str(current_val))
+            print("Bandwidth: "+str(bandwidth)+" hz")
+            
+            # Increment capacitance
+            current_val += step
+            current_val = round(current_val,max(0, -int(math.floor(math.log10(abs(step))))))
+        
+        self.update_parameters({param_name: original_param})
+
+        return param_values, bandwidths
+    
+    def is_device_valid(self, device_name: str) -> bool:
+        """
+        Check if a given device exists in the circuit parameters.
+
+        Args:
+            device_name (str): The name of the device to validate.
+
+        Returns:
+            bool: True if the device exists, False otherwise.
+        """
+        return device_name in self.parameters

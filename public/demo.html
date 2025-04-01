@@ -2,7 +2,7 @@
 
 <html>
   <head>
-    <title>cytoscape graph drawing algorithm demo</title>
+    <title>SigFlow</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
 
@@ -25,30 +25,24 @@
 
       <div class="parameter-panel">
         <div id="param-form"> 
-          <h1> Circuit Parameters </h1>
+            <h1> Circuit Parameters </h1>
         </div>
         <div id="transfer-form">
-          <h1> Transfer Function </h1>
+            <h1> Transfer Function </h1>
         </div>
         <div id="transfer-func-bode-form">
-          <h1> Transfer Function Bode Plot </h1>
-          <!-- <button onclick="plotInputGuide()">input guide</button> -->
+            <h1> Transfer Function Bode Plot </h1>
         </div>
-
         <div id="loop-gain-form">
-          <h1> Loop Gain </h1>
+            <h1> Loop Gain </h1>
         </div>
         <div id="loop-gain-bode-form">
-          <h1> Loop Gain Bode Plot </h1>
-          <!-- <button onclick="plotInputGuide()">input guide</button> -->
+            <h1> Loop Gain Bode Plot </h1>
         </div>
-
-        <!-- <script>
-          function plotInputGuide() {
-            alert("frequency unit: hz (default) or rad/s;\ngain unit: db (default) or None;\nphase unit: degree (default) or rad;\nWhen leaving the unit fields empty, default units will be used\n" );
-          }
-        </script> -->
-      </div>
+        <div id="stability-params-form">
+          <h1> Phase Margin and Bandwidth Plot Demo </h1>
+        </div>
+    </div>
 
       <div class="middle-layer">
         <div class="sfg-panel"> 
@@ -88,6 +82,8 @@
               </div>
               <div style="height: 23px; margin-top: 10px;"> 
                   <input type="checkbox" id="simplification-toggle" onclick="simplify_mode_toggle()"> Simplification Mode
+                  <button onclick="simplify_entire_graph()">Simplify Entire Graph</button>
+                  <button onclick="simplify_entire_graph_trivial()">Simplify Entire Graph (Trivial)</button>
                   <button id="simplify-btn" style="margin-left: 20px; display: none;" onclick="simplify()">Simplify</button>
                   <button id="undo-btn" style="margin-left: 20px;" onclick="sfg_undo()" disabled>Undo</button>
                   <button id="redo-btn" style="margin-left: 20px;" onclick="sfg_redo()" disabled>Redo</button>
@@ -118,6 +114,24 @@
             <div id="edge-info"></div>
           </div>
 
+          <div id="toggle-button-container">
+            <button id="toggle-svg" onclick="toggleSVG()">Toggle Schematic (SVG)</button>
+          </div>
+        
+
+          <div class="overlay-section">
+            <h1>Overlay: Circuit and Signal-Flow Graph</h1>
+            <div id="overlay-container">
+              <!-- SVG Layer -->
+              <div id="svg-layer"></div>
+              
+              <!-- SFG Layer -->
+              <div id="sfg-layer"></div>
+            </div>
+          </div>
+          
+
+
           <div class="circuit-panel">
             <div id="circuit-svg"></div>
           </div>
@@ -147,7 +161,7 @@
               </div>
             </div>
     
-            <div class = "bode-section">
+            <div class = "bode-section" id="bode-plot-section">
               <h1>Bode plot section</h1>
               <div class="plot-container">
                   <div class="plot-0" id="transfer-bode">
@@ -155,25 +169,19 @@
                   </div>
                   <div class="plot-1" id="loop-gain-bode">
                     <canvas id="loop-gain-bode-plot"></canvas>
+                  </div>
+                  <div class="plot-2" id="pm-plot">
+                    <canvas id="phase-margin-plot"></canvas>
+                  </div>
+                  <div class="plot-3" id="bw-plot">
+                    <canvas id="bandwidth-plot"></canvas>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-
-
         </div>
-
-        
-
-
-
-      </div>
-
-      
-
-    </div> 
-
+      </div> 
     <div id="edge-edit-modal" class="modal">
       <div class="modal-content">
           <span class="close">&times;</span>

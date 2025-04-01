@@ -203,12 +203,32 @@ body {
   }
 
   .parameter-panel {
-    width: 150px;
+    width: 200px; /* Adjust width to make the panel smaller */
     border: 1px solid black;
-    padding: 10px;
-    margin: 10px;
-    margin-bottom: 0px;
-  }
+    padding: 15px; /* Reduce padding for a more compact look */
+    margin: 10px auto; /* Center the panel horizontally */
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.parameter-panel div {
+    margin-bottom: 15px; /* Reduce space between sections */
+    padding: 5px; /* Add a small padding within each section if desired */
+}
+
+.parameter-panel div:last-child {
+    margin-bottom: 0;
+}
+
+.parameter-panel h1 {
+    margin: 0;
+    font-size: 1em; /* Slightly smaller font size for a compact layout */
+    font-weight: normal;
+}
+
 
   .label[x-out-of-boundaries] {
     display: none !important;
@@ -295,6 +315,52 @@ $custom-range-thumb-disabled-bg: #adb5bd;
 
 }
 
+.overlay-section {
+  margin: 20px 0;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 2px solid #ccc;
+  border-radius: 5px; 
+  overflow: hidden; 
+  max-height: 600px; 
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); 
+}
+
+
+#overlay-container {
+  position: relative;
+  width: 100%;
+  height: 500px; 
+}
+
+#svg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.5; 
+}
+
+#sfg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#toggle-button-container {
+  display: flex; 
+  justify-content: center; 
+  margin: 10px 0;
+}
+
+#toggle-svg {
+  padding: 10px 20px; 
+  font-size: 14px; 
+  cursor: pointer;
+}
 
 /* basic positioning */
 .legend { list-style: none; }
